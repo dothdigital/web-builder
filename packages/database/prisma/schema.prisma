@@ -1,0 +1,1001 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Identity and tenancy
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  image         String?
+  emailVerified DateTime?
+  isPlatformAdmin Boolean @default(false)
+  passwordHash String?
+  suspendedAt DateTime?
+  sessionVersion Int @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts     Account[]
+  sessions     Session[]
+  memberships  WorkspaceMember[]
+  auditEvents  AuditEvent[]
+  emailContact EmailContact?
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  plan      String   @default("free")
+  status    WorkspaceStatus @default(ACTIVE)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  trialEndsAt DateTime @default(dbgenerated("(timezone('UTC', CURRENT_TIMESTAMP) + '7 days'::interval)"))
+  trialWebsiteLimit Int @default(25)
+  billingExempt Boolean @default(false)
+  billingPlanId String?
+  stripeCustomerId String? @unique
+  stripeSubscriptionId String? @unique
+  billingStatus String @default("none")
+  billingPeriodEnd DateTime?
+  cancelAtPeriodEnd Boolean @default(false)
+  checkoutSessionId String?
+  checkoutExpiresAt DateTime?
+  billingPlan BillingPlan? @relation(fields: [billingPlanId], references: [id])
+  invitations WorkspaceInvitation[]
+  members     WorkspaceMember[]
+  projects    Project[]
+  assets      Asset[]
+  auditEvents AuditEvent[]
+  usage       UsageRecord[]
+}
+
+model WorkspaceMember {
+  id          String        @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        WorkspaceRole @default(EDITOR)
+  canPublish  Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Project / site
+// ---------------------------------------------------------------------------
+
+model Project {
+  id            String        @id @default(cuid())
+  workspaceId   String
+  name          String
+  slug          String
+  defaultLocale String        @default("en")
+  homepageLength String       @default("compact")
+  homepageSections String[]   @default([])
+  designReference Json?
+  designReferenceObservation Json?
+  status        ProjectStatus @default(DRAFT)
+  previewHost   String        @unique
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  workspace        Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  businessProfile  BusinessProfile?
+  brandProfile     BrandProfile?
+  pages            Page[]
+  websiteVersions  WebsiteVersion[]
+  releases         PublishRelease[]
+  assets           Asset[]
+  collections      Collection[]
+  menus            Menu[]
+  socialLinks      SocialLink[]
+  hosting          HostingSite?
+  visits           WebsiteVisit[]
+  integration      Integration?
+  redirects        Redirect[]
+  leads            Lead[]
+  conversations    AiConversation[]
+  generationJobs   GenerationJob[]
+  contentJobs      ContentJob[]
+  domains          Domain[]
+  auditEvents      AuditEvent[]
+  usage            UsageRecord[]
+
+  @@unique([workspaceId, slug])
+  @@index([workspaceId])
+}
+
+/// Normalized factual business data. AI must never invent values here.
+model BusinessProfile {
+  id             String   @id @default(cuid())
+  projectId      String   @unique
+  legalName      String?
+  displayName    String
+  tagline        String?
+  industry       String?
+  description    String?
+  audience       String?
+  tone           String?
+  primaryDomain  String?
+  email          String?
+  phone          String?
+  whatsapp       String?
+  addressLine1   String?
+  addressLine2   String?
+  city           String?
+  region         String?
+  postalCode     String?
+  country        String?
+  serviceArea    String[]
+  /// Opening hours as [{ day, opens, closes, closed }]
+  hours          Json?
+  /// Conversion preference: CALL | WHATSAPP | FORM | BOOKING_URL | QUOTE
+  primaryConversion String?
+  bookingUrl     String?
+  /// Facts explicitly marked as unknown so the UI can flag instead of fabricate
+  missingFacts   String[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+/// Design preferences supplied by the user plus the final AI-produced Design DNA.
+model BrandProfile {
+  id             String   @id @default(cuid())
+  projectId      String   @unique
+  logoAssetId    String?
+  colorDirection String?
+  typographyFeel String?
+  preferredColors String[]
+  avoidedColors  String[]
+  styleAdjectives String[]
+  letAiChoose    Boolean  @default(true)
+  /// Validated DesignDNA object (see @awb/website-model)
+  designDna      Json?
+  /// Global design tokens (palette, type scale, radii, spacing)
+  tokens         Json?
+  /// Composition fingerprint used for the uniqueness check
+  fingerprint    Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  logo    Asset?  @relation(fields: [logoAssetId], references: [id], onDelete: SetNull)
+}
+
+// ---------------------------------------------------------------------------
+// Structure and content
+// ---------------------------------------------------------------------------
+
+model Page {
+  id            String     @id @default(cuid())
+  projectId     String
+  parentId      String?
+  title         String
+  navLabel      String?
+  slug          String
+  path          String
+  pageType      PageType   @default(CUSTOM)
+  status        PageStatus @default(DRAFT)
+  locale        String     @default("en")
+  position      Int        @default(0)
+  showInNav     Boolean    @default(true)
+  indexable     Boolean    @default(true)
+  canonicalUrl  String?
+  seoTitle      String?
+  seoDescription String?
+  ogImageAssetId String?
+  /// Ordered section list: [{ id, componentId, componentVersion, props }]
+  sections      Json       @default("[]")
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  project  Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parent   Page?   @relation("PageTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children Page[]  @relation("PageTree")
+  ogImage  Asset?  @relation("PageOgImage", fields: [ogImageAssetId], references: [id], onDelete: SetNull)
+
+  @@unique([projectId, locale, path])
+  @@index([projectId])
+  @@index([parentId])
+}
+
+/// Draft and published snapshots of the whole Website Model.
+model WebsiteVersion {
+  id           String            @id @default(cuid())
+  projectId    String
+  version      Int
+  kind         WebsiteVersionKind @default(DRAFT)
+  /// Validated WebsiteModel JSON (schemaVersion pinned inside)
+  model        Json
+  schemaVersion String
+  createdById  String?
+  note         String?
+  createdAt    DateTime          @default(now())
+
+  project  Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  releases PublishRelease[]
+
+  @@unique([projectId, version])
+  @@index([projectId, kind])
+}
+
+// ---------------------------------------------------------------------------
+// Component registry
+// ---------------------------------------------------------------------------
+
+model ComponentDefinition {
+  id          String          @id @default(cuid())
+  componentId String          @unique
+  family      ComponentFamily
+  name        String
+  description String
+  /// Short description used by the AI composer when choosing components
+  aiGuidance  String?
+  enabled     Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  versions ComponentVersion[]
+}
+
+model ComponentVersion {
+  id            String   @id @default(cuid())
+  definitionId  String
+  version       String
+  /// JSON Schema derived from the component's Zod prop schema
+  propsSchema   Json
+  /// Editor field definitions for the visual editor
+  editorFields  Json
+  /// Design token dependencies
+  tokenDeps     String[]
+  deprecated    Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  definition ComponentDefinition @relation(fields: [definitionId], references: [id], onDelete: Cascade)
+
+  @@unique([definitionId, version])
+}
+
+// ---------------------------------------------------------------------------
+// Assets and collections
+// ---------------------------------------------------------------------------
+
+model Asset {
+  id           String      @id @default(cuid())
+  workspaceId  String
+  projectId    String?
+  kind         AssetKind   @default(IMAGE)
+  source       AssetSource @default(UPLOAD)
+  storageKey   String
+  url          String
+  mimeType     String
+  width        Int?
+  height       Int?
+  bytes        Int?
+  altText      String?
+  /// Focal point { x, y } in 0..1 used for art-directed cropping
+  focalPoint   Json?
+  /// Prompt used when source = AI_GENERATED
+  prompt       String?
+  replacesId   String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project      Project?  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  replaces     Asset?    @relation("AssetHistory", fields: [replacesId], references: [id], onDelete: SetNull)
+  replacedBy   Asset[]   @relation("AssetHistory")
+  brandLogos   BrandProfile[]
+  pageOgImages Page[]    @relation("PageOgImage")
+
+  @@index([workspaceId])
+  @@index([projectId])
+}
+
+model Collection {
+  id        String         @id @default(cuid())
+  projectId String
+  type      CollectionType
+  name      String
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  project Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  items   CollectionItem[]
+
+  @@unique([projectId, type])
+  @@index([projectId])
+}
+
+model CollectionItem {
+  id           String   @id @default(cuid())
+  collectionId String
+  slug         String?
+  position     Int      @default(0)
+  published    Boolean  @default(true)
+  /// Type-specific validated payload (service, faq, testimonial, team member, ...)
+  data         Json
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  @@index([collectionId])
+}
+
+// ---------------------------------------------------------------------------
+// Navigation
+// ---------------------------------------------------------------------------
+
+model Menu {
+  id        String   @id @default(cuid())
+  projectId String
+  key       String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  items   MenuItem[]
+
+  @@unique([projectId, key])
+}
+
+model MenuItem {
+  id        String       @id @default(cuid())
+  menuId    String
+  parentId  String?
+  label     String
+  linkType  MenuLinkType @default(PAGE)
+  pageId    String?
+  url       String?
+  anchor    String?
+  icon      String?
+  newTab    Boolean      @default(false)
+  rel       String?
+  visible   Boolean      @default(true)
+  position  Int          @default(0)
+
+  menu     Menu       @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  parent   MenuItem?  @relation("MenuTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children MenuItem[] @relation("MenuTree")
+
+  @@index([menuId])
+  @@index([parentId])
+}
+
+// ---------------------------------------------------------------------------
+// Integrations, SEO plumbing and leads
+// ---------------------------------------------------------------------------
+
+model SocialLink {
+  id        String   @id @default(cuid())
+  projectId String
+  network   String
+  url       String
+  label     String?
+  enabled   Boolean  @default(true)
+  position  Int      @default(0)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, network])
+}
+
+model Integration {
+  id                 String   @id @default(cuid())
+  projectId          String   @unique
+  analyticsTrackingHost String?
+  analyticsPropertyId String?
+  analyticsCredentials String?
+  recaptchaEnabled   Boolean  @default(false)
+  recaptchaSiteKey   String?
+  recaptchaSecret    String?
+  ga4MeasurementId   String?
+  gtmContainerId     String?
+  googleVerification String?
+  bingVerification   String?
+  /// Google Business Profile listing and Maps place, supplied by the user
+  googleBusinessUrl  String?
+  googleMapsUrl      String?
+  googlePlaceId      String?
+  consentMode        String   @default("disabled")
+  /// Enabled conversion events, e.g. ["form_submit","phone_click"]
+  conversionEvents   String[]
+  /// Advanced custom events { name, params }
+  customEvents       Json?
+  disableInPreview   Boolean  @default(true)
+  updatedAt          DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model Redirect {
+  id        String   @id @default(cuid())
+  projectId String
+  fromPath  String
+  toPath    String
+  statusCode Int     @default(301)
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, fromPath])
+}
+
+model Lead {
+  id         String     @id @default(cuid())
+  projectId  String
+  pagePath   String?
+  formKey    String?
+  /// Submitted field values
+  payload    Json
+  utm        Json?
+  ipHash     String?
+  userAgent  String?
+  status     LeadStatus @default(NEW)
+  createdAt  DateTime   @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// AI orchestration
+// ---------------------------------------------------------------------------
+
+model AiConversation {
+  id        String   @id @default(cuid())
+  projectId String
+  purpose   String   @default("onboarding")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project  Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  messages AiMessage[]
+
+  @@index([projectId])
+}
+
+model AiMessage {
+  id             String   @id @default(cuid())
+  conversationId String
+  role           String
+  content        String
+  /// Structured payload when the message carries a typed AI result
+  data           Json?
+  createdAt      DateTime @default(now())
+
+  conversation AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+}
+
+model GenerationJob {
+  id            String        @id @default(cuid())
+  projectId     String
+  stage         GenerationStage
+  status        JobStatus     @default(QUEUED)
+  correlationId String
+  provider      String?
+  model         String?
+  promptVersion String?
+  input         Json?
+  output        Json?
+  errorMessage  String?
+  attempts      Int           @default(0)
+  inputTokens   Int?
+  outputTokens  Int?
+  costCents     Int?
+  startedAt     DateTime?
+  finishedAt    DateTime?
+  createdAt     DateTime      @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, stage])
+  @@index([correlationId])
+}
+
+model PromptVersion {
+  id        String   @id @default(cuid())
+  stage     GenerationStage
+  version   String
+  template  String
+  /// JSON Schema requested from the model for structured outputs
+  outputSchema Json?
+  active    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@unique([stage, version])
+}
+
+// ---------------------------------------------------------------------------
+// Publishing
+// ---------------------------------------------------------------------------
+
+model Domain {
+  id            String       @id @default(cuid())
+  projectId     String
+  hostname      String       @unique
+  isPrimary     Boolean      @default(false)
+  wwwPreference String       @default("non-www")
+  status        DomainStatus @default(PENDING)
+  verificationToken String?
+  sslStatus     String       @default("pending")
+  verifiedAt    DateTime?
+  dnsReady      Boolean @default(false)
+  lastCheckedAt DateTime?
+  lastError     String?
+  createdAt     DateTime     @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+model PublishRelease {
+  id              String        @id @default(cuid())
+  projectId       String
+  websiteVersionId String
+  releaseNumber   Int
+  status          ReleaseStatus @default(PENDING)
+  /// Immutable snapshot: model + settings + asset references at publish time
+  snapshot        Json
+  /// Generated technical files kept with the release
+  sitemapXml      String?
+  robotsTxt       String?
+  llmsTxt         String?
+  validation      Json?
+  rolledBackFromId String?
+  publishedById   String?
+  publishedAt     DateTime?
+  createdAt       DateTime      @default(now())
+
+  project        Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  websiteVersion WebsiteVersion @relation(fields: [websiteVersionId], references: [id])
+
+  @@unique([projectId, releaseNumber])
+  @@index([projectId, status])
+}
+
+// ---------------------------------------------------------------------------
+// Admin / observability
+// ---------------------------------------------------------------------------
+
+model AuditEvent {
+  id          String   @id @default(cuid())
+  workspaceId String?
+  projectId   String?
+  actorId     String?
+  action      String
+  targetType  String?
+  targetId    String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project   Project?   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  actor     User?      @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, createdAt])
+  @@index([projectId, createdAt])
+}
+
+model UsageRecord {
+  id          String   @id @default(cuid())
+  workspaceId String
+  projectId   String?
+  kind        String
+  quantity    Int      @default(1)
+  costCents   Int      @default(0)
+  metadata    Json?
+  occurredAt  DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project   Project?  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, occurredAt])
+}
+
+model FeatureFlag {
+  id          String   @id @default(cuid())
+  key         String
+  workspaceId String?
+  enabled     Boolean  @default(false)
+  plan        String?
+  updatedAt   DateTime @updatedAt
+
+  @@unique([key, workspaceId])
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum WorkspaceRole {
+  OWNER
+  EDITOR
+  VIEWER
+}
+
+enum WorkspaceStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum ProjectStatus {
+  DRAFT
+  GENERATING
+  READY
+  PUBLISHED
+  SUSPENDED
+}
+
+enum PageType {
+  HOME
+  ABOUT
+  SERVICE
+  SERVICE_CATEGORY
+  LOCATION
+  CONTACT
+  BOOKING
+  FAQ
+  TEAM
+  GALLERY
+  PRICING
+  BLOG_INDEX
+  BLOG_ARTICLE
+  LANDING
+  LEGAL
+  CUSTOM
+}
+
+enum PageStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum WebsiteVersionKind {
+  DRAFT
+  PUBLISHED
+}
+
+enum ComponentFamily {
+  HEADER
+  HERO
+  SERVICES
+  ABOUT
+  GALLERY
+  REVIEWS
+  TEAM
+  PRICING
+  FAQ
+  CONTACT
+  CTA
+  FOOTER
+}
+
+enum AssetKind {
+  IMAGE
+  VIDEO
+  DOCUMENT
+  LOGO
+}
+
+enum AssetSource {
+  UPLOAD
+  AI_GENERATED
+  PLACEHOLDER
+}
+
+enum CollectionType {
+  SERVICES
+  TEAM
+  TESTIMONIALS
+  FAQS
+  LOCATIONS
+  SOCIAL
+  BLOG_POSTS
+}
+
+enum MenuLinkType {
+  PAGE
+  URL
+  ANCHOR
+  EMAIL
+  PHONE
+  ACTION
+}
+
+enum LeadStatus {
+  NEW
+  READ
+  ARCHIVED
+  SPAM
+}
+
+enum GenerationStage {
+  ANALYZE_BRIEF
+  NEXT_QUESTIONS
+  DESIGN_DIRECTIONS
+  DESIGN_DNA
+  SITE_PLAN
+  CONTENT
+  COMPOSE
+  IMAGES
+  VALIDATE
+  AI_EDIT
+}
+
+enum JobStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+enum DomainStatus {
+  PENDING
+  VERIFYING
+  ACTIVE
+  FAILED
+}
+
+enum ReleaseStatus {
+  PENDING
+  VALIDATING
+  DEPLOYING
+  LIVE
+  FAILED
+  ROLLED_BACK
+}
+
+model WebsiteVisit {
+  id String @id
+  projectId String
+  occurredAt DateTime @default(now())
+  visitorHash String
+  pagePath String
+  referrer String
+  country String?
+  city String?
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  @@index([projectId, occurredAt])
+}
+
+model HostingSite {
+  projectId String @id
+  distributionId String? @unique
+  distributionHost String?
+  certificateArn String?
+  functionArn String?
+  deployedReleaseId String?
+  pendingReleaseId String?
+  status String @default("NOT_CONFIGURED")
+  lastError String?
+  lockUntil DateTime?
+  lockToken String?
+  updatedAt DateTime @updatedAt
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model ContentJob {
+  id String @id @default(cuid())
+  projectId String
+  workspaceId String
+  requestedBy String
+  kind String
+  title String
+  status String @default("QUEUED")
+  dedupeKey String? @unique
+  input Json
+  result Json?
+  error String?
+  attempts Int @default(0)
+  runToken String?
+  emailTo String?
+  emailStatus String @default("PENDING")
+  emailAttempts Int @default(0)
+  emailNextAttemptAt DateTime?
+  emailLeaseUntil DateTime?
+  startedAt DateTime?
+  finishedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  @@index([workspaceId, status])
+  @@index([status, createdAt])
+  @@index([projectId, createdAt])
+  @@index([emailStatus, emailNextAttemptAt])
+}
+
+model BillingPlan {
+  id String @id @default(cuid())
+  slug String @unique
+  name String
+  description String
+  websiteLimit Int
+  features String[] @default([])
+  active Boolean @default(true)
+  position Int @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  prices BillingPrice[]
+  workspaces Workspace[]
+}
+
+model BillingPrice {
+  id String @id @default(cuid())
+  planId String
+  stripePriceId String @unique
+  stripeProductId String
+  interval String
+  amount Int
+  currency String
+  active Boolean @default(true)
+  createdAt DateTime @default(now())
+  plan BillingPlan @relation(fields: [planId], references: [id])
+  @@index([planId, active])
+}
+
+model BillingEvent {
+  id String @id
+  type String
+  createdAt DateTime @default(now())
+}
+
+model AuthRateLimit {
+  key String @id
+  count Int @default(1)
+  expiresAt DateTime
+  @@index([expiresAt])
+}
+
+model WorkspaceInvitation {
+  id String @id @default(cuid())
+  workspaceId String
+  email String
+  role WorkspaceRole @default(EDITOR)
+  tokenHash String @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  @@unique([workspaceId, email])
+}
+
+model EmailContact {
+  id String @id @default(cuid())
+  userId String @unique
+  optedIn Boolean @default(false)
+  consentAt DateTime?
+  firstLoginAt DateTime?
+  convertedAt DateTime?
+  unsubscribeToken String @unique @default(uuid())
+  createdAt DateTime @default(dbgenerated("timezone('UTC', CURRENT_TIMESTAMP)"))
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deliveries EmailDelivery[]
+  @@index([optedIn, id])
+}
+
+model EmailMarketingSettings {
+  id String @id @default("main")
+  automationEnabled Boolean @default(false)
+  deliveryEnabled Boolean @default(false)
+  senderName String @default("Webtummy")
+  mailingAddress String @default("")
+  dailyLimit Int @default(500)
+  scanCursor String?
+  updatedAt DateTime @updatedAt
+}
+
+model EmailSequenceStep {
+  id String @id @default(cuid())
+  name String
+  delayDays Int
+  repeatDays Int @default(0)
+  websiteCondition String @default("ANY")
+  subject String
+  body String
+  bodyDesign Json?
+  enabled Boolean @default(true)
+  updatedAt DateTime @updatedAt
+}
+
+model EmailCampaign {
+  id String @id @default(cuid())
+  name String
+  audience String
+  websiteCondition String @default("ANY")
+  subject String
+  body String
+  bodyDesign Json?
+  status String @default("DRAFT")
+  scanCursor String?
+  queuedAt DateTime?
+  expandedAt DateTime?
+  createdAt DateTime @default(dbgenerated("timezone('UTC', CURRENT_TIMESTAMP)"))
+  updatedAt DateTime @updatedAt
+  deliveries EmailDelivery[]
+  @@index([status, createdAt])
+}
+
+model EmailDelivery {
+  id String @id @default(cuid())
+  dedupeKey String @unique
+  contactId String
+  campaignId String?
+  stepId String?
+  status String @default("PENDING")
+  attempts Int @default(0)
+  nextAttemptAt DateTime @default(dbgenerated("timezone('UTC', CURRENT_TIMESTAMP)"))
+  sentAt DateTime?
+  providerMessageId String?
+  detail String?
+  createdAt DateTime @default(dbgenerated("timezone('UTC', CURRENT_TIMESTAMP)"))
+  contact EmailContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  campaign EmailCampaign? @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  @@index([status, nextAttemptAt])
+  @@index([contactId, sentAt])
+  @@index([campaignId, status])
+}

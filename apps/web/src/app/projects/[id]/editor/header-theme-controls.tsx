@@ -1,0 +1,23 @@
+'use client'
+import type { DesignTokens } from '@awb/website-model'
+import { ColorInput } from './color-input'
+import { mobileMenuColors } from '@awb/component-registry'
+
+export function HeaderThemeControls({ props, tokens, onChange }: { props: Record<string, unknown>; tokens: DesignTokens; onChange: (props: Record<string, unknown>) => void }) {
+  const colors = (props.elementColors ?? {}) as Record<string, Record<string, unknown>>
+  const menu = colors['/items'] ?? {}
+  const update = (patch: Record<string, unknown>) => onChange({ ...props, ...patch })
+  const style = (patch: Record<string, unknown>) => update({ elementColors: { ...colors, '/items': { ...menu, ...patch } } })
+  return <fieldset className="grid gap-3 rounded-lg border border-neutral-200 p-3 text-xs">
+    <legend className="px-1 text-sm font-semibold">Logo & navigation</legend>
+    <p className="text-neutral-500">Shared across every page. These are the same settings as the header and menu controls.</p>
+    <div className="grid gap-1"><span>Hamburger icon colour</span><ColorInput label="Hamburger icon colour" value={mobileMenuColors(props, tokens).color} onChange={(mobileMenuIconColor) => update({ mobileMenuIconColor })} /><button type="button" className="text-left text-sky-700 underline" onClick={() => update({ mobileMenuIconColor: undefined })}>Use automatic contrast</button></div>
+    {(['logoAlignment', 'menuAlignment'] as const).map((key) => <label key={key} className="grid gap-1">{key === 'logoAlignment' ? 'Logo position in header' : 'Menu position in header'}<select aria-label={key === 'logoAlignment' ? 'Theme logo position' : 'Theme menu position'} className="rounded border p-2" value={String(props[key] ?? 'original')} onChange={(event) => update({ [key]: event.target.value })}><option value="original">Original template position</option><option value="left">Left</option><option value="center">Centre</option><option value="right">Right</option></select></label>)}
+    <label className="grid gap-1">Menu font<select aria-label="Theme menu font" className="rounded border p-2" value={String(menu.fontFamily ?? '')} onChange={(event) => style({ fontFamily: event.target.value || undefined })}><option value="">Theme body font</option>{[...new Set(['Arial, sans-serif', 'Verdana, sans-serif', 'Georgia, serif', 'Times New Roman, serif', 'system-ui, sans-serif', ...(menu.fontFamily ? [String(menu.fontFamily)] : [])])].map((font) => <option key={font} value={font}>{font.split(',')[0]}</option>)}</select></label>
+    <label className="grid gap-1">Menu font size (px)<input aria-label="Theme menu font size" type="number" min={10} max={160} key={String(menu.fontSize ?? 'default')} defaultValue={menu.fontSize === undefined ? '' : Number(menu.fontSize)} placeholder="Template default" className="rounded border p-2" onBlur={(event) => { const value = event.target.value; if (!value) style({ fontSize: undefined }); else if (Number.isFinite(Number(value))) style({ fontSize: Math.max(10, Math.min(160, Number(value))) }) }} onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur() }} /></label>
+    <div className="flex gap-3"><label className="flex items-center gap-1"><input type="checkbox" checked={menu.fontWeight === 700} onChange={(event) => style({ fontWeight: event.target.checked ? 700 : 400 })} />Bold</label><label className="flex items-center gap-1"><input type="checkbox" checked={menu.fontStyle === 'italic'} onChange={(event) => style({ fontStyle: event.target.checked ? 'italic' : 'normal' })} />Italic</label></div>
+    <div className="grid gap-1"><span>Menu text colour (including dropdowns)</span><ColorInput label="Theme menu text colour" value={String(menu.color ?? (props.sectionBackgroundMode && props.sectionBackgroundMode !== 'original' ? props.sectionBackgroundTextColor ?? tokens.palette.foreground : tokens.palette.foreground))} onChange={(color) => style({ color })} /></div>
+    <div className="grid gap-1"><span>Header background colour</span><ColorInput label="Theme header background colour" value={String(props.sectionBackgroundMode === 'colour' ? props.sectionBackgroundColor ?? tokens.palette.background : props.backgroundColor ?? tokens.palette.background)} onChange={(backgroundColor) => update({ customBackground: true, backgroundColor, sectionBackgroundMode: 'colour', sectionBackgroundColor: backgroundColor })} /></div>
+    <button type="button" className="text-left text-sky-700 underline" onClick={() => { const next = { ...colors }; delete next['/items']; update({ elementColors: next }) }}>Reset shared menu styling</button>
+  </fieldset>
+}

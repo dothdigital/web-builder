@@ -1,0 +1,29 @@
+{
+  "name": "ai-website-builder",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "db:generate": "npm run db:generate -w @awb/database",
+    "db:migrate": "npm run db:migrate -w @awb/database",
+    "db:deploy": "npm run db:deploy -w @awb/database",
+    "db:seed": "npm run db:seed -w @awb/database",
+    "db:studio": "npm run db:studio -w @awb/database"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.3",
+    "typescript": "^5",
+    "tsx": "^4.19.2"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "npm@10.9.8"
+}

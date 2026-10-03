@@ -1,0 +1,12 @@
+import { prisma } from '@awb/database'
+import { primaryWorkspace, requirePageUser, requireWorkspace } from '@/lib/tenancy'
+import { AppShell } from '@/components/account/app-shell'
+import { ActionForm } from '@/components/account/action-form'
+import { inviteMember, changeMember, revokeInvitation } from '@/app/actions/team'
+export default async function TeamPage() {
+  const user = await requirePageUser(); const workspace = await primaryWorkspace(user.id); if (!workspace) return null
+  const { membership } = await requireWorkspace(workspace.id)
+  const owner = membership.role === 'OWNER'
+  const [members, invitations] = await Promise.all([prisma.workspaceMember.findMany({ where: { workspaceId: workspace.id }, include: { user: { select: { name: true, email: true } } } }), owner ? prisma.workspaceInvitation.findMany({ where: { workspaceId: workspace.id } }) : []])
+  return <AppShell title="Team management" active="/team"><div className="wt-heading"><p className="wt-eyebrow">BETTER TOGETHER</p><h1>Your people. Your workspace.</h1><p>Owners manage billing and access. Editors build and publish. Viewers have read-only access.</p></div><div className="wt-two-col"><section className="wt-card"><h2>Members</h2>{members.map(member => <div className="wt-member" key={member.id}><div><strong>{member.user.name}</strong><small>{member.user.email} · {member.role.toLowerCase()}</small></div>{owner && member.role !== 'OWNER' && <ActionForm action={changeMember} label="Update"><input type="hidden" name="id" value={member.id} /><select name="role" defaultValue={member.role} aria-label={`Role for ${member.user.email}`}><option value="EDITOR">Editor</option><option value="VIEWER">Viewer</option><option value="REMOVE">Remove access</option></select></ActionForm>}</div>)}</section><section className="wt-card"><h2>Invite someone</h2>{owner ? <ActionForm action={inviteMember} label="Send invitation"><label>Email<input name="email" type="email" required /></label><label>Role<select name="role"><option value="EDITOR">Editor · create and publish</option><option value="VIEWER">Viewer · read only</option></select></label></ActionForm> : <p className="wt-muted">Ask a workspace owner to invite new members.</p>}{invitations.map(invitation => <div key={invitation.id} className="wt-member"><div>{invitation.email}<small>{invitation.expiresAt < new Date() ? 'Expired' : 'Invitation pending'}</small></div><ActionForm action={revokeInvitation} label="Revoke"><input type="hidden" name="id" value={invitation.id} /></ActionForm></div>)}</section></div></AppShell>
+}
