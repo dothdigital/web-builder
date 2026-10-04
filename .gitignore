@@ -9,3 +9,8 @@ packages/database/generated
 coverage
 .DS_Store
 .uploads
+deploy/.database-setup.sql
+deploy/.redis-webtummy.conf
+deploy/.tls-webtummy.conf
+deploy/.env-*
+deploy/screenshots/

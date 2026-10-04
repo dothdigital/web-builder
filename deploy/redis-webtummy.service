@@ -1,0 +1,21 @@
+[Unit]
+Description=Webtummy private Redis queue
+After=network.target
+
+[Service]
+Type=simple
+User=redis
+Group=redis
+ExecStart=/usr/bin/redis-server /etc/redis/webtummy.conf
+Restart=on-failure
+RestartSec=5
+StateDirectory=redis-webtummy
+StateDirectoryMode=0700
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+MemoryMax=384M
+
+[Install]
+WantedBy=multi-user.target

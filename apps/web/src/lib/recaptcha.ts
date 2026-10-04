@@ -17,14 +17,16 @@ export function decryptRecaptchaSecret(value: string, purpose = 'recaptcha') {
   decipher.setAuthTag(tag!)
   return Buffer.concat([decipher.update(data!), decipher.final()]).toString('utf8')
 }
-export async function verifyRecaptcha(secret: string, token: string, hostnames: string[]) {
+export async function verifyRecaptcha(secret: string, token: string, hostnames: string[], options?: { action: string; minimumScore: number }) {
   if (!token || !hostnames.length) return false
   try {
     const response = await fetch('https://www.google.com/recaptcha/api/siteverify', {
       method: 'POST', body: new URLSearchParams({ secret, response: token }), signal: AbortSignal.timeout(10000),
     })
     if (!response.ok) return false
-    const result = await response.json() as { success?: boolean; hostname?: string }
-    return result.success === true && !!result.hostname && hostnames.includes(result.hostname.toLowerCase())
+    const result = await response.json() as { success?: boolean; hostname?: string; action?: string; score?: number }
+    if (result.success !== true || !result.hostname || !hostnames.includes(result.hostname.toLowerCase())) return false
+    if (options && (result.action !== options.action || typeof result.score !== 'number' || !Number.isFinite(result.score) || result.score < options.minimumScore || result.score > 1)) return false
+    return true
   } catch { return false }
 }

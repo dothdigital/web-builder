@@ -8,6 +8,7 @@ import { appUrl, hashPassword, newToken, rateLimit, tokenHash } from '@/lib/acco
 import { sendAccountEmail } from '@/lib/account-email'
 import { requireUser } from '@/lib/tenancy'
 import { revalidatePath } from 'next/cache'
+import { verifyRecaptcha } from '@/lib/recaptcha'
 
 export type AccountResult = { ok?: boolean; message: string }
 const emailSchema = z.string().trim().toLowerCase().email().max(254)
@@ -36,6 +37,11 @@ export async function registerAccount(_previous: AccountResult, form: FormData):
     const name = z.string().trim().min(2).max(100).parse(form.get('name'))
     const password = passwordSchema.parse(form.get('password'))
     await limit(email)
+    const siteKey = process.env.CONTACT_RECAPTCHA_SITE_KEY
+    const secret = process.env.CONTACT_RECAPTCHA_SECRET_KEY
+    if (!siteKey || !secret || process.env.CONTACT_RECAPTCHA_TYPE !== 'v3') return { message: 'Account registration is temporarily unavailable. Please try again later.' }
+    const token = z.string().max(5000).safeParse(form.get('captchaToken'))
+    if (!token.success || !await verifyRecaptcha(secret, token.data, [new URL(appUrl()).hostname], { action: 'signup', minimumScore: 0.5 })) return { message: 'The security check could not complete. Please refresh the page and try again.' }
     const existing = await prisma.user.findUnique({ where: { email } })
     if (!existing) {
       const passwordHash = await hashPassword(password)

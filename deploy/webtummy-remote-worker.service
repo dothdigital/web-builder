@@ -1,0 +1,25 @@
+[Unit]
+Description=Webtummy dedicated remote background worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/webtummy/apps/worker
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node /home/ubuntu/webtummy/node_modules/tsx/dist/cli.mjs src/index.ts
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=120
+KillSignal=SIGTERM
+NoNewPrivileges=true
+PrivateTmp=true
+UMask=0077
+MemoryMax=768M
+CPUWeight=25
+SyslogIdentifier=webtummy-worker
+
+[Install]
+WantedBy=multi-user.target
