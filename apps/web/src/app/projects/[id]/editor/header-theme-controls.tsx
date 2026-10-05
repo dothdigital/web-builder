@@ -6,10 +6,12 @@ import { mobileMenuColors } from '@awb/component-registry'
 export function HeaderThemeControls({ props, tokens, onChange }: { props: Record<string, unknown>; tokens: DesignTokens; onChange: (props: Record<string, unknown>) => void }) {
   const colors = (props.elementColors ?? {}) as Record<string, Record<string, unknown>>
   const menu = colors['/items'] ?? {}
+  const menuBackground = menu.backgroundColor ?? ((props.sectionBackgroundMode === 'colour' || props.sectionBackgroundMode === 'image') ? props.sectionBackgroundColor : props.customBackground ? props.backgroundColor : tokens.palette.background) ?? tokens.palette.background
   const update = (patch: Record<string, unknown>) => onChange({ ...props, ...patch })
   const style = (patch: Record<string, unknown>) => update({ elementColors: { ...colors, '/items': { ...menu, ...patch } } })
   return <fieldset className="grid gap-3 rounded-lg border border-neutral-200 p-3 text-xs">
     <legend className="px-1 text-sm font-semibold">Logo & navigation</legend>
+    <div className="grid gap-1"><span>Menu background colour (including dropdowns)</span><ColorInput label="Theme menu background colour" value={String(menuBackground)} onChange={(backgroundColor) => style({ backgroundColor })} /></div>
     <p className="text-neutral-500">Shared across every page. These are the same settings as the header and menu controls.</p>
     <div className="grid gap-1"><span>Hamburger icon colour</span><ColorInput label="Hamburger icon colour" value={mobileMenuColors(props, tokens).color} onChange={(mobileMenuIconColor) => update({ mobileMenuIconColor })} /><button type="button" className="text-left text-sky-700 underline" onClick={() => update({ mobileMenuIconColor: undefined })}>Use automatic contrast</button></div>
     {(['logoAlignment', 'menuAlignment'] as const).map((key) => <label key={key} className="grid gap-1">{key === 'logoAlignment' ? 'Logo position in header' : 'Menu position in header'}<select aria-label={key === 'logoAlignment' ? 'Theme logo position' : 'Theme menu position'} className="rounded border p-2" value={String(props[key] ?? 'original')} onChange={(event) => update({ [key]: event.target.value })}><option value="original">Original template position</option><option value="left">Left</option><option value="center">Centre</option><option value="right">Right</option></select></label>)}
