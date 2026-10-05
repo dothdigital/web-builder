@@ -36,3 +36,18 @@ for (const id of ['HeaderTransparent', 'HeaderSplitUtility']) {
   }
 }
 console.log('PASS: left/centre/right logo positioning is independent of image focus for both header variants.')
+
+for (const id of ['HeaderTransparent', 'HeaderSplitUtility']) {
+  const definition = getComponent(id)!
+  for (const [settings, expected] of [
+    [{}, 'var(--awb-bg)'],
+    [{ customBackground: true, backgroundColor: '#ffffff' }, '#ffffff'],
+    [{ sectionBackgroundMode: 'colour', sectionBackgroundColor: '#ffffff' }, '#ffffff'],
+    [{ customBackground: true, backgroundColor: '#ffffff', elementColors: { '/items': { backgroundColor: '#abcdef', color: '#000000' } } }, '#abcdef'],
+  ] as const) {
+    const props = definition.propsSchema.parse({ ...definition.fixture as object, ...settings, items: [{ label: 'Services', href: '/services', children: [{ label: 'Strategy', href: '/strategy' }] }] })
+    const html = renderToStaticMarkup(React.createElement(definition.render, { props, context: { tokens: { ...defaultTokens, palette: { ...defaultTokens.palette, background: '#192e2a' } }, baseUrl: '' } }))
+    assert.ok(html.includes(`overflow-y:auto;background:${expected};`), `${id}: dropdown respects menu and header backgrounds over green site theme`)
+  }
+}
+console.log('PASS: dropdown backgrounds follow custom header colour and section colour, respect explicit menu overrides, and preserve theme defaults.')

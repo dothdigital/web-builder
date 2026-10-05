@@ -62,6 +62,14 @@ function BrandLogo({ logoImageUrl, logoText, sizeStyle, textStyle }: Pick<Header
   ) : <span data-awb-element="/logoText" style={textStyle}>{logoText}</span>
 }
 
+function menuBackground(props: HeaderProps) {
+  const menu = elementColor(props, '/items')
+  if (menu.backgroundColor) return menu.backgroundColor
+  const section = props as HeaderProps & { sectionBackgroundMode?: string; sectionBackgroundColor?: string }
+  if (section.sectionBackgroundMode === 'colour' || section.sectionBackgroundMode === 'image') return section.sectionBackgroundColor ?? 'var(--awb-bg)'
+  return props.customBackground ? props.backgroundColor : 'var(--awb-bg)'
+}
+
 function menuLabelStyle(props: HeaderProps, path: string) {
   const menu = elementColor(props, '/items')
   const shared = Object.fromEntries(Object.entries(menu).filter(([key]) => ['color', 'fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'textAlign'].includes(key)))
@@ -78,7 +86,7 @@ function Nav({ items, props, offset = 0, baseUrl = '', alignment = 'left' }: { p
             {item.children.length > 0 ? (
               <details>
                 <summary style={{ cursor: 'pointer', fontSize: '0.95rem', padding: '0.65rem 0' }}><span data-awb-element={`/items/${index + offset}/label`} style={menuLabelStyle(props, `/items/${index + offset}/label`)}>{item.label}</span></summary>
-                <ul style={{ position: 'absolute', top: '100%', ...(alignment === 'right' ? { right: 0 } : { left: 0 }), zIndex: 50, width: 'min(280px, 85vw)', maxHeight: '65vh', overflowY: 'auto', background: 'var(--awb-bg)', color: 'var(--awb-fg)', border: '1px solid var(--awb-border)', borderRadius: '8px', padding: '0.65rem', margin: 0, listStyle: 'none', boxShadow: '0 12px 32px rgba(0,0,0,0.14)' }}>
+                <ul style={{ position: 'absolute', top: '100%', ...(alignment === 'right' ? { right: 0 } : { left: 0 }), zIndex: 50, width: 'min(280px, 85vw)', maxHeight: '65vh', overflowY: 'auto', background: menuBackground(props), color: 'var(--awb-fg)', border: '1px solid var(--awb-border)', borderRadius: '8px', padding: '0.65rem', margin: 0, listStyle: 'none', boxShadow: '0 12px 32px rgba(0,0,0,0.14)' }}>
                   {[{ label: `${item.label} overview`, href: item.href }, ...item.children].map((child, childIndex) => <li key={child.href}><a href={href(child.href)} style={{ display: 'block', padding: '0.65rem', color: 'inherit', textDecoration: 'none', fontSize: '0.9rem' }}><span data-awb-element={childIndex === 0 ? `/items/${index + offset}/label` : `/items/${index + offset}/children/${childIndex - 1}/label`} style={menuLabelStyle(props, childIndex === 0 ? `/items/${index + offset}/label` : `/items/${index + offset}/children/${childIndex - 1}/label`)}>{child.label}</span></a></li>)}
                 </ul>
               </details>
