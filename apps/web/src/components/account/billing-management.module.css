@@ -1,0 +1,19 @@
+.dialog{width:min(600px,calc(100vw - 32px));max-height:85vh;margin:auto;padding:0;border:1px solid #e2e5eb;border-radius:18px;background:#fff;color:#172333;box-shadow:0 24px 100px #0003;overflow:auto}
+.dialog::backdrop{background:#101827aa}
+.header{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:20px 24px;border-bottom:1px solid #e2e5eb}
+.header h2{font-size:22px;font-weight:700}
+.body{padding:24px;display:grid;gap:24px}
+.body section{display:grid;gap:12px}
+.body h3{font-size:17px;font-weight:650}
+.body p{font-size:14px;line-height:1.6}
+.body button{justify-self:start}
+.paymentForm{display:grid;gap:16px;border:1px solid #e2e5eb;padding:18px;border-radius:12px}
+.confirm{display:flex;align-items:flex-start;gap:10px;font-size:14px;line-height:1.5}
+.confirm input{margin-top:4px;flex:none}
+.error{color:#9e2424;background:#fff0f0;padding:12px;border-radius:8px}
+.success{color:#16613e;background:#edf9f2;padding:12px;border-radius:8px}
+.danger{padding:11px 18px;border:1px solid #b73333;border-radius:8px;background:#fff;color:#a32323;font-size:14px;font-weight:600;cursor:pointer}
+.danger:disabled{opacity:.45;cursor:default}
+.cancellation{display:grid;gap:14px;border:1px solid #eccccc;background:#fff8f8;padding:18px;border-radius:12px}
+.actions{display:flex;flex-wrap:wrap;gap:12px}
+@media(max-width:480px){.header,.body{padding:18px}.actions{flex-direction:column}.dialog{max-height:90vh}}

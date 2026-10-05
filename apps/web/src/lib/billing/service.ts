@@ -4,6 +4,16 @@ import type Stripe from 'stripe'
 import { stripeClient } from './stripe'
 import { appUrl } from '../account-security'
 import { queueBillingNotices } from './notifications'
+import { confirmedCheckoutSubscription } from './checkout-result'
+
+export async function confirmWorkspaceCheckout(workspaceId: string) {
+  const workspace = await prisma.workspace.findUniqueOrThrow({ where: { id: workspaceId } })
+  if (!workspace.checkoutSessionId) return
+  const stripe = stripeClient()
+  const session = await stripe.checkout.sessions.retrieve(workspace.checkoutSessionId)
+  const subscriptionId = confirmedCheckoutSubscription(session, workspace)
+  if (subscriptionId) await syncSubscription(workspaceId, subscriptionId, undefined, stripe)
+}
 
 export async function checkout(workspaceId: string, priceId: string, email: string) {
   const stripe = stripeClient()
@@ -30,12 +40,12 @@ export async function checkout(workspaceId: string, priceId: string, email: stri
     if (workspace.checkoutSessionId && workspace.checkoutExpiresAt && workspace.checkoutExpiresAt > new Date()) {
       const pending = await stripe.checkout.sessions.retrieve(workspace.checkoutSessionId)
       if (pending.status === 'open' && pending.url) {
-        if (pending.metadata?.priceId === price.id) return pending.url
+        if (pending.metadata?.priceId === price.id && pending.allow_promotion_codes) return pending.url
         await stripe.checkout.sessions.expire(pending.id)
       }
       if (pending.status === 'complete') throw new Error('Your payment is being confirmed. Refresh billing in a moment.')
     }
-    const session = await stripe.checkout.sessions.create({ mode: 'subscription', payment_method_collection: 'always', payment_method_types: ['card'], custom_text: { submit: { message: 'US$29 per month. No free trial. Cancel renewal at any time through Webtummy Plans & billing. Access continues until the end of the paid period.' } }, customer, client_reference_id: workspaceId, line_items: [{ price: price.stripePriceId, quantity: 1 }], success_url: `${appUrl()}/billing?checkout=success`, cancel_url: `${appUrl()}/billing?checkout=cancelled`, expires_at: Math.floor(Date.now() / 1000) + 1800, metadata: { workspaceId, priceId: price.id }, subscription_data: { metadata: { workspaceId } }, billing_address_collection: 'auto' })
+    const session = await stripe.checkout.sessions.create({ mode: 'subscription', allow_promotion_codes: true, payment_method_collection: 'always', payment_method_types: ['card'], custom_text: { submit: { message: 'US$29 per month. No free trial. Cancel renewal at any time through Webtummy Plans & billing. Access continues until the end of the paid period.' } }, customer, client_reference_id: workspaceId, line_items: [{ price: price.stripePriceId, quantity: 1 }], success_url: `${appUrl()}/billing?checkout=success`, cancel_url: `${appUrl()}/billing?checkout=cancelled`, expires_at: Math.floor(Date.now() / 1000) + 1800, metadata: { workspaceId, priceId: price.id }, subscription_data: { metadata: { workspaceId } }, billing_address_collection: 'auto' })
     if (!session.url) throw new Error('Stripe did not create a checkout page. Please try again.')
     await tx.workspace.update({ where: { id: workspaceId }, data: { checkoutSessionId: session.id, checkoutExpiresAt: new Date(session.expires_at * 1000) } })
     return session.url
