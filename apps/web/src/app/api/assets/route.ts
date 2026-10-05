@@ -3,6 +3,7 @@ import { assetKey, extractLogoColors, getStorage } from '@awb/shared'
 import { paletteAlternatives } from '@awb/ai'
 import { defaultTokens } from '@awb/component-registry'
 import { requireProject } from '@/lib/tenancy'
+import { assetReadUrl } from '@/lib/asset-read-url'
 
 export const runtime = 'nodejs'
 
@@ -58,5 +59,5 @@ export async function POST(request: Request) {
     },
   })
 
-  return Response.json({ asset, colors, suggestions })
+  return Response.json({ asset, previewUrl: await assetReadUrl(asset), colors, suggestions })
 }

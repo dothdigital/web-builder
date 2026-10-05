@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { DesignTokens } from '@awb/website-model'
 import { designReferenceSchema } from '@awb/shared/design-reference'
@@ -91,6 +91,14 @@ export function OnboardingWizard() {
   const [suggestions, setSuggestions] = useState<PaletteSuggestion[]>([])
   const [selectedPalette, setSelectedPalette] = useState<DesignTokens>()
   const [logoPreview, setLogoPreview] = useState<string>()
+  const [localLogoPreview, setLocalLogoPreview] = useState<string>()
+  const logoInput = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    return () => {
+      if (localLogoPreview) URL.revokeObjectURL(localLogoPreview)
+    }
+  }, [localLogoPreview])
 
   const [imageMode, setImageMode] = useState<'upload' | 'generate' | 'mixed'>('generate')
   const [uploadedImages, setUploadedImages] = useState<string[]>([])
@@ -148,6 +156,7 @@ export function OnboardingWizard() {
 
   async function handleLogoUpload(file: File) {
     if (!projectId) return
+    setLocalLogoPreview(URL.createObjectURL(file))
     setBusy(true)
     setError(undefined)
 
@@ -165,15 +174,17 @@ export function OnboardingWizard() {
 
       const payload = (await response.json()) as {
         asset: { url: string }
+        previewUrl?: string
         colors: Array<{ hex: string }>
         suggestions: PaletteSuggestion[]
       }
 
-      setLogoPreview(payload.asset.url)
+      setLogoPreview(payload.previewUrl ?? payload.asset.url)
       setLogoColors(payload.colors.map((color) => color.hex))
       setSuggestions(payload.suggestions)
       setSelectedPalette(payload.suggestions[0]?.tokens)
     } catch (caught) {
+      setLocalLogoPreview(undefined)
       setError(caught instanceof Error ? caught.message : 'Logo upload failed')
     } finally {
       setBusy(false)
@@ -404,26 +415,37 @@ export function OnboardingWizard() {
       {step.key === 'logo' && (
         <div className="mt-8 grid gap-6 rounded-lg border border-neutral-200 bg-white p-6">
           <Field label="Do you have a logo?" hint="PNG or SVG. We read its dominant colours and propose a palette.">
+            <button type="button" className="wt-button w-fit disabled:opacity-50" disabled={busy} onClick={() => logoInput.current?.click()}>
+              {busy ? 'Uploading logo…' : logoPreview ? 'Replace logo' : 'Upload logo'}
+            </button>
             <input
+              ref={logoInput}
+              aria-label="Choose logo file"
               type="file"
               accept="image/*"
-              className="text-sm"
+              className="hidden"
+              disabled={busy}
               onChange={(event) => {
                 const file = event.target.files?.[0]
+                event.target.value = ''
                 if (file) void handleLogoUpload(file)
               }}
             />
           </Field>
 
-          {logoPreview && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={logoPreview} alt="Uploaded logo" className="h-16 w-auto object-contain" />
+          {(localLogoPreview || logoPreview) && (
+            <div className="grid gap-3 rounded-lg border border-neutral-200 bg-neutral-50 p-4">
+              <p className="text-sm font-medium">Your logo</p>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={localLogoPreview || logoPreview} alt="Uploaded logo" className="h-24 w-full object-contain" />
+              {busy && <p role="status" className="text-sm text-neutral-600">Uploading your logo and finding colour options…</p>}
+            </div>
           )}
 
           {logoColors.length > 0 && (
             <div>
               <p className="text-sm font-medium">Colours found in your logo</p>
-              <div className="mt-2 flex gap-2">
+              <div className="mt-2 flex flex-wrap gap-2">
                 {logoColors.map((color) => (
                   <span key={color} className="flex items-center gap-2 rounded-md border border-neutral-200 px-2 py-1 text-xs">
                     <span className="h-4 w-4 rounded" style={{ background: color }} />
@@ -442,7 +464,8 @@ export function OnboardingWizard() {
                   type="button"
                   key={suggestion.id}
                   onClick={() => setSelectedPalette(suggestion.tokens)}
-                  className={`flex items-center justify-between rounded-md border p-3 text-left ${
+                  aria-pressed={selectedPalette === suggestion.tokens}
+                  className={`flex flex-wrap items-center justify-between gap-3 rounded-md border p-3 text-left ${
                     selectedPalette === suggestion.tokens ? 'border-neutral-900' : 'border-neutral-200'
                   }`}
                 >
@@ -502,7 +525,7 @@ export function OnboardingWizard() {
           <StepNav
             onBack={() => setStepIndex(0)}
             onNext={() => setStepIndex(2)}
-            nextLabel={logoColors.length > 0 ? 'Continue' : 'Skip — no logo yet'}
+            nextLabel={logoPreview ? 'Continue' : 'Skip — no logo yet'}
             busy={busy}
           />
         </div>
