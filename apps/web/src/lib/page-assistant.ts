@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { getComponent, elementColorsSchema, imageSizesSchema } from '@awb/component-registry'
+import { getComponent, elementColorsSchema, imageSizesSchema, type EditorField } from '@awb/component-registry'
 import { websiteModelSchema, type WebsiteModel, type WebsiteSection } from '@awb/website-model'
 import { assistantPlanSchema, readAssistantValue, type AssistantPlan, type AssistantSelector } from '@awb/ai/editor-command'
 import { sectionElementTree, type ElementNode } from './element-tree'
@@ -8,7 +8,7 @@ import { editObjectProps, objectScope } from './object-editing'
 import { duplicateElement } from './duplicate-element'
 import { addManualObject, objectChoices, type ManualObjectKind } from './add-manual-object'
 
-export type AssistantTarget = { id: string; scope: 'page' | 'header' | 'footer'; sectionId: string; section: string; path: string; kind: AssistantSelector['kind']; label: string }
+export type AssistantTarget = { id: string; scope: 'page' | 'header' | 'footer'; sectionId: string; section: string; path: string; kind: AssistantSelector['kind']; label: string; componentId?: string; editableFields?: EditorField[] }
 export type AssistantSelection = { sectionId: string; paths: string[]; scope: 'page' | 'header' | 'footer' }
 export function themeButtonColors(model: WebsiteModel) {
   const backgroundColor = model.tokens.buttons?.background ?? model.tokens.palette.primary
@@ -55,7 +55,7 @@ export function assistantTargets(model: WebsiteModel, pageId: string): Assistant
     const title = String(section.props.heading ?? section.props.title ?? manualHeading ?? getComponent(section.componentId)?.name ?? section.componentId)
     const name = `${index + 1}. ${getComponent(section.componentId)?.family ?? section.componentId} — ${title}`
     const base = { scope, sectionId: section.id, section: name }
-    targets.push({ ...base, id: `${scope}:${section.id}:`, kind: 'section', path: '', label: name })
+    targets.push({ ...base, id: `${scope}:${section.id}:`, kind: 'section', path: '', label: name, componentId: section.componentId, editableFields: getComponent(section.componentId)?.editorFields })
     const walk = (nodes: ElementNode[]) => nodes.forEach(node => {
       const scoped = objectScope(section.props, node.path)
       const value = getAtPointer(scoped.props, scoped.path)
@@ -87,8 +87,10 @@ export function matchAssistantTargets(targets: AssistantTarget[], selector: Assi
     // Never substitute another object when the selected one has a different kind.
     return selected
   }
-  // Do not count a button's label/href as separate text objects.
-  return matches.filter(target => !(target.kind === 'text' && targets.some(other => other.scope === target.scope && other.sectionId === target.sectionId && other.kind === 'button' && target.path.startsWith(other.path + '/'))))
+  // A link item and its href field describe the same link. Keep child menu
+  // links independent, but don't ask twice for one item's object and href.
+  return matches.filter(target => !(target.kind === 'text' && targets.some(other => other.scope === target.scope && other.sectionId === target.sectionId && other.kind === 'button' && target.path.startsWith(other.path + '/')))
+    && !(target.kind === 'link' && target.path.endsWith('/href') && matches.some(other => other.scope === target.scope && other.sectionId === target.sectionId && other.kind === 'link' && other.path === target.path.slice(0, -5))))
 }
 export type AssistantResolution = { operations: Array<{ index: number; targets: AssistantTarget[] }>; question?: { index: number; text: string; choices: AssistantTarget[] }; shared: boolean; destructive: boolean }
 export function resolveAssistantPlan(model: WebsiteModel, pageId: string, plan: AssistantPlan, selection?: AssistantSelection, choices: Record<number, string[]> = {}): AssistantResolution {
@@ -156,7 +158,13 @@ export function applyAssistantPlan(model: WebsiteModel, pageId: string, raw: Ass
         const schema = operation.action === 'style' ? elementColorsSchema : imageSizesSchema
         const parsed = schema.parse({ [scope.path || key]: value })[scope.path || key]!
         if (Object.keys(parsed).length !== Object.keys(value).length) throw new Error('One of those appearance settings is not supported.')
-        section.props = editObjectProps(section.props, key, { type: operation.action === 'style' ? 'style' : 'imageSize', value: parsed })
+        // Header links render their label node, not the backing menu item object.
+        const stylePath = operation.action === 'style' && section.componentId.startsWith('Header') && /^\/items\/\d+(?:\/children\/\d+)*$/.test(key) ? `${key}/label` : key
+        if (operation.action === 'style' && section.componentId.startsWith('Header') && key === '/layout/0' && 'backgroundColor' in parsed && typeof parsed.backgroundColor === 'string') {
+          const { backgroundColor, ...rest } = parsed
+          section.props = { ...section.props, customBackground: true, backgroundColor }
+          if (Object.keys(rest).length) section.props = editObjectProps(section.props, key, { type: 'style', value: rest })
+        } else section.props = editObjectProps(section.props, stylePath, { type: operation.action === 'style' ? 'style' : 'imageSize', value: parsed })
         if (scope.root && (typeof parsed.width === 'number' || typeof parsed.height === 'number')) section.props = editObjectProps(section.props, key, { type: 'placement', value: { ...(typeof parsed.width === 'number' ? { width: parsed.width } : {}), ...(typeof parsed.height === 'number' ? { height: parsed.height } : {}) } })
       } else if (operation.action === 'move') {
         if (!path) throw new Error('Use section reordering to move a whole section.')
@@ -198,12 +206,12 @@ export function applyAssistantPlan(model: WebsiteModel, pageId: string, raw: Ass
           else throw new Error('The selected text does not contain that property. Select the object you want to change.')
         }
         if (!safePath(pointer) || forbidden.test(pointer)) throw new Error('That property is outside the assistant’s scope.')
-        const top = '/' + pointer.split('/')[1]
-        const editable = getComponent(scope.entry?.componentId ?? section.componentId)?.editorFields.some(field => field.path === top) || /^\/sectionBackground/.test(pointer)
+        const editable = getComponent(scope.entry?.componentId ?? section.componentId)?.editorFields.some(field => pointer === field.path || pointer.startsWith(`${field.path}/`))
         if (!editable) throw new Error('That property is not an editable website field.')
         if (['text', 'link'].includes(operation.action) && typeof value !== 'string') throw new Error('Expected text for this change.')
         if (/href|url$/i.test(pointer)) validValue({ url: value })
         section.props = setAtPointer(section.props, `${scope.prefix}${pointer}`, value)
+        if (section.componentId.startsWith('Header') && !scope.prefix && pointer === '/backgroundColor') section.props = { ...section.props, customBackground: true }
         const checked = getComponent(section.componentId)!.propsSchema.safeParse(section.props)
         if (!checked.success) throw new Error('The proposed edit does not fit this component. No changes were applied. Please send the request again.')
         if (getAtPointer(checked.data, `${scope.prefix}${pointer}`) === undefined) throw new Error('That property is not supported by this component.')

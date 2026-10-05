@@ -70,6 +70,12 @@ export async function requireProject(projectId: string, minimumRole: WorkspaceRo
 
   const membership = project?.workspace.members[0]
 
+  // Platform administrators can support any customer's website without joining
+  // their workspace or changing the customer's subscription or membership.
+  if (project && user.isPlatformAdmin) {
+    return { user, project, role: WorkspaceRole.OWNER }
+  }
+
   if (!project || !membership || roleRank[membership.role] < roleRank[minimumRole]) {
     throw new AuthorizationError('You do not have access to this project')
   }

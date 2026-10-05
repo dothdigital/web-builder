@@ -1,4 +1,6 @@
 import React from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
+import { JSDOM } from 'jsdom'
 Object.assign(globalThis, { React })
 import assert from 'node:assert/strict'
 import { websiteModelSchema } from '@awb/website-model'
@@ -93,3 +95,49 @@ const inherited = applyAssistantPlan(manualModel, 'home', themePlan)
 assert.equal((inherited.pages[0]!.sections[1]!.props.elementColors as Record<string, { backgroundColor: string }>)['/items/2']!.backgroundColor, manualModel.tokens.palette.primary)
 console.log('PASS: manual button classification, image isolation, named sections, exact theme colours and no unrelated-selection fallback.')
 console.log('PASS: ambiguity, selected target, bulk edits, manual forms, confirmations, page isolation, immutable Undo, schema validation and unsafe action rejection.')
+
+for (const componentId of ['HeaderTransparent', 'HeaderSplitUtility']) {
+  const headerModel = structuredClone(model)
+  const definition = getComponent(componentId)!
+  headerModel.globalComponents.header = { componentId, componentVersion: '1.0.0', props: definition.propsSchema.parse({ ...definition.fixture as object, items: [
+    { label: 'Services', href: '/services', children: [{ label: 'Strategy', href: '/strategy' }] },
+    { label: 'About', href: '/about', children: [] },
+  ] }) as Record<string, unknown> }
+  const header = { scope: 'header', kind: 'section' }
+  const catalogue = assistantTargets(headerModel, 'home')
+  assert.ok(catalogue.find(target => target.scope === 'header' && target.kind === 'section')?.editableFields?.some(field => field.path === '/menuAlignment'))
+  const background = plan('set', header, '#123456', '/backgroundColor')
+  assert.throws(() => applyAssistantPlan(headerModel, 'home', background), /confirm/)
+  let edited = applyAssistantPlan(headerModel, 'home', background, undefined, {}, true)
+  assert.equal(edited.globalComponents.header!.props.customBackground, true)
+  const groupStyle = { color: '#abcdef', fontFamily: 'Georgia, serif', fontSize: 23, fontWeight: 700, fontStyle: 'italic' }
+  const menu = plan('style', { scope: 'header', kind: 'element', text: 'Navigation menu (all links)' }, groupStyle)
+  assert.equal(resolveAssistantPlan(edited, 'home', menu).question, undefined, 'Whole menu is one unambiguous group')
+  edited = applyAssistantPlan(edited, 'home', menu, undefined, {}, true)
+  edited = applyAssistantPlan(edited, 'home', plan('set', header, 'center', '/menuAlignment'), undefined, {}, true)
+  edited = applyAssistantPlan(edited, 'home', plan('set', header, false, '/sticky'), undefined, {}, true)
+  edited = applyAssistantPlan(edited, 'home', plan('set', header, '#fedcba', '/mobileMenuIconColor'), undefined, {}, true)
+  edited = applyAssistantPlan(edited, 'home', plan('set', header, 'Talk to us', '/cta/label'), undefined, {}, true)
+  edited = applyAssistantPlan(edited, 'home', plan('link', { scope: 'header', kind: 'link', text: 'Strategy' }, '/consulting'), undefined, {}, true)
+  const props = definition.propsSchema.parse(edited.globalComponents.header!.props)
+  const dom = new JSDOM(renderToStaticMarkup(React.createElement(definition.render, { props, context: { tokens: edited.tokens, baseUrl: '' } })))
+  assert.equal(dom.window.document.querySelector('header')!.style.background, 'rgb(18, 52, 86)')
+  const labels = dom.window.document.querySelectorAll<HTMLElement>('[data-awb-element^="/items/"][data-awb-element$="/label"]')
+  assert.ok(labels.length >= 4)
+  for (const label of labels) {
+    assert.equal(label.style.color, 'rgb(171, 205, 239)')
+    assert.equal(label.style.fontFamily, 'Georgia, serif')
+    assert.equal(label.style.fontSize, '23px')
+  }
+  assert.ok(dom.window.document.querySelector('a[href="/consulting"]'))
+  assert.equal(dom.window.document.querySelector('[data-awb-element="/cta"]')!.textContent, 'Talk to us')
+  assert.deepEqual(edited.pages, headerModel.pages, 'Shared header changes preserve every page')
+  assert.deepEqual(edited.globalComponents.footer, headerModel.globalComponents.footer)
+  assert.throws(() => applyAssistantPlan(headerModel, 'home', plan('set', header, 'bad', '/cta/arbitrary'), undefined, {}, true), /not an editable/)
+  const styled = applyAssistantPlan(headerModel, 'home', plan('style', header, { backgroundColor: '#654321' }), undefined, {}, true)
+  assert.equal(styled.globalComponents.header!.props.backgroundColor, '#654321')
+  const individual = applyAssistantPlan(headerModel, 'home', plan('style', { scope: 'header', kind: 'link', text: 'Strategy' }, { color: '#112233', fontSize: 26 }), undefined, {}, true)
+  const individualDom = new JSDOM(renderToStaticMarkup(React.createElement(definition.render, { props: definition.propsSchema.parse(individual.globalComponents.header!.props), context: { tokens: individual.tokens, baseUrl: '' } })))
+  assert.equal(individualDom.window.document.querySelector<HTMLElement>('[data-awb-element="/items/0/children/0/label"]')!.style.fontSize, '26px')
+}
+console.log('PASS: both shared-header variants render chatbot background changes, whole-menu colours/fonts, nested links, CTA copy, alignment, sticky and hamburger controls; confirmation and page isolation preserved.')

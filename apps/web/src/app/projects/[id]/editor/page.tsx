@@ -10,8 +10,8 @@ export const dynamic = 'force-dynamic'
 
 export default async function EditorPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const { project, role } = await requireProject(id)
-  if (role === WorkspaceRole.VIEWER || !editingAccess(project.workspace)) redirect('/billing?reason=trial-ended')
+  const { user, project, role } = await requireProject(id)
+  if (!user.isPlatformAdmin && (role === WorkspaceRole.VIEWER || !editingAccess(project.workspace))) redirect('/billing?reason=trial-ended')
   await requireProject(id, WorkspaceRole.EDITOR)
 
   const model = await loadDraftModel(id)
