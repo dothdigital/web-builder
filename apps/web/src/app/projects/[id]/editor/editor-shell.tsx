@@ -1,4 +1,5 @@
 'use client'
+import { ErrorNotice } from '@/components/error-notice'
 
 import { mergeAssistantChanges, sameEditorValue } from '@/lib/assistant-merge'
 import { PageAssistantDrawer } from './page-assistant-drawer'
@@ -11,6 +12,8 @@ import { HeaderMenuBehavior } from '@/components/header-menu-behavior'
 import { SectionReorderList } from './section-reorder-list'
 import { reorderSections } from '@/lib/section-order'
 import { HeaderThemeControls } from './header-theme-controls'
+import { ThemeLogoUpload } from './theme-logo-upload'
+import { applySitePalette } from '@/lib/site-palette'
 import { AddObjectDialog } from './add-object-dialog'
 import { addManualObject } from '@/lib/add-manual-object'
 import { ColorInput } from './color-input'
@@ -56,7 +59,9 @@ const families: ComponentFamily[] = [
   'CTA',
 ]
 
-export function EditorShell({ projectId, initialModel, imageUrls }: { projectId: string; initialModel: WebsiteModel; imageUrls: Record<string, string> }) {
+export function EditorShell({ projectId, initialModel, imageUrls: initialImageUrls }: { projectId: string; initialModel: WebsiteModel; imageUrls: Record<string, string> }) {
+  const [uploadedImageUrls, setUploadedImageUrls] = useState<Record<string, string>>({})
+  const imageUrls = useMemo(() => ({ ...initialImageUrls, ...uploadedImageUrls }), [initialImageUrls, uploadedImageUrls])
   const [assistantOpen, setAssistantOpen] = useState(false)
   const [history, setHistory] = useState<History>({ past: [], present: initialModel, future: [] })
   const [pageId, setPageId] = useState(initialModel.pages[0]!.id)
@@ -324,7 +329,7 @@ export function EditorShell({ projectId, initialModel, imageUrls }: { projectId:
         <PanelToggle side="right" label="Properties" open={rightPanelOpen} onClick={() => setRightPanelOpen((open) => !open)} />
       </div>
 
-      {saveError && <p className="bg-red-50 px-4 py-2 text-sm text-red-700">{saveError}</p>}
+      {saveError && <ErrorNotice code="WT-EDITOR-001" message={saveError} className="bg-red-50 px-4 py-2 text-sm text-red-700" />}
       {savedAt && !dirty && (
         <p className="bg-emerald-50 px-4 py-1 text-xs text-emerald-800">
           Saved as a new version at {savedAt.toLocaleTimeString()} — earlier versions stay restorable.
@@ -396,7 +401,7 @@ export function EditorShell({ projectId, initialModel, imageUrls }: { projectId:
                 <p className="text-xs text-neutral-500">3. Review the new section in the page, make any changes, then click Save.</p>
               </div> : <p className="mb-3 text-xs text-neutral-500">Choose a layout below. AI will write new content for your business and reuse relevant project images. Review the generated section, then Save.</p>}
               {generatingSection && <p role="status" className="mt-2 text-xs text-sky-700">Queuing your request. Content will appear in the notification bar when ready.</p>}
-              {sectionError && <p role="alert" className="my-2 text-xs text-red-700">{sectionError}</p>}
+              {sectionError && <ErrorNotice code="WT-EDITOR-001" message={sectionError} className="my-2 text-xs text-red-700" />}
               {!generateContent && families.map((family) => {
                 const options = listComponents(family)
 
@@ -811,7 +816,15 @@ export function EditorShell({ projectId, initialModel, imageUrls }: { projectId:
           {panel === 'page' && <div className="overflow-y-auto border-t p-4"><h3 className="mb-2 text-sm font-semibold">Scripts for this page</h3><ScriptFields value={page.customScripts} onChange={(value) => commit(setAtPointer(model, `/pages/${pageIndex}/customScripts`, value))} /></div>}
           {panel === 'integrations' && <IntegrationsPanel projectId={projectId} model={model} onChange={commit} />}
           {panel === 'theme' && (
-            <ThemePanel headerProps={model.globalComponents.header.props} onHeaderChange={(props) => commit(setAtPointer(model, '/globalComponents/header/props', props))} tokens={model.tokens} onChange={(tokens) => commit({ ...model, tokens })} />
+            <ThemePanel logoUpload={<ThemeLogoUpload projectId={projectId} logoUrl={typeof model.globalComponents.header.props.logoImageUrl === 'string' ? model.globalComponents.header.props.logoImageUrl : undefined} onApplyPalette={(tokens) => commit(applySitePalette(latestModel.current, tokens.palette))} onUpload={(url) => {
+              setUploadedImageUrls(current => ({ ...current, [url]: `/api/projects/${projectId}/editor-image?url=${encodeURIComponent(url)}` }))
+              let next = latestModel.current
+              for (const slot of ['header', 'footer'] as const) {
+                const props = next.globalComponents[slot].props
+                next = setAtPointer(next, `/globalComponents/${slot}/props`, { ...props, logoImageUrl: url, ...(Array.isArray(props.removedElements) ? { removedElements: props.removedElements.filter(path => path !== '/logoImageUrl') } : {}) })
+              }
+              commit(next)
+            }} />} headerProps={model.globalComponents.header.props} onHeaderChange={(props) => commit(setAtPointer(model, '/globalComponents/header/props', props))} tokens={model.tokens} onChange={(tokens) => commit({ ...model, tokens })} />
           )}
         </aside>
       </div>
@@ -826,10 +839,11 @@ function PanelToggle({ side, label, open, onClick }: { side: 'left' | 'right'; l
   </button>
 }
 
-function ThemePanel({ tokens, onChange, headerProps, onHeaderChange }: { headerProps: Record<string, unknown>; onHeaderChange: (props: Record<string, unknown>) => void; tokens: DesignTokens; onChange: (tokens: DesignTokens) => void }) {
+function ThemePanel({ tokens, onChange, headerProps, onHeaderChange, logoUpload }: { headerProps: Record<string, unknown>; onHeaderChange: (props: Record<string, unknown>) => void; tokens: DesignTokens; onChange: (tokens: DesignTokens) => void; logoUpload: React.ReactNode }) {
   const buttons = tokens.buttons ?? { background: tokens.palette.primary, text: tokens.palette.primaryForeground, outline: tokens.palette.primary }
   return (
     <div className="grid gap-4 overflow-y-auto p-4">
+      {logoUpload}
       <HeaderThemeControls props={headerProps} tokens={tokens} onChange={onHeaderChange} />
       <fieldset className="grid gap-3 rounded-lg border border-neutral-200 p-3">
         <legend className="px-1 text-sm font-semibold">Buttons</legend>

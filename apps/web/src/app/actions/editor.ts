@@ -27,12 +27,12 @@ function assertRenderable(model: WebsiteModel): void {
 }
 
 export async function saveModel(projectId: string, model: unknown, note = 'Editor change'): Promise<void> {
-  await requireProject(projectId, WorkspaceRole.EDITOR)
+  const { user } = await requireProject(projectId, WorkspaceRole.EDITOR)
 
   const parsed = websiteModelSchema.parse(model)
   assertRenderable(parsed)
 
-  await saveDraftModel(projectId, parsed, note)
+  await saveDraftModel(projectId, parsed, note, user.isPlatformAdmin || user.isPlatformSupport ? user.id : undefined)
   const ready = await prisma.contentJob.findMany({ where: { projectId, status: 'READY', kind: { not: 'WEBSITE' } } })
   for (const job of ready) {
     const output = job.result as Record<string, unknown> | null

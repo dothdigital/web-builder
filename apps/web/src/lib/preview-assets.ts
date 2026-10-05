@@ -1,5 +1,5 @@
 import { prisma } from '@awb/database'
-import { getStorage } from '@awb/shared'
+import { assetReadUrl } from './asset-read-url'
 import type { WebsiteModel } from '@awb/website-model'
 
 // Call only after project authorization. Signed URLs belong to this render,
@@ -7,9 +7,8 @@ import type { WebsiteModel } from '@awb/website-model'
 export async function resolvePreviewAssets(projectId: string, model: WebsiteModel): Promise<WebsiteModel> {
   const assets = await prisma.asset.findMany({ where: { projectId }, select: { url: true, storageKey: true } })
   const serialized = JSON.stringify(model)
-  const storage = getStorage()
   const urls = new Map(await Promise.all(assets.filter((asset) => serialized.includes(asset.url)).map(async (asset) =>
-    [asset.url, await storage.readUrl(asset.storageKey)] as const,
+    [asset.url, await assetReadUrl(asset)] as const,
   )))
   function rewrite(value: unknown): unknown {
     if (typeof value === 'string') return urls.get(value) ?? value

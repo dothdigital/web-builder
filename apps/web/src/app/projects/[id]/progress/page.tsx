@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
-import { requireProject } from '@/lib/tenancy'
+import { requireProjectOnPage } from '@/lib/tenancy'
+import { AppShell } from '@/components/account/app-shell'
 import { ProgressView } from './progress-view'
 
 export default async function ProgressPage({
@@ -12,11 +13,15 @@ export default async function ProgressPage({
   const { id } = await params
   const { correlationId } = await searchParams
 
-  await requireProject(id)
+  await requireProjectOnPage(id)
 
   if (!correlationId) {
     notFound()
   }
 
-  return <ProgressView key={`${id}:${correlationId}`} projectId={id} correlationId={correlationId} />
+  return (
+    <AppShell title="Website generation" active="/dashboard">
+      <ProgressView key={`${id}:${correlationId}`} projectId={id} correlationId={correlationId} />
+    </AppShell>
+  )
 }

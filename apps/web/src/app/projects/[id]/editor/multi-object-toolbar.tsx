@@ -10,7 +10,7 @@ import { SpacingControls } from './spacing-controls'
 import { ColorInput } from './color-input'
 
 export function MultiObjectToolbar({ node, paths, props, onAction, onClear }: { node: HTMLElement | null; paths: string[]; props: Record<string, unknown>; onAction: (action: MultiAction) => void; onClear: () => void }) {
-  const [spacingOpen, setSpacingOpen] = useState(false)
+  const [panel, setPanel] = useState<'spacing' | 'border' | 'size'>()
   const [elements, setElements] = useState<HTMLElement[]>([])
   const [position, setPosition] = useState({ top: 80, left: 8 })
   const toolbar = useRef<HTMLDivElement>(null)
@@ -52,10 +52,18 @@ export function MultiObjectToolbar({ node, paths, props, onAction, onClear }: { 
   const selectedPaths = elements.map((element) => element.dataset.awbElement!)
   const visuals = elements.map((element) => { const visual = element.hasAttribute('data-awb-free-item') ? element.querySelector<HTMLElement>('[data-awb-element]') ?? element : element; return visual.hasAttribute('data-awb-image-container') ? visual.querySelector<HTMLElement>('img,[role="img"]') ?? visual : visual })
   const imagesOnly = visuals.every((element) => element.matches('img,[role="img"]'))
-  const textOnly = visuals.every((element) => element.matches('h1,h2,h3,h4,h5,h6,p,span,strong,em,blockquote,summary,a,button'))
+  const textOnly = visuals.every((element) => element.matches('h1,h2,h3,h4,h5,h6,p,span,strong,em,blockquote,summary,a,button,input,textarea,select,legend,label'))
   const allSurfaces = visuals.every((element) => !element.matches('img,[role="img"]'))
   const appearance = (path: string) => { const scope = objectScope(props, path); return (scope.props.elementColors as Record<string, Record<string, unknown>> | undefined)?.[scope.path] ?? {} }
-  const common = (key: string) => { const values = selectedPaths.map((path, i) => appearance(path)[key] ?? getComputedStyle(visuals[i]!)[key as 'color']); return values.every((value) => value === values[0]) ? values[0] : undefined }
+  const common = (key: string) => {
+    const values = selectedPaths.map((path, i) => {
+      const value = appearance(path)[key] ?? getComputedStyle(visuals[i]!)[key as 'color']
+      if (['color', 'backgroundColor', 'borderColor'].includes(key)) return rgbHex(String(value))
+      if (['fontSize', 'borderWidth', 'borderRadius', 'height'].includes(key)) return parseFloat(String(value))
+      return String(value)
+    })
+    return values.every((value) => value === values[0]) ? values[0] : undefined
+  }
   const style = (value: Record<string, unknown>) => onAction({ type: 'style', paths: selectedPaths, value })
   const group = ((props.elementGroups ?? []) as ElementGroup[]).find((entry) => entry.paths.length === selectedPaths.length && entry.paths.every((path) => selectedPaths.includes(path)))
   const move = (dx: number, dy: number) => {
@@ -96,7 +104,7 @@ export function MultiObjectToolbar({ node, paths, props, onAction, onClear }: { 
   }
   const finish = () => { const current = drag.current; if (!current) return; const section = node.getBoundingClientRect(); const dx = current.latestX - current.x + current.sectionLeft - section.left, dy = current.latestY - current.y + current.sectionTop - section.top; cancel(); if (Math.abs(dx) + Math.abs(dy) > 3) move(dx, dy) }
   const button = 'rounded border border-neutral-200 px-2 py-1.5 hover:bg-sky-50'
-  return createPortal(<><SelectionResize elements={elements} section={node} props={props} onAction={onAction} /><div ref={toolbar} role="toolbar" aria-label="Multiple object controls" className="fixed z-[1000] max-w-[calc(100vw-16px)] rounded-lg border border-sky-200 bg-white p-2 text-xs text-neutral-900 shadow-xl" style={{ ...position, fontFamily: 'Arial, sans-serif' }} onClick={(event) => event.stopPropagation()}>
+  return createPortal(<><SelectionResize elements={elements} section={node} props={props} onAction={onAction} /><div ref={toolbar} role="toolbar" aria-label="Multiple object controls" className="fixed z-[1000] max-w-[calc(100vw-16px)] rounded-lg border border-sky-200 bg-white p-2 text-xs text-neutral-900 shadow-xl" style={{ ...position, fontFamily: 'Arial, sans-serif' }} onClick={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
     {elements.map((element) => <SelectedObjectInteraction key={element.dataset.awbElement} element={element} onStart={start} onMove={(x, y) => { const current = drag.current; if (current) { current.latestX = x; current.latestY = y; current.ghost.style.translate = `${x - current.x}px ${y - current.y}px` } }} onFinish={finish} onCancel={cancel} onNudge={move} />)}
     <div className="flex flex-wrap items-center gap-1.5">
       <span className="px-1 font-semibold">{elements.length} selected{group ? ' · Group' : ''}</span>
@@ -110,7 +118,8 @@ export function MultiObjectToolbar({ node, paths, props, onAction, onClear }: { 
         <select aria-label="Selected objects text alignment" className={button} value={String(common('textAlign') ?? '')} onChange={(event) => style({ textAlign: event.target.value })}><option value="">Mixed / default</option>{['left', 'center', 'right', 'justify'].map((value) => <option key={value} value={value}>{value}</option>)}</select>
       </>}
       <button type="button" className={`${button} text-red-700`} onClick={() => onAction({ type: 'delete', paths: selectedPaths })}>Delete selected</button>
-      <button type="button" className={button} aria-expanded={spacingOpen} onClick={() => setSpacingOpen(!spacingOpen)}>Spacing</button>
+      <button type="button" className={button} aria-expanded={panel === 'spacing'} onClick={() => setPanel(panel === 'spacing' ? undefined : 'spacing')}>Spacing</button>
+      {allSurfaces && <><button type="button" className={button} aria-expanded={panel === 'border'} onClick={() => setPanel(panel === 'border' ? undefined : 'border')}>Borders</button><button type="button" className={button} aria-expanded={panel === 'size'} onClick={() => setPanel(panel === 'size' ? undefined : 'size')}>Size</button></>}
       <button type="button" className={button} onClick={onClear}>Deselect</button>
     </div>
     <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t pt-2">
@@ -119,12 +128,26 @@ export function MultiObjectToolbar({ node, paths, props, onAction, onClear }: { 
       <button type="button" className={button} onClick={() => align('vertical')}>Equal vertical gaps</button>
     </div>
     <div className="mt-2 flex flex-wrap gap-3">
-      {textOnly && <div className="w-52"><span>Text colour{common('color') === undefined ? ' · Mixed' : ''}</span><ColorInput label="Selected text colour" value={rgbHex(String(common('color') ?? '#000000'))} onChange={(color) => style({ color })} /></div>}
+      {allSurfaces && <div className="w-52"><span>Text colour{common('color') === undefined ? ' · Mixed' : ''}</span><ColorInput label="Selected text colour" value={rgbHex(String(common('color') ?? '#000000'))} onChange={(color) => style({ color })} /></div>}
       {allSurfaces && <div className="w-52"><span>BG fill{common('backgroundColor') === undefined ? ' · Mixed' : ''}</span><ColorInput label="Selected background fill" value={rgbHex(String(common('backgroundColor') ?? 'transparent'))} onChange={(backgroundColor) => style({ backgroundColor })} /></div>}
     </div>
-    {spacingOpen && <div className="mt-2 max-h-[40vh] overflow-auto border-t pt-2"><SpacingControls elements={elements} appearances={selectedPaths.map(appearance)} onChange={style} /></div>}
+    {panel === 'spacing' && <div className="mt-2 max-h-[40vh] overflow-auto border-t pt-2"><SpacingControls elements={elements} appearances={selectedPaths.map(appearance)} onChange={style} /></div>}
+    {panel === 'border' && <div className="mt-2 grid max-h-[40vh] gap-3 overflow-auto border-t pt-2">
+      <ColorInput label="Selected border colour" value={String(common('borderColor') ?? '#000000')} onChange={borderColor => style({ borderColor })} />
+      <SelectionNumber label="Selected border width" value={common('borderWidth')} min={0} max={20} onChange={borderWidth => style({ borderWidth })} />
+      <label className="grid gap-1">Border style<select aria-label="Selected border style" className="rounded border p-1.5" value={String(common('borderStyle') ?? '')} onChange={event => { if (event.target.value) style({ borderStyle: event.target.value }) }}><option value="">Mixed</option><option value="solid">Solid</option><option value="dashed">Dashed</option><option value="dotted">Dotted</option><option value="none">None</option></select></label>
+      <SelectionNumber label="Selected corner radius" value={common('borderRadius')} min={0} max={200} onChange={borderRadius => style({ borderRadius })} />
+    </div>}
+    {panel === 'size' && <div className="mt-2 grid max-h-[40vh] gap-3 overflow-auto border-t pt-2">
+      <SelectionNumber label="Selected width (%)" value={selectedPaths.every(path => appearance(path).width === appearance(selectedPaths[0]!).width) ? appearance(selectedPaths[0]!).width : undefined} min={10} max={100} onChange={width => style({ width })} />
+      <SelectionNumber label="Selected height (px)" value={common('height')} min={24} max={3000} onChange={height => style({ height })} />
+    </div>}
     <p className="mt-2 text-neutral-500">Shift-click or Select area · Drag to move all · Corner handles scale all proportionally · Arrows: 1px · Shift + arrows: 10px</p>
   </div></>, document.body)
+}
+
+function SelectionNumber({ label, value, min, max, onChange }: { label: string; value: unknown; min: number; max: number; onChange: (value: number) => void }) {
+  return <label className="grid gap-1">{label}<input key={String(value)} aria-label={label} className="w-28 rounded border p-1.5" type="number" min={min} max={max} placeholder="Mixed / automatic" defaultValue={value === undefined ? '' : Number(value)} onBlur={event => { if (event.target.value && Number.isFinite(Number(event.target.value))) onChange(Math.max(min, Math.min(max, Number(event.target.value)))) }} onKeyDown={event => { event.stopPropagation(); if (event.key === 'Enter') { event.preventDefault(); event.currentTarget.blur() } }} /></label>
 }
 
 function rgbHex(value: string) {

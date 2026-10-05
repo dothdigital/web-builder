@@ -1,9 +1,11 @@
+import { sameOriginRequest } from '@/lib/request-origin'
 import { requireAdmin } from '@/lib/tenancy'
 import { appUrl } from '@/lib/account-security'
 import { prisma } from '@awb/database'
 import { renderEmailDesign } from '@awb/shared/email-render'
 export async function POST(request: Request) {
   await requireAdmin()
+  if (!sameOriginRequest(request)) return Response.json({ error: 'Origin not allowed' }, { status: 403 })
   const text = await request.text()
   if (text.length > 500000) return Response.json({ error: 'Email design is too large.' }, { status: 413 })
   try {

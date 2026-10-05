@@ -1,8 +1,27 @@
+import { INDIVIDUAL_PLAN_SLUG, INDIVIDUAL_AMOUNT, INDIVIDUAL_CURRENCY, INDIVIDUAL_FEATURE_GROUPS, individualPriceFilter } from '@/lib/billing/catalog'
 import Link from 'next/link'
 import type { BillingPlan, BillingPrice } from '@awb/database'
 import { money } from '@/lib/billing/access'
 import { openCheckout } from '@/app/actions/billing'
 import { ActionForm } from './action-form'
+
 export function PlanCards({ plans, signedIn = false, currentPlanId, enabled = false, owner = true }: { plans: Array<BillingPlan & { prices: BillingPrice[] }>; signedIn?: boolean; currentPlanId?: string | null; enabled?: boolean; owner?: boolean }) {
-  return <div className="wt-plan-grid">{plans.map(plan => <article key={plan.id} className={`wt-plan ${plan.slug === 'studio' ? 'featured' : ''}`}><div className="wt-plan-tag">{currentPlanId === plan.id ? 'YOUR PLAN' : plan.slug === 'studio' ? 'ROOM TO GROW' : `${plan.websiteLimit} WEBSITE${plan.websiteLimit === 1 ? '' : 'S'}`}</div><h2>{plan.name}</h2><p className="wt-muted">{plan.description}</p><div className="wt-price">{plan.prices.length ? <><strong>{money(plan.prices[0]!.amount, plan.prices[0]!.currency)}</strong><span>/{plan.prices[0]!.interval} · {plan.prices[0]!.currency.toUpperCase()}</span></> : <strong>Coming soon</strong>}</div><p><b>{plan.websiteLimit}</b> website{plan.websiteLimit === 1 ? '' : 's'} included</p><ul>{plan.features.map(feature => <li key={feature}>✓ {feature}</li>)}</ul>{signedIn ? <ActionForm action={openCheckout} label={currentPlanId === plan.id ? 'Review billing options' : 'Choose plan'} disabled={!enabled || !owner || !plan.prices.length}><label>Billing period<select name="priceId" aria-label={`${plan.name} billing period`} defaultValue={plan.prices[0]?.id}>{plan.prices.map(price => <option key={price.id} value={price.id}>{price.interval === 'year' ? 'Yearly' : 'Monthly'} · {money(price.amount, price.currency)} {price.currency.toUpperCase()}</option>)}</select></label>{!owner && <small>Only a workspace owner can manage billing.</small>}</ActionForm> : <Link href="/signup" className="wt-button">Get started →</Link>}</article>)}</div>
+  return <div className="wt-plan-grid" style={{ gridTemplateColumns: 'minmax(0, 1fr)' }}>{plans.filter(plan => plan.slug === INDIVIDUAL_PLAN_SLUG).map(plan => {
+    const price = plan.prices.find(price => price.active && price.amount === individualPriceFilter.amount && price.currency === individualPriceFilter.currency && price.interval === individualPriceFilter.interval)
+    return <article key={plan.id} className="wt-plan">
+      <div className="wt-plan-tag">{currentPlanId === plan.id ? 'YOUR PLAN' : 'INDIVIDUAL PLAN'}</div>
+      <h2>Everything Included for $29/Month</h2>
+      <p className="wt-muted">One website. One Individual plan. Monthly billing only.</p>
+      <div className="wt-price"><strong>{money(INDIVIDUAL_AMOUNT, INDIVIDUAL_CURRENCY)}</strong><span>/month · USD</span></div>
+      <div className="grid gap-x-8 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">{INDIVIDUAL_FEATURE_GROUPS.map(group => <section key={group.title} aria-label={group.title}>
+        <h3 className="font-semibold">{group.title}</h3>
+        <ul>{group.features.map(feature => <li key={feature} className="flex gap-2"><span aria-hidden="true" className="text-emerald-700">✓</span><span>{feature}</span></li>)}</ul>
+      </section>)}</div>
+      {signedIn ? <ActionForm action={openCheckout} label={currentPlanId === plan.id ? 'Review billing options' : 'Choose Individual · $29/month'} disabled={!enabled || !owner || !price}>
+        <input type="hidden" name="priceId" value={price?.id ?? ''} />
+        <p className="wt-muted">US$29 per month · monthly billing only.</p>
+        {!owner && <small>Only a workspace owner can manage billing.</small>}
+      </ActionForm> : <Link href="/signup" className="wt-button">Get started →</Link>}
+    </article>
+  })}</div>
 }

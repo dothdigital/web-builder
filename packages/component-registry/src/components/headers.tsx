@@ -134,7 +134,7 @@ function PositionedHeader({ props, baseUrl, tokens, split = false }: { props: He
     `}</style>
     <Container style={{ paddingBlock: '1.25rem' }}>
       <div className="awb-responsive-header">
-        <a className="awb-header-brand" href={`${baseUrl}/`} style={{ gridColumn: column[logo], gridRow: 1, justifySelf: alignment[logo], color: 'inherit', textDecoration: 'none', fontFamily: 'var(--awb-heading-font)', fontSize: '1.4rem', maxWidth: '100%', overflowWrap: 'anywhere' }}><BrandLogo textStyle={elementColor(props, '/logoText')} sizeStyle={imageSizing(props, '/logoImageUrl')} logoText={props.logoText} logoImageUrl={props.logoImageUrl} /></a>
+        <a className="awb-header-brand" href={`${baseUrl}/`} style={{ gridColumn: column[logo], gridRow: 1, justifySelf: alignment[logo], color: 'inherit', textDecoration: 'none', fontFamily: 'var(--awb-heading-font)', fontSize: '1.4rem', maxWidth: '100%', overflowWrap: 'anywhere' }}><BrandLogo textStyle={elementColor(props, '/logoText')} sizeStyle={{ ...elementColor(props, '/logoImageUrl'), ...imageSizing(props, '/logoImageUrl') }} logoText={props.logoText} logoImageUrl={props.logoImageUrl} /></a>
         <details className="awb-mobile-menu">
           <summary aria-label="Navigation menu" style={mobileMenuColors(props, tokens)}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path className="awb-open-icon" d="M3 6h18M3 12h18M3 18h18"/><path className="awb-close-icon" d="m6 6 12 12M6 18 18 6"/></svg></summary>
           <div className="awb-menu-content">

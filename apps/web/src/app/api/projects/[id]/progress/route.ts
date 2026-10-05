@@ -1,12 +1,12 @@
 import { getGenerationProgress } from '@awb/pipeline'
-import { requireProject } from '@/lib/tenancy'
+import { requireProject, withApiAuthorization } from '@/lib/tenancy'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 /// Server-sent events beat polling here: generation takes minutes and the user
 /// needs to see which stage is running, not a spinner.
-export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+async function handleGET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   await requireProject(id)
 
@@ -65,3 +65,5 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     },
   })
 }
+
+export const GET = withApiAuthorization(handleGET)

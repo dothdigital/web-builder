@@ -3,6 +3,8 @@ import type { WebsiteModel } from '@awb/website-model'
 export function contactRoute(model: WebsiteModel): string | undefined {
   return model.pages.find((page) => page.path === '/contact')?.path
     ?? model.pages.find((page) => page.path === '/request-a-quote')?.path
+    ?? model.pages.find((page) => page.path === '/quote')?.path
+    ?? model.pages.find((page) => page.path === '/contact-us')?.path
 }
 
 export function resolveContactLinks(model: WebsiteModel): WebsiteModel {

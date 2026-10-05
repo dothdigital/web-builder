@@ -1,4 +1,5 @@
 'use server'
+import { CUSTOMER_TEAMS_ENABLED } from '@/lib/features'
 import { requirePaidWorkspace } from '@/lib/billing/access'
 import { prisma, WorkspaceRole } from '@awb/database'
 import { cookies } from 'next/headers'
@@ -14,6 +15,7 @@ export async function switchWorkspace(form: FormData) {
   redirect('/dashboard')
 }
 export async function inviteMember(_previous: { message: string }, form: FormData) {
+  if (!CUSTOMER_TEAMS_ENABLED) return { message: 'Customer accounts are individual. Team access is currently unavailable.' }
   try {
     const user = await requireUser(); const workspace = await primaryWorkspace(user.id); if (!workspace) throw new Error()
     await requireWorkspace(workspace.id, WorkspaceRole.OWNER); await requirePaidWorkspace(workspace.id); await rateLimit(`invite:${user.id}`, 15, 60)
@@ -27,6 +29,7 @@ export async function inviteMember(_previous: { message: string }, form: FormDat
   } catch { return { message: 'Unable to send the invitation. Check your access and email delivery settings.' } }
 }
 export async function acceptInvitation(_previous: { message: string }, form: FormData) {
+  if (!CUSTOMER_TEAMS_ENABLED) return { message: 'Customer accounts are individual. Team access is currently unavailable.' }
   try {
     const user = await requireUser(); const token = z.string().regex(/^[a-f0-9]{64}$/).parse(form.get('token'))
     const workspaceId = await prisma.$transaction(async tx => {
@@ -41,6 +44,7 @@ export async function acceptInvitation(_previous: { message: string }, form: For
   redirect('/dashboard')
 }
 export async function changeMember(_previous: { message: string }, form: FormData) {
+  if (!CUSTOMER_TEAMS_ENABLED) return { message: 'Customer accounts are individual. Team access is currently unavailable.' }
   try {
     const user = await requireUser(); const workspace = await primaryWorkspace(user.id); if (!workspace) throw new Error()
     await requireWorkspace(workspace.id, WorkspaceRole.OWNER)
@@ -58,6 +62,7 @@ export async function changeMember(_previous: { message: string }, form: FormDat
   } catch { return { message: 'Unable to change this member. Workspace owners cannot be removed here.' } }
 }
 export async function revokeInvitation(_previous: { message: string }, form: FormData) {
+  if (!CUSTOMER_TEAMS_ENABLED) return { message: 'Customer accounts are individual. Team access is currently unavailable.' }
   const user = await requireUser(); const workspace = await primaryWorkspace(user.id); if (!workspace) return { message: 'Workspace not found.' }
   await requireWorkspace(workspace.id, WorkspaceRole.OWNER)
   await prisma.workspaceInvitation.deleteMany({ where: { id: String(form.get('id')), workspaceId: workspace.id } }); revalidatePath('/team'); return { message: 'Invitation revoked.' }

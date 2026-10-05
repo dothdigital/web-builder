@@ -4,7 +4,7 @@ import { useState } from 'react'
 
 const fieldTypes = [['text','Text'],['textarea','Long text'],['number','Number'],['email','Email'],['tel','Phone'],['select','Dropdown'],['checkbox','Checkbox / consent'],['radio','Radio choices']]
 
-type Field = { name: string; label: string; type: string; required?: boolean; options?: string[]; labelFontSize?: number; labelCase?: string; linkText?: string; linkUrl?: string; labelLinks?: Array<{ text: string; url: string }> }
+type Field = { name: string; label: string; type: string; required?: boolean; options?: string[]; rows?: number; labelFontSize?: number; labelCase?: string; linkText?: string; linkUrl?: string; labelLinks?: Array<{ text: string; url: string }> }
 export function ContactFieldsEditor({ value, onChange }: { value: unknown; onChange: (value: unknown) => void }) {
   const [expanded, setExpanded] = useState<number | null>(null)
   const fields = (Array.isArray(value) ? value : []) as Field[]
@@ -26,6 +26,7 @@ export function ContactFieldsEditor({ value, onChange }: { value: unknown; onCha
         <button type="button" className="mt-2 rounded border p-2 disabled:opacity-40" disabled={(field.labelLinks?.length ?? 0) >= 10} onClick={() => update(index, { labelLinks: [...(field.labelLinks ?? (field.linkText ? [{ text: field.linkText, url: field.linkUrl ?? '' }] : [])), { text: '', url: '' }] })}>+ Add label link</button>
       </details>
       <label className="grid gap-1">Field type<select className="rounded border p-2" value={field.type} onChange={event => update(index, { type: event.target.value })}>{fieldTypes.map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+      {field.type === 'textarea' && <label className="grid gap-1">Textarea lines<input aria-label={`${field.label} textarea lines`} type="number" min={1} max={30} className="rounded border p-2" value={field.rows ?? 5} onChange={event => { const rows = Number(event.target.value); if (Number.isInteger(rows) && rows >= 1 && rows <= 30) update(index, { rows }) }} /><span className="text-neutral-500">Sets the visible rows and resets any manually resized height.</span></label>}
       {['select', 'radio'].includes(field.type) && <label className="grid gap-1">Choices (one per line)<textarea className="rounded border p-2" rows={4} value={(field.options ?? []).join('\n')} onChange={event => update(index, { options: event.target.value.split('\n') })} /></label>}
       <details><summary className="cursor-pointer text-neutral-500">Advanced: CRM field mapping</summary><label className="mt-2 grid gap-1">Submission field name<input className="rounded border p-2" value={field.name} onChange={event => { const name = event.target.value.replace(/[^a-zA-Z0-9_]/g, '_'); if (name && !['projectId', 'g_recaptcha_response'].includes(name) && !fields.some((other, i) => i !== index && other.name === name)) update(index, { name }) }} /></label></details>
       <label className="flex items-center gap-2"><input type="checkbox" checked={field.required ?? false} onChange={event => update(index, { required: event.target.checked })} />Required — visitor must fill this field</label>

@@ -3,7 +3,7 @@ import { WebsiteVersionKind, prisma } from '@awb/database'
 import { websiteModelSchema } from '@awb/website-model'
 import { resolvePreviewAssets } from '@/lib/preview-assets'
 import { buildStaticExport, ExportAssetError } from '@/lib/static-export'
-import { requireProject } from '@/lib/tenancy'
+import { requireProject, withApiAuthorization } from '@/lib/tenancy'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -11,10 +11,10 @@ export const dynamic = 'force-dynamic'
 /// Exports the approved site as a self-contained static bundle. The published
 /// version is used when one exists so a client never downloads unapproved work;
 /// `?source=draft` is available for previewing the export of in-progress edits.
-export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+async function handleGET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const { project: accessProject } = await requireProject(id)
-  if (!editingAccess(accessProject.workspace)) return Response.json({ error: 'Your trial has ended. Choose a plan to export.', billingUrl: '/billing' }, { status: 402 })
+  const { user, project: accessProject } = await requireProject(id)
+  if (!user.isPlatformAdmin && !user.isPlatformSupport && !editingAccess(accessProject.workspace)) return Response.json({ error: 'Your subscription payment needs attention. Open Plans & billing to continue.', billingUrl: '/billing' }, { status: 402 })
 
   const url = new URL(request.url)
   const wantsDraft = url.searchParams.get('source') === 'draft'
@@ -62,3 +62,5 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     },
   })
 }
+
+export const GET = withApiAuthorization(handleGET)

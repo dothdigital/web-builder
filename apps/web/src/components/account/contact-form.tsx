@@ -1,4 +1,5 @@
 'use client'
+import { ErrorNotice } from '@/components/error-notice'
 
 import Link from 'next/link'
 import Script from 'next/script'
@@ -59,7 +60,7 @@ export function ContactForm({ siteKey, captchaType, available }: { siteKey?: str
         captcha?.ready(() => setCaptchaReady(true))
       }} onError={() => setResult({ ok: false, message: 'The security check could not load. Please refresh the page and try again.' })} />}<p className="wt-contact-privacy">This form uses Google reCAPTCHA. Google’s <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a> and <a href="https://policies.google.com/terms" target="_blank" rel="noopener noreferrer">Terms</a> apply.</p></>}
       {!available && <p className="wt-contact-status" role="status">Our contact form is being set up. Please check back soon.</p>}
-      {result && <p role={result.ok ? 'status' : 'alert'} className={result.ok ? 'wt-success' : 'wt-message'}>{result.message}</p>}
+      {result && (result.ok ? <p role="status" className="wt-success">{result.message}</p> : <ErrorNotice message={result.message} className="wt-message" />)}
       <button className="wt-button" type="submit" disabled={pending || !available || !captchaReady}>{pending ? 'Sending…' : 'Send message ↗'}</button>
     </form>
   )

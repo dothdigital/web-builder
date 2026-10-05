@@ -18,6 +18,7 @@ model User {
   image         String?
   emailVerified DateTime?
   isPlatformAdmin Boolean @default(false)
+  isPlatformSupport Boolean @default(false)
   passwordHash String?
   suspendedAt DateTime?
   sessionVersion Int @default(0)
@@ -79,14 +80,26 @@ model Workspace {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  trialEndsAt DateTime @default(dbgenerated("(timezone('UTC', CURRENT_TIMESTAMP) + '7 days'::interval)"))
-  trialWebsiteLimit Int @default(25)
+  trialEndsAt DateTime @default(now())
+  trialWebsiteLimit Int @default(0)
   billingExempt Boolean @default(false)
+  billingExemptionReason String?
   billingPlanId String?
   stripeCustomerId String? @unique
   stripeSubscriptionId String? @unique
   billingStatus String @default("none")
   billingPeriodEnd DateTime?
+  billingPaidThrough DateTime?
+  billingDelinquentSince DateTime?
+  billingNextRetryAt DateTime?
+  billingCancellationReason String?
+  billingSubscriptionEndedAt DateTime?
+  billingSuspendedAt DateTime?
+  billingRetentionEndsAt DateTime?
+  billingDeletionEligibleAt DateTime?
+  billingLegalHold Boolean @default(false)
+  billingLastReconciledAt DateTime?
+  billingNotices BillingNotice[]
   cancelAtPeriodEnd Boolean @default(false)
   checkoutSessionId String?
   checkoutExpiresAt DateTime?
@@ -830,6 +843,7 @@ model HostingSite {
   distributionHost String?
   certificateArn String?
   functionArn String?
+  billingGateApplied Boolean @default(false)
   deployedReleaseId String?
   pendingReleaseId String?
   status String @default("NOT_CONFIGURED")
@@ -998,4 +1012,23 @@ model EmailDelivery {
   @@index([status, nextAttemptAt])
   @@index([contactId, sentAt])
   @@index([campaignId, status])
+}
+
+model BillingNotice {
+  id String @id @default(cuid())
+  workspaceId String
+  dedupeKey String @unique
+  kind String
+  cycleKey String
+  recipient String
+  subject String
+  body String
+  status String @default("PENDING")
+  attempts Int @default(0)
+  nextAttemptAt DateTime @default(now())
+  sentAt DateTime?
+  lastError String?
+  createdAt DateTime @default(now())
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  @@index([status, nextAttemptAt])
 }

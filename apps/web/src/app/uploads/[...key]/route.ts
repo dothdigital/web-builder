@@ -1,7 +1,7 @@
 import { createReadStream, existsSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { Readable } from 'node:stream'
-import { localUploadRoot } from '@awb/shared'
+import { localUploadRoot, IMAGE_CONTENT_POLICY } from '@awb/shared'
 
 const contentTypes: Record<string, string> = {
   '.png': 'image/png',
@@ -16,10 +16,10 @@ const contentTypes: Record<string, string> = {
 /// set, assets are served straight from S3/CDN and this route is unused.
 export async function GET(_request: Request, { params }: { params: Promise<{ key: string[] }> }) {
   const { key } = await params
-  const root = localUploadRoot()
+  const root = path.resolve(localUploadRoot())
   const target = path.resolve(root, ...key)
 
-  if (!target.startsWith(root) || !existsSync(target) || !statSync(target).isFile()) {
+  if (!target.startsWith(`${root}${path.sep}`) || !existsSync(target) || !statSync(target).isFile()) {
     return new Response('Not found', { status: 404 })
   }
 
@@ -28,6 +28,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ key
   return new Response(stream, {
     headers: {
       'content-type': contentTypes[path.extname(target).toLowerCase()] ?? 'application/octet-stream',
+      'content-security-policy': IMAGE_CONTENT_POLICY,
+      'x-content-type-options': 'nosniff',
       'cache-control': 'public, max-age=31536000, immutable',
     },
   })

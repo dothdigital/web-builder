@@ -1,4 +1,5 @@
 'use client'
+import { ErrorNotice } from '@/components/error-notice'
 
 import { useState } from 'react'
 import { safeTextLink, textOccurrence, type InlineLink } from '@awb/component-registry'
@@ -46,7 +47,7 @@ export function TextLinkControl({ element, links, onChange, open, onOpenChange: 
         <p className="mb-2 truncate">Link: “{selected.text}”</p>
         <label>URL<input aria-label="Text hyperlink URL" className="mt-1 w-full rounded border p-2" value={href} placeholder="https://example.com or /contact" onChange={event => setHref(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); apply() } }} /></label>
         <label className="my-2 flex items-center gap-2"><input type="checkbox" checked={newTab} onChange={event => setNewTab(event.target.checked)} />Open in a new tab</label>
-        {error && <p role="alert" className="mb-2 text-red-700">{error}</p>}
+        {error && <ErrorNotice code="WT-EDITOR-001" message={error} className="mb-2 text-red-700" />}
         <div className="flex gap-2"><button type="button" className="rounded bg-sky-700 px-2 py-1 text-white" onClick={() => apply()}>Apply link</button><button type="button" className="rounded border px-2 py-1" onClick={() => apply(true)}>Remove link</button></div>
       </> : <><p>Double-click the text, highlight the words to link, then click Link.</p>{links.length > 0 && <div className="mt-2 grid gap-1">{links.map((link, i) => <button type="button" key={i} className="truncate rounded border p-1 text-left" onClick={() => choose(link)}>Edit link: {link.text}</button>)}</div>}</>}
       <button type="button" className="mt-2 underline" onClick={() => setOpen(false)}>Close</button>

@@ -8,7 +8,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./client": "./generated/client.ts",
-    "./marketing": "./src/marketing.ts"
+    "./marketing": "./src/marketing.ts",
+    "./billing-policy": "./src/billing-policy.ts"
   },
   "scripts": {
     "db:generate": "prisma generate",

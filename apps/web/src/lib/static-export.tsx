@@ -6,7 +6,7 @@ import type { ReactElement } from 'react'
 import JSZip from 'jszip'
 import { tokensToCssVars } from '@awb/component-registry'
 import { buildPageJsonLd, buildBlogJsonLd, buildFaqJsonLd, buildLlmsTxt, buildLocalBusinessJsonLd, buildRobotsTxt, buildSitemapXml } from '@awb/seo'
-import { localUploadRoot } from '@awb/shared'
+import { localUploadRoot, readPublicImage } from '@awb/shared'
 import type { WebsiteModel, WebsitePage } from '@awb/website-model'
 import { SiteRenderer } from '../components/site-renderer'
 
@@ -88,11 +88,7 @@ async function readAsset(url: string): Promise<Buffer> {
       if (!target.startsWith(`${root}${path.sep}`)) throw new Error('Invalid asset path')
       return await readFile(target)
     }
-    const response = await fetch(url, { signal: AbortSignal.timeout(30000) })
-    if (!response.ok) throw new Error(`HTTP ${response.status}`)
-    const body = Buffer.from(await response.arrayBuffer())
-    if (body.length === 0) throw new Error('Empty image')
-    return body
+    return (await readPublicImage(url)).bytes
   } catch {
     // Do not expose signed URL credentials or return an archive with broken images.
     throw new ExportAssetError(`Could not include image "${exportFileName(url, 0)}". Please retry the export or replace the unavailable image.`)

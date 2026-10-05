@@ -1,3 +1,6 @@
+import { hostingAccess } from '@/lib/billing/access'
+import { rateLimit } from '@/lib/account-security'
+import { readBoundedBody, RequestBodyTooLarge } from '@/lib/request-body'
 import { createHmac } from 'node:crypto'
 import { prisma } from '@awb/database'
 import { z } from 'zod'
@@ -5,15 +8,22 @@ export const runtime = 'nodejs'
 const visitSchema = z.object({ id: z.string().uuid(), projectId: z.string().max(100), visitor: z.string().uuid(), path: z.string().startsWith('/').max(500), referrer: z.string().max(253).regex(/^[a-zA-Z0-9.:-]*$/) })
 export async function POST(request: Request) {
   if (Number(request.headers.get('content-length') ?? 0) > 2048) return new Response(null, { status: 413 })
-  const text = await request.text()
+  let text: string
+  try { text = new TextDecoder().decode(await readBoundedBody(request, 2048)) }
+  catch (error) { return new Response(null, { status: error instanceof RequestBodyTooLarge ? 413 : 400 }) }
   if (text.length > 2048) return new Response(null, { status: 413 })
   let input: z.infer<typeof visitSchema>
   try { input = visitSchema.parse(JSON.parse(text)) } catch { return new Response(null, { status: 400 }) }
   const origin = request.headers.get('origin')
   let host: string
   try { host = new URL(origin ?? '').hostname.toLowerCase() } catch { return new Response(null, { status: 403 }) }
-  const project = await prisma.project.findUnique({ where: { id: input.projectId }, include: { hosting: { select: { distributionHost: true } }, integration: { select: { analyticsTrackingHost: true } }, domains: { where: { verifiedAt: { not: null } }, select: { hostname: true } } } })
+  try {
+    await rateLimit(`visit-ip:${request.headers.get('x-forwarded-for')?.split(',')[0] ?? 'unknown'}`, 120, 1)
+    await rateLimit(`visit-project:${input.projectId}`, 1200, 1)
+  } catch { return new Response(null, { status: 429 }) }
+  const project = await prisma.project.findUnique({ where: { id: input.projectId }, include: { workspace: true, hosting: { select: { distributionHost: true } }, integration: { select: { analyticsTrackingHost: true } }, domains: { where: { verifiedAt: { not: null } }, select: { hostname: true } } } })
   if (!project) return new Response(null, { status: 404 })
+  if (!hostingAccess(project.workspace)) return new Response(null, { status: 503 })
   const allowed = [project.previewHost, ...(project.hosting?.distributionHost ? [project.hosting.distributionHost] : []), ...(project.integration?.analyticsTrackingHost ? [project.integration.analyticsTrackingHost] : []), ...project.domains.map((domain) => domain.hostname)].map((value) => value.toLowerCase())
   if (!allowed.includes(host)) return new Response(null, { status: 403 })
   const secret = process.env.AUTH_SECRET

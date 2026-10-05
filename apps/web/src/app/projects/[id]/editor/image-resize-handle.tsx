@@ -25,8 +25,8 @@ export function ImageResizeHandle({ revision, node, path, onResize, onFontResize
     if (!node || !path) return
     const target = Array.from(node.querySelectorAll<HTMLElement>('[data-awb-element]')).find((entry) => entry.dataset.awbElement === path)
     if (!target || (getComputedStyle(target).position === 'absolute' && !target.hasAttribute('data-awb-free-item') && !target.parentElement?.hasAttribute('data-awb-width-slot'))) return
-    const kind = target.hasAttribute('data-awb-inline-text') ? 'text' : target.hasAttribute('data-awb-free-item') || target.matches('div:not([role="img"]),article,ul,ol,form,details,section,nav,aside') ? 'block' : target.matches('img,[role="img"]') ? 'image' : 'text'
-    if (kind === 'text' && !target.hasAttribute('data-awb-inline-text') && !target.matches('h1,h2,h3,h4,h5,h6,p,span,strong,blockquote,a,button,li,summary')) return
+    const kind = target.hasAttribute('data-awb-inline-text') ? 'text' : target.hasAttribute('data-awb-free-item') || target.matches('div:not([role="img"]),article,ul,ol,form,details,section,nav,aside,input,textarea,select') ? 'block' : target.matches('img,[role="img"]') ? 'image' : 'text'
+    if (kind === 'text' && !target.hasAttribute('data-awb-inline-text') && !target.matches('h1,h2,h3,h4,h5,h6,p,span,strong,blockquote,a,button,li,summary,legend,label')) return
     image.current = target
     const measure = () => {
       const bounds = target.getBoundingClientRect()

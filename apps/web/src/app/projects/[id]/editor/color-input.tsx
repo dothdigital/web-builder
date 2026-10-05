@@ -1,4 +1,5 @@
 'use client'
+import { ErrorNotice } from '@/components/error-notice'
 
 import { useRef, useState } from 'react'
 
@@ -31,6 +32,6 @@ export function ColorInput({ value, onChange, label = 'Colour' }: { value: strin
         catch { input.current?.focus(); input.current?.select(); setMessage('Press Ctrl+C or ⌘C to copy.') }
       }}>Copy</button>
     </div>
-    {message && <span role="status" className="text-xs text-neutral-600">{message}</span>}
+    {message && (message.startsWith('Enter ') ? <ErrorNotice code="WT-FORM-001" message={message} className="text-xs text-neutral-600" /> : <span role="status" className="text-xs text-neutral-600">{message}</span>)}
   </div>
 }

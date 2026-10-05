@@ -6,13 +6,14 @@ import type { InlineLink, FlowSlot } from '@awb/component-registry'
 import { imagePlacementAction } from '@/lib/image-placement'
 import { objectScope, objectTextPointer, type LayerDirection, type ObjectAction, type Placement } from '@/lib/object-editing'
 import { getAtPointer } from '@/lib/json-pointer'
+import { renderedBackgroundColor } from '@/lib/rendered-background'
 import { SelectedObjectInteraction, type MovePointer } from './selected-object-interaction'
 import { ImageField } from './inspector'
 import { SpacingControls } from './spacing-controls'
 import { ColorInput } from './color-input'
 import { TextLinkControl } from './text-link-control'
 
-type Target = { element: HTMLElement; parentPath?: string; kind: 'text' | 'image' | 'button' | 'block'; top: number; left: number; color: string; background: string; fontFamily: string; textAlign: string; verticalAlign: string; fontSize: number; bold: boolean; italic: boolean }
+type Target = { element: HTMLElement; parentPath?: string; kind: 'text' | 'image' | 'button' | 'field' | 'block'; top: number; left: number; color: string; background: string; fontFamily: string; textAlign: string; verticalAlign: string; fontSize: number; bold: boolean; italic: boolean }
 const fonts = ['Arial, sans-serif', 'Verdana, sans-serif', 'Tahoma, sans-serif', 'Trebuchet MS, sans-serif', 'Georgia, serif', 'Times New Roman, serif', 'Courier New, monospace', 'system-ui, sans-serif']
 function hex(value: string) {
   const canvas = document.createElement('canvas'); canvas.width = canvas.height = 1
@@ -59,7 +60,7 @@ export function ObjectToolbar({ node, path, props, projectId, imageUrls, section
 }) {
   const [target, setTarget] = useState<Target>()
   const toolbarRef = useRef<HTMLDivElement>(null)
-  const [panel, setPanel] = useState<'link' | 'spacing' | 'color' | 'background' | 'image' | 'content' | 'move' | 'size' | 'layout' | undefined>()
+  const [panel, setPanel] = useState<'link' | 'spacing' | 'color' | 'background' | 'border' | 'image' | 'content' | 'move' | 'size' | 'layout' | undefined>()
   const [dragging, setDragging] = useState(false)
   const drag = useRef<{ x: number; y: number; latestX: number; latestY: number; rect: DOMRect; sourceSlot: FlowSlot; ghost: HTMLDivElement; element: HTMLElement; opacity: string; frame?: HTMLElement; shadow?: string; raf: number } | null>(null)
   const cleanup = () => {
@@ -80,7 +81,7 @@ export function ObjectToolbar({ node, path, props, projectId, imageUrls, section
       const visual = isFree ? element.querySelector<HTMLElement>('[data-awb-element]') ?? element : element
       const style = getComputedStyle(visual)
       const parent = element.parentElement?.closest<HTMLElement>('[data-awb-element]')
-      setTarget({ element, parentPath: parent && node.contains(parent) ? parent.dataset.awbElement : undefined, kind: visual.matches('img,[role="img"]') ? 'image' : visual.matches('a,button') ? 'button' : (visual.hasAttribute('data-awb-menu') || visual.hasAttribute('data-awb-inline-text') || visual.matches('h1,h2,h3,h4,h5,h6,p,span,strong,em,blockquote,summary')) ? 'text' : 'block', top: bounds.top, left: bounds.left, color: hex(style.color), background: hex(style.backgroundColor), fontFamily: style.fontFamily, verticalAlign: (style.flexDirection === 'column' ? style.justifyContent : style.alignItems) === 'center' ? 'middle' : (style.flexDirection === 'column' ? style.justifyContent : style.alignItems) === 'flex-end' ? 'bottom' : 'top', textAlign: style.textAlign === 'start' ? 'left' : style.textAlign === 'end' ? 'right' : style.textAlign, fontSize: parseFloat(style.fontSize) || parseFloat(computed.fontSize), bold: Number(style.fontWeight) >= 600, italic: style.fontStyle === 'italic' })
+      setTarget({ element, parentPath: parent && node.contains(parent) ? parent.dataset.awbElement : undefined, kind: visual.matches('input,textarea,select') || /\/formFields\/\d+\/input$/.test(path) ? 'field' : visual.matches('img,[role="img"]') ? 'image' : visual.matches('a,button') ? 'button' : (visual.hasAttribute('data-awb-menu') || visual.hasAttribute('data-awb-inline-text') || visual.matches('h1,h2,h3,h4,h5,h6,p,span,strong,em,blockquote,summary,legend,label')) ? 'text' : 'block', top: bounds.top, left: bounds.left, color: hex(style.color), background: hex(style.backgroundColor), fontFamily: style.fontFamily, verticalAlign: (style.flexDirection === 'column' ? style.justifyContent : style.alignItems) === 'center' ? 'middle' : (style.flexDirection === 'column' ? style.justifyContent : style.alignItems) === 'flex-end' ? 'bottom' : 'top', textAlign: style.textAlign === 'start' ? 'left' : style.textAlign === 'end' ? 'right' : style.textAlign, fontSize: parseFloat(style.fontSize) || parseFloat(computed.fontSize), bold: Number(style.fontWeight) >= 600, italic: style.fontStyle === 'italic' })
     }
     measure()
     const resize = new ResizeObserver(measure); resize.observe(element); resize.observe(node)
@@ -105,7 +106,7 @@ export function ObjectToolbar({ node, path, props, projectId, imageUrls, section
   const scope = objectScope(props, path)
   const style = (scope.props.elementColors as Record<string, Record<string, unknown>> | undefined)?.[scope.path] ?? {}
   const textColor = String(style.color ?? target.color)
-  const backgroundColor = String(style.backgroundColor ?? target.background)
+  const backgroundColor = String(scope.path === '/layout/0' ? renderedBackgroundColor(target.element) : style.backgroundColor ?? target.background)
   const textPointer = objectTextPointer(props, path)
   const textValue = textPointer ? getAtPointer(props, textPointer) : undefined
   const changeStyle = (value: Record<string, unknown>) => onAction({ type: 'style', value })
@@ -171,7 +172,7 @@ export function ObjectToolbar({ node, path, props, projectId, imageUrls, section
     {sectionId && <SelectedObjectInteraction element={target.element} onStart={startDrag} onMove={(x, y) => { if (drag.current) { drag.current.latestX = x; drag.current.latestY = y } }} onFinish={finishDrag} onCancel={() => { cleanup(); setDragging(false) }} onNudge={nudge} />}
     <div className="flex flex-wrap items-center gap-1">
       {target.parentPath && <button type="button" className={buttonClass} title="Select the parent box and all its contents" onClick={() => onSelect(target.parentPath)}>↑ Parent</button>}
-      {(target.kind === 'text' || target.kind === 'button') && <>
+      {(target.kind === 'text' || target.kind === 'button' || target.kind === 'field') && <>
         <select aria-label="Object font family" className="max-w-28 rounded border p-1.5" value={String(style.fontFamily ?? '')} onChange={(event) => changeStyle({ fontFamily: event.target.value || undefined })}><option value="">{target.fontFamily.split(',')[0]}</option>{fonts.map((font) => <option key={font} value={font}>{font.split(',')[0]}</option>)}</select>
         <NumberControl live label="Object font size" className="w-14 rounded border p-1.5" min={10} max={160} value={Number(style.fontSize ?? Math.round(target.fontSize))} onChange={(fontSize) => changeStyle({ fontSize })} />
         <button type="button" aria-label="Bold" aria-pressed={target.bold} className={`${buttonClass} font-bold ${target.bold ? 'bg-sky-100' : ''}`} onClick={() => changeStyle({ fontWeight: target.bold ? 400 : 700 })}>B</button>
@@ -183,12 +184,13 @@ export function ObjectToolbar({ node, path, props, projectId, imageUrls, section
         </label>
       </>}
       {target.kind === 'text' && textPointer && <TextLinkControl open={panel === 'link'} onOpenChange={open => setPanel(open ? 'link' : undefined)} element={target.element} links={(scope.props.inlineLinks as Record<string, InlineLink[]> | undefined)?.[scope.path] ?? []} onChange={links => onAction({ type: 'content', pointer: `${scope.prefix}/inlineLinks`, value: { ...((scope.props.inlineLinks ?? {}) as Record<string, InlineLink[]>), [scope.path]: links } })} />}
-      {(target.kind === 'text' || target.kind === 'button') && <select aria-label="Text alignment" className="rounded border p-1.5" value={String(style.textAlign ?? target.textAlign)} onChange={(event) => changeStyle({ textAlign: event.target.value })}><option value="left">Left</option><option value="center">Centre</option><option value="right">Right</option><option value="justify">Justify</option></select>}
+      {(target.kind === 'text' || target.kind === 'button' || target.kind === 'field') && <select aria-label="Text alignment" className="rounded border p-1.5" value={String(style.textAlign ?? target.textAlign)} onChange={(event) => changeStyle({ textAlign: event.target.value })}><option value="left">Left</option><option value="center">Centre</option><option value="right">Right</option><option value="justify">Justify</option></select>}
       {(target.kind === 'text' || target.kind === 'button') && <select aria-label="Vertical text alignment" title="Vertical alignment within the text box" className="rounded border p-1.5" value={String(style.verticalAlign ?? target.verticalAlign)} onChange={(event) => changeStyle({ verticalAlign: event.target.value })}><option value="top">Top</option><option value="middle">Middle</option><option value="bottom">Bottom</option></select>}
       <select aria-label="Layer order" title="Arrange overlapping objects within their container. Detached objects share the section's layer order." className={buttonClass} value="" onChange={(event) => { if (event.target.value) onAction({ type: 'layer', direction: event.target.value as LayerDirection, sourcePath: layerPath }) }}>
         <option value="">Layers…</option><option value="front">Bring to front</option><option value="forward">Bring forward</option><option value="backward">Send backward</option><option value="back">Send to back</option><option value="reset">Reset layer order</option>
       </select>
       <button type="button" className={buttonClass} aria-expanded={panel === 'spacing'} onClick={() => setPanel(panel === 'spacing' ? undefined : 'spacing')}>Spacing</button>
+      {target.kind !== 'image' && <button type="button" className={buttonClass} aria-expanded={panel === 'border'} onClick={() => setPanel(panel === 'border' ? undefined : 'border')}>Borders</button>}
       {(layoutPath || sectionId) && <button type="button" className={buttonClass} onClick={() => setPanel(panel === 'layout' ? undefined : 'layout')}>Layout</button>}
       {target.kind !== 'text' && <button type="button" className={buttonClass} onClick={() => setPanel(panel === 'size' ? undefined : 'size')}>Size</button>}
       {target.kind !== 'image' && <label className="relative flex h-8 cursor-pointer items-center gap-1.5 rounded border border-neutral-200 px-2 hover:bg-sky-50" title={`Background fill: ${backgroundColor} — click to choose`}>
@@ -208,7 +210,13 @@ export function ObjectToolbar({ node, path, props, projectId, imageUrls, section
     {sectionId && <p className="mt-1 text-[10px] text-neutral-500">Drag to move · Arrows: 1px · Shift + arrows: 10px · Double-click text to edit</p>}
     {panel && panel !== 'link' && <div className="mt-2 max-h-[50vh] max-w-sm overflow-auto border-t pt-2">
       {panel === 'spacing' && <SpacingControls elements={[target.element]} appearances={[style]} onChange={changeStyle} />}
-      {(panel === 'color' || panel === 'background') && <ColorInput label={panel === 'color' ? 'Text colour' : 'Background colour'} value={String(style[panel === 'color' ? 'color' : 'backgroundColor'] ?? (panel === 'color' ? target.color : target.background))} onChange={(value) => changeStyle({ [panel === 'color' ? 'color' : 'backgroundColor']: value })} />}
+      {panel === 'border' && <div className="grid gap-3">
+        <ColorInput label="Border colour" value={String(style.borderColor ?? hex(getComputedStyle(target.element).borderColor))} onChange={(borderColor) => changeStyle({ borderColor })} />
+        <label>Border width (px)<NumberControl label="Object border width" min={0} max={20} value={Number(style.borderWidth ?? (parseFloat(getComputedStyle(target.element).borderWidth) || 0))} onChange={(borderWidth) => changeStyle({ borderWidth })} /></label>
+        <label className="grid gap-1">Border style<select aria-label="Object border style" className="rounded border p-1.5" value={String(style.borderStyle ?? getComputedStyle(target.element).borderStyle)} onChange={(event) => changeStyle({ borderStyle: event.target.value })}><option value="solid">Solid</option><option value="dashed">Dashed</option><option value="dotted">Dotted</option><option value="none">None</option></select></label>
+        <label>Corner radius (px)<NumberControl label="Object corner radius" min={0} max={200} value={Number(style.borderRadius ?? (parseFloat(getComputedStyle(target.element).borderRadius) || 0))} onChange={(borderRadius) => changeStyle({ borderRadius })} /></label>
+      </div>}
+      {(panel === 'color' || panel === 'background') && <ColorInput label={panel === 'color' ? 'Text colour' : 'Background colour'} value={panel === 'color' ? textColor : backgroundColor} onChange={(value) => changeStyle({ [panel === 'color' ? 'color' : 'backgroundColor']: value })} />}
       {panel === 'image' && textPointer && <ImageField projectId={projectId} imageUrls={imageUrls} value={String(textValue ?? '')} onChange={(value) => onAction({ type: 'content', pointer: textPointer, value })} />}
       {panel === 'content' && textPointer && <div className="grid gap-2"><label>Text<textarea className="mt-1 w-full rounded border p-2" value={String(textValue ?? '')} onChange={(event) => onAction({ type: 'content', pointer: textPointer, value: event.target.value })} /></label>{target.kind === 'button' && <label>Link<input className="mt-1 w-full rounded border p-2" value={String(getAtPointer(props, `${scope.prefix}${scope.path}/href`) ?? '')} onChange={(event) => onAction({ type: 'content', pointer: `${scope.prefix}${scope.path}/href`, value: event.target.value })} /></label>}</div>}
       {panel === 'size' && target.kind !== 'text' && <div className="grid gap-2">

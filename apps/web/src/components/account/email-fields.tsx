@@ -7,5 +7,5 @@ export function EmailFields({ value }: { value?: Pick<EmailCampaign | EmailSeque
   return <><label>Internal name<input name="name" defaultValue={value?.name} minLength={2} maxLength={100} required /></label><WebsiteFilter value={value?.websiteCondition} /><label>Email subject<input name="subject" defaultValue={value?.subject} required minLength={2} maxLength={200} /></label><EmailDesigner body={value?.body ?? 'Hi {{name}},\n\nWrite your message here.'} initialDesign={value?.bodyDesign} /><small>Personalise with {'{{name}}'}, {'{{website_name}}'}, {'{{trial_end}}'}, {'{{dashboard_url}}'} and {'{{billing_url}}'}. Links can be pasted in full. Your mailing address and unsubscribe link are included automatically.</small></>
 }
 export function AudienceField({ value = 'UNPAID' }: { value?: string }) {
-  return <label>Audience<select name="audience" defaultValue={value}><option value="UNPAID">All unpaid users</option><option value="TRIAL">Unpaid — trial still active</option><option value="EXPIRED">Unpaid — trial ended</option><option value="PAID">Paid users</option></select></label>
+  return <label>Audience<select name="audience" defaultValue={value}><option value="UNPAID">All unpaid users</option><option value="EXPIRED">Unpaid — subscription required</option><option value="PAID">Paid users</option></select></label>
 }

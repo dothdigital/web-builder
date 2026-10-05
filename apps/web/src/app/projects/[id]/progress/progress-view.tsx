@@ -1,4 +1,5 @@
 'use client'
+import { ErrorNotice } from '@/components/error-notice'
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -87,8 +88,8 @@ export function ProgressView({ projectId, correlationId }: { projectId: string; 
   const connected = lastUpdate > 0 && !streamError && (!now || now - lastUpdate < 10000)
 
   return (
-    <main className="mx-auto max-w-7xl px-6 py-10 lg:py-16">
-      <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)] lg:gap-14">
+    <div className="mx-auto max-w-7xl">
+      <div className="grid items-start gap-10 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)] xl:gap-14">
         <section aria-labelledby="build-heading">
           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-neutral-500">Website generation</p>
           <h1 id="build-heading" className="text-3xl font-semibold tracking-tight sm:text-4xl">Building your website</h1>
@@ -120,7 +121,7 @@ export function ProgressView({ projectId, correlationId }: { projectId: string; 
             <div aria-live="polite" aria-atomic="true">
               <p className="text-xs font-medium uppercase tracking-wider text-neutral-500">{failed ? 'Needs attention' : current ? 'Working on now' : finished ? 'Complete' : 'Up next'}</p>
               <h3 className="mt-3 text-xl font-semibold">{failed?.label ?? current?.label ?? (finished ? 'Website ready' : 'Starting your build')}</h3>
-              <p className="mt-2 text-sm leading-6 text-neutral-600">{failed?.errorMessage ?? current?.activity ?? (finished ? 'Taking you to the editor.' : 'The latest worker activity will appear here automatically.')}</p>
+              <div className="mt-2 text-sm leading-6 text-neutral-600">{failed ? <ErrorNotice code="WT-CONTENT-001" message={failed.errorMessage || 'Website generation failed. Please retry.'} /> : current?.activity ?? (finished ? 'Taking you to the editor.' : 'The latest worker activity will appear here automatically.')}</div>
             </div>
             {current && !failed && <div className="mt-5 flex justify-between rounded-lg bg-neutral-50 px-4 py-3 text-sm"><span className="text-neutral-500">Time on this step</span><span className="font-medium tabular-nums">{elapsed(current.startedAt, now)}</span></div>}
             <h3 className="mt-8 text-xs font-semibold uppercase tracking-wider text-neutral-500">Recent activity</h3>
@@ -129,11 +130,11 @@ export function ProgressView({ projectId, correlationId }: { projectId: string; 
               {activity.length === 0 && <li className="text-sm text-neutral-500">Waiting for the first update…</li>}
             </ol>
             <p className="mt-6 border-t border-neutral-100 pt-4 text-xs leading-5 text-neutral-400">{lastUpdate ? `Last update ${Math.max(0, Math.floor((now - lastUpdate) / 1000))}s ago` : 'Updates arrive automatically.'} Overall progress advances when a step finishes.</p>
-            {streamError && <p role="status" className="mt-4 rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-800">{streamError}</p>}
+            {streamError && <ErrorNotice code="WT-REQUEST-001" message={streamError} className="mt-4 rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-800" />}
             {failed && <a href="/dashboard" className="mt-5 inline-block rounded-lg bg-neutral-900 px-4 py-2 text-sm text-white">Back to dashboard</a>}
           </div>
         </aside>
       </div>
-    </main>
+    </div>
   )
 }

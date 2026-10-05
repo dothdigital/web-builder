@@ -1,4 +1,5 @@
 'use client'
+import { ErrorNotice } from '@/components/error-notice'
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -287,10 +288,10 @@ export function OnboardingWizard() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-12">
-      <ol className="flex flex-wrap gap-2 text-xs uppercase tracking-widest text-neutral-500">
+    <div className="mx-auto w-full min-w-0 max-w-5xl">
+      <ol aria-label="Website setup steps" className="flex flex-nowrap gap-2 overflow-x-auto pb-2 text-sm text-neutral-500">
         {steps.map((entry, index) => (
-          <li key={entry.key} className={index === stepIndex ? 'font-semibold text-neutral-900' : ''}>
+          <li key={entry.key} aria-current={index === stepIndex ? 'step' : undefined} className={`shrink-0 whitespace-nowrap ${index === stepIndex ? 'font-semibold text-neutral-900' : ''}`}>
             {index + 1}. {entry.title}
             {index < steps.length - 1 ? ' ·' : ''}
           </li>
@@ -300,7 +301,7 @@ export function OnboardingWizard() {
       <h1 className="mt-6 text-3xl font-semibold tracking-tight">{step.title}</h1>
       <p className="mt-2 text-sm text-neutral-600">{step.help}</p>
 
-      {error && <p className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+      {error && <ErrorNotice code="WT-UPLOAD-001" message={error} className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-700" />}
 
       {step.key === 'brief' && (
         <div className="mt-8 grid gap-4 rounded-lg border border-neutral-200 bg-white p-6">
@@ -414,7 +415,7 @@ export function OnboardingWizard() {
 
       {step.key === 'logo' && (
         <div className="mt-8 grid gap-6 rounded-lg border border-neutral-200 bg-white p-6">
-          <Field label="Do you have a logo?" hint="PNG or SVG. We read its dominant colours and propose a palette.">
+          <Field label="Do you have a logo?" hint="PNG or SVG · up to 5 MB. We read its dominant colours and propose a palette.">
             <button type="button" className="wt-button w-fit disabled:opacity-50" disabled={busy} onClick={() => logoInput.current?.click()}>
               {busy ? 'Uploading logo…' : logoPreview ? 'Replace logo' : 'Upload logo'}
             </button>

@@ -1,3 +1,4 @@
+import { canGenerate } from './billing-access'
 import { randomUUID } from 'node:crypto'
 import {
   AssetKind,
@@ -303,6 +304,10 @@ function toJson(value: unknown): Prisma.InputJsonValue {
 export async function runGeneration(request: GenerationRequest): Promise<{ correlationId: string; websiteVersionId: string }> {
   const correlationId = request.correlationId ?? randomUUID()
   const { projectId } = request
+  if (!await canGenerate(projectId, request.contentJobId)) {
+    await prisma.project.updateMany({ where: { id: projectId, status: 'GENERATING' }, data: { status: 'DRAFT' } })
+    throw new Error('Payment is required before website generation.')
+  }
   const provider: AiProvider = createAiProvider({ seed: projectId })
 
   await prisma.project.update({ where: { id: projectId }, data: { status: ProjectStatus.GENERATING } })

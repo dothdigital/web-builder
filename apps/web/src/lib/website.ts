@@ -20,12 +20,14 @@ export async function saveDraftModel(
   projectId: string,
   model: WebsiteModel,
   note: string,
+  staffActorId?: string,
 ): Promise<void> {
   const last = await prisma.websiteVersion.findFirst({ where: { projectId }, orderBy: { version: 'desc' } })
 
   /// Every edit produces a new immutable version, so undo and rollback are a
   /// query rather than a diff.
-  await prisma.websiteVersion.create({
+  await prisma.$transaction(async tx => {
+  const saved = await tx.websiteVersion.create({
     data: {
       projectId,
       version: (last?.version ?? 0) + 1,
@@ -34,5 +36,7 @@ export async function saveDraftModel(
       schemaVersion: model.schemaVersion,
       note,
     },
+  })
+  if (staffActorId) await tx.auditEvent.create({ data: { actorId: staffActorId, projectId, action: 'staff.website.save', targetType: 'WebsiteVersion', targetId: saved.id } })
   })
 }

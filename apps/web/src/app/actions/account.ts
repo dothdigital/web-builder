@@ -6,6 +6,7 @@ import { prisma, WorkspaceRole } from '@awb/database'
 import { signIn, signOut } from '@/auth'
 import { appUrl, hashPassword, newToken, rateLimit, tokenHash } from '@/lib/account-security'
 import { sendAccountEmail } from '@/lib/account-email'
+import { accountEmailTemplate } from '@/lib/account-email-template'
 import { requireUser } from '@/lib/tenancy'
 import { revalidatePath } from 'next/cache'
 import { verifyRecaptcha } from '@/lib/recaptcha'
@@ -19,11 +20,12 @@ async function limit(email: string) {
   await rateLimit(`account-ip:${ip}`, 30)
   await rateLimit(`account-email:${email}`, 5)
 }
-async function mailToken(email: string, purpose: 'verify' | 'reset') {
+async function mailToken(email: string, purpose: 'verify' | 'reset', name?: string | null) {
   const token = newToken()
   const hashed = tokenHash(token)
   await prisma.verificationToken.create({ data: { identifier: `${purpose}:${email}`, token: hashed, expires: new Date(Date.now() + 60 * 60000) } })
-  try { await sendAccountEmail(email, purpose === 'verify' ? 'Verify your Webtummy account' : 'Set your Webtummy password', `${purpose === 'verify' ? 'Confirm your email address' : 'Set a new password'} using this link. It expires in one hour:\n${appUrl()}/${purpose === 'verify' ? 'verify-email' : 'reset-password'}?token=${token}\n\nIf you did not request this, you can ignore this email.`) }
+  const template = accountEmailTemplate({ purpose, name, url: `${appUrl()}/${purpose === 'verify' ? 'verify-email' : 'reset-password'}?token=${token}` })
+  try { await sendAccountEmail(email, template.subject, template.text, template.html) }
   catch (error) { await prisma.verificationToken.deleteMany({ where: { token: hashed } }); throw error }
 }
 function message(error: unknown): AccountResult {
@@ -46,8 +48,8 @@ export async function registerAccount(_previous: AccountResult, form: FormData):
     if (!existing) {
       const passwordHash = await hashPassword(password)
       await prisma.user.create({ data: { email, name, passwordHash, emailContact: { create: { optedIn: form.get('marketingConsent') === 'on', consentAt: form.get('marketingConsent') === 'on' ? new Date() : null } }, memberships: { create: { role: WorkspaceRole.OWNER, workspace: { create: { name: `${name}'s workspace`, slug: `workspace-${newToken().slice(0, 16)}` } } } } } })
-      await mailToken(email, 'verify')
-    } else if (!existing.emailVerified && !existing.suspendedAt) await mailToken(email, 'verify')
+      await mailToken(email, 'verify', name)
+    } else if (!existing.emailVerified && !existing.suspendedAt) await mailToken(email, 'verify', existing.name)
     return { ok: true, message: genericEmailMessage }
   } catch (error) { return message(error) }
 }
@@ -59,7 +61,7 @@ export async function requestPasswordReset(_previous: AccountResult, form: FormD
   try {
     const email = emailSchema.parse(form.get('email')); await limit(email)
     const user = await prisma.user.findUnique({ where: { email } })
-    if (user && !user.suspendedAt) await mailToken(email, 'reset')
+    if (user && !user.suspendedAt) await mailToken(email, 'reset', user.name)
     return { ok: true, message: genericEmailMessage }
   } catch (error) { return message(error) }
 }
@@ -67,6 +69,7 @@ export async function finishAccountToken(_previous: AccountResult, form: FormDat
   try {
     const purpose = z.enum(['verify', 'reset']).parse(form.get('purpose'))
     const token = z.string().regex(/^[a-f0-9]{64}$/).parse(form.get('token'))
+    await rateLimit(`account-token-ip:${(await headers()).get('x-forwarded-for')?.split(',')[0] ?? 'unknown'}`, 20)
     const passwordHash = purpose === 'reset' ? await hashPassword(passwordSchema.parse(form.get('password'))) : undefined
     await prisma.$transaction(async tx => {
       const record = await tx.verificationToken.findUnique({ where: { token: tokenHash(token) } })
@@ -77,7 +80,15 @@ export async function finishAccountToken(_previous: AccountResult, form: FormDat
       if (passwordHash) await tx.verificationToken.deleteMany({ where: { identifier: record.identifier } })
     })
     return { ok: true, message: purpose === 'verify' ? 'Email verified. You can now sign in and choose a plan.' : 'Password updated. Sign in with your new password.' }
-  } catch { return { message: 'This link has expired or was already used. Request a new link, and use a password with 12–128 characters.' } }
+  } catch { return { message: form.get('purpose') === 'verify' ? 'This verification link has expired or has already been used. Sign in if you already verified your email, or request a new verification email below.' : 'This link has expired or was already used. Request a new link, and use a password with 12–128 characters.' } }
+}
+export async function requestEmailVerification(_previous: AccountResult, form: FormData): Promise<AccountResult> {
+  try {
+    const email = emailSchema.parse(form.get('email')); await limit(email)
+    const user = await prisma.user.findUnique({ where: { email } })
+    if (user && !user.emailVerified && !user.suspendedAt) await mailToken(email, 'verify', user.name)
+    return { ok: true, message: genericEmailMessage }
+  } catch (error) { return message(error) }
 }
 export async function updateProfile(_previous: AccountResult, form: FormData): Promise<AccountResult> {
   try { const user = await requireUser(); const name = z.string().trim().min(2).max(100).parse(form.get('name')); await prisma.user.update({ where: { id: user.id }, data: { name } }); revalidatePath('/account'); return { ok: true, message: 'Profile updated.' } }

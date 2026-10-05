@@ -1,4 +1,5 @@
 'use client'
+import { ErrorNotice } from '@/components/error-notice'
 
 import { MarqueeSelection } from './marquee-selection'
 import { MultiObjectToolbar } from './multi-object-toolbar'
@@ -190,7 +191,7 @@ function SectionFrame({
           <Component props={parsed.data} context={context} />
         ) : (
           <div className="border border-dashed border-amber-300 p-6 text-sm text-amber-800">
-            This section has invalid content and is not rendered: {parsed.error.issues.map((issue) => `${issue.path.join('.')}: ${issue.message}`).join('; ')}
+            <ErrorNotice code="WT-EDITOR-001" message={"This section has invalid content and could not be displayed: " + parsed.error.issues.map((issue) => `${issue.path.join('.')}: ${issue.message}`).join('; ')} />
           </div>
         )}
       </div>
@@ -294,7 +295,7 @@ function GlobalFrame({
       <div ref={setNode}>
         <Component props={parsed.data} context={context} />
       </div>
-      {selected && selectedElement && <ObjectToolbar key={selectedElement} node={node} path={selectedElement} props={props} {...objectControls} onSelect={onSelect} />}
+      {selected && <ObjectToolbar key={selectedElement ?? 'global-section'} node={node} path={selectedElement ?? '/layout/0'} props={props} {...objectControls} onSelect={onSelect} />}
     </div>
   )
 }
@@ -394,7 +395,7 @@ export function EditorCanvas({
       >
         {header && headerProps?.success && (
           <GlobalFrame
-            objectControls={{ projectId, imageUrls, sections: [], onAction: (action) => { if (selection?.element) onObjectAction({kind: "header"}, selection.element, action) } }}
+            objectControls={{ projectId, imageUrls, sections: [], onAction: (action) => onObjectAction({kind: "header"}, selection?.element ?? '/layout/0', action) }}
             slot="header"
             componentId={model.globalComponents.header.componentId}
             props={model.globalComponents.header.props}
@@ -442,7 +443,7 @@ export function EditorCanvas({
         ))}
         {footer && footerProps?.success && (
           <GlobalFrame
-            objectControls={{ projectId, imageUrls, sections: [], onAction: (action) => { if (selection?.element) onObjectAction({kind: "footer"}, selection.element, action) } }}
+            objectControls={{ projectId, imageUrls, sections: [], onAction: (action) => onObjectAction({kind: "footer"}, selection?.element ?? '/layout/0', action) }}
             slot="footer"
             componentId={model.globalComponents.footer.componentId}
             props={model.globalComponents.footer.props}

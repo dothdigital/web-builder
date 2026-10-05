@@ -1,7 +1,10 @@
 'use client'
+import { ErrorNotice } from '@/components/error-notice'
 
 import { SpacingProperties } from './spacing-properties'
 import { ContactFieldsEditor } from './contact-fields-editor'
+import { updateContactFormFields } from '@/lib/contact-form-fields'
+import { renderedBackgroundColor } from '@/lib/rendered-background'
 import { ListTextEditor } from './list-text-editor'
 import { objectScope } from '@/lib/object-editing'
 import { ColorInput } from './color-input'
@@ -71,6 +74,18 @@ function InspectorFields({
   const isHero = getComponent(currentComponentId)?.family === 'HERO'
   const isHeader = getComponent(currentComponentId)?.family === 'HEADER'
   const displayedProps = isHero ? normalizeHeroSettings(effectiveProps) : isHeader && effectiveProps.customBackground && effectiveProps.sectionBackgroundMode === 'original' ? { ...effectiveProps, sectionBackgroundMode: 'colour', sectionBackgroundColor: effectiveProps.backgroundColor } : effectiveProps
+  const [sectionColour, setSectionColour] = useState<string>()
+  useEffect(() => {
+    const frame = document.querySelector<HTMLElement>('[data-awb-selected-frame="true"]')
+    const root = frame && (Array.from(frame.querySelectorAll<HTMLElement>('[data-awb-element]')).find(element => element.dataset.awbElement === '/layout/0') ?? frame.querySelector<HTMLElement>('header,section,footer'))
+    if (!root) return
+    const measure = () => setSectionColour(renderedBackgroundColor(root))
+    const raf = requestAnimationFrame(measure)
+    const observer = new MutationObserver(measure)
+    let current: HTMLElement | null = root
+    while (current) { observer.observe(current, { attributes: true, attributeFilter: ['style', 'class'] }); current = current.parentElement }
+    return () => { cancelAnimationFrame(raf); observer.disconnect() }
+  }, [props, currentComponentId])
   let selectedElement = inputSelectedElement
   if (currentComponentId === 'ManualSection' && selectedElement) {
     const root = selectedElement.match(/^\/items\/\d+/)?.[0]
@@ -78,6 +93,9 @@ function InspectorFields({
     if (item?.kind === 'form') selectedElement = root
   }
   const selectedValue = selectedElement ? getAtPointer(displayedProps, selectedElement) : undefined
+  const contactFieldIndex = currentComponentId === 'ContactSplit' ? selectedElement?.match(/^\/formFields\/(\d+)\/input$/)?.[1] : undefined
+  const contactFields = (displayedProps.formFields ?? []) as Array<{ type: string; rows?: number }>
+  const selectedContactField = contactFieldIndex === undefined ? undefined : contactFields[Number(contactFieldIndex)]
   const selectedFields: EditorField[] = selectedElement ? (selectedValue && typeof selectedValue === 'object' && !Array.isArray(selectedValue)
     ? Object.keys(selectedValue).filter((key) => !['id', 'source', 'kind'].includes(key)).map((key) => ({ path: `${selectedElement}/${key}`, label: key, type: key.toLowerCase().includes('imageurl') ? 'image' : ['body', 'description', 'quote', 'answer'].includes(key) ? 'textarea' : Array.isArray((selectedValue as Record<string, unknown>)[key]) ? 'list' : 'text' }))
     : selectedValue !== undefined || selectedElement.endsWith('/number') ? [{ path: selectedElement, label: selectedElement.split('/').pop() || 'Content', type: (selectedElement.toLowerCase().endsWith('imageurl') || /^\/images\/\d+\/url$/.test(selectedElement)) ? 'image' : Array.isArray(selectedValue) ? 'list' : 'textarea' }] : []) : fields
@@ -113,7 +131,7 @@ function InspectorFields({
       {!renderedPathPrefix && <div className="grid gap-2 border-b border-neutral-200 bg-sky-50/50 p-4">
         <h3 className="text-sm font-semibold">{isHeader ? 'Header' : 'Section'} background</h3>
         <p className="text-xs text-neutral-500">{isHero && displayedProps.imageLayout === 'background' ? 'Changes the colour behind and over the hero image.' : `Changes the whole ${isHeader ? 'header' : 'section'}, even while a layout box or text is selected.`}</p>
-        <ColorInput label={isHero && displayedProps.imageLayout === 'background' ? 'Hero background / overlay colour' : `${isHeader ? 'Header' : 'Section'} background colour`} value={String(isHero && displayedProps.imageLayout === 'background' ? displayedProps.overlayColor ?? '#102a43' : displayedProps.sectionBackgroundColor ?? '#ffffff')} onChange={(color) => {
+        <ColorInput label={isHero && displayedProps.imageLayout === 'background' ? 'Hero background / overlay colour' : `${isHeader ? 'Header' : 'Section'} background colour`} value={String(isHero && displayedProps.imageLayout === 'background' ? displayedProps.overlayColor ?? sectionColour ?? '#102a43' : displayedProps.sectionBackgroundMode !== 'original' ? displayedProps.sectionBackgroundColor ?? sectionColour ?? '#ffffff' : sectionColour ?? '#ffffff')} onChange={(color) => {
           if (isHero && displayedProps.imageLayout === 'background') onChange('/overlayColor', color)
           else onChange('', { ...displayedProps, sectionBackgroundMode: 'colour', sectionBackgroundColor: color, ...(isHeader ? { customBackground: false } : {}) })
         }} />
@@ -140,7 +158,8 @@ function InspectorFields({
         </div>
       )}
 
-      {currentComponentId === 'ContactSplit' && <div className="m-4"><ContactFieldsEditor value={displayedProps.formFields} onChange={value => onChange('/formFields', value)} /><label className="mt-4 grid gap-1 text-xs">Custom submission URL (HTTPS)<input type="url" className="rounded border p-2" placeholder="https://your-provider.com/form-endpoint" value={String(displayedProps.submissionUrl ?? '')} onChange={event => onChange('/submissionUrl', event.target.value)} /></label><p className="mt-2 text-xs text-neutral-500">Leave blank to save leads in Webtummy. A custom URL sends standard form POST data directly to that provider instead. It must accept browser form submissions and handle validation and spam protection. Never enter a secret API key here.</p></div>}
+      {currentComponentId === 'ContactSplit' && <div className="m-4"><ContactFieldsEditor value={displayedProps.formFields} onChange={value => onChange('', updateContactFormFields(displayedProps, value))} /><label className="mt-4 grid gap-1 text-xs">Custom submission URL (HTTPS)<input type="url" className="rounded border p-2" placeholder="https://your-provider.com/form-endpoint" value={String(displayedProps.submissionUrl ?? '')} onChange={event => onChange('/submissionUrl', event.target.value)} /></label><p className="mt-2 text-xs text-neutral-500">Leave blank to save leads in Webtummy. A custom URL sends standard form POST data directly to that provider instead. It must accept browser form submissions and handle validation and spam protection. Never enter a secret API key here.</p></div>}
+      {selectedContactField?.type === 'textarea' && <label className="m-4 grid gap-2 text-xs">Textarea lines<input aria-label="Textarea lines" type="number" min={1} max={30} className="rounded border p-2" value={selectedContactField.rows ?? 5} onChange={event => { const rows = Number(event.target.value); if (Number.isInteger(rows) && rows >= 1 && rows <= 30) onChange('', updateContactFormFields(displayedProps, contactFields.map((field, index) => index === Number(contactFieldIndex) ? { ...field, rows } : field))) }} /><span className="text-neutral-500">Sets the visible rows and resets a manually resized height.</span></label>}
       {selectedElement && <SpacingProperties paths={[selectedElement]} props={displayedProps} prefix={renderedPathPrefix} onChange={(patch) => {
         const colors = (displayedProps.elementColors ?? {}) as Record<string, Record<string, unknown>>
         onChange('/elementColors', { ...colors, [selectedElement]: { ...colors[selectedElement], ...patch } })
@@ -200,7 +219,7 @@ function InspectorFields({
         >
           {askingAi ? 'Queuing…' : 'Generate edit in background'}
         </button>
-        {aiError && <p className="mt-2 text-xs text-red-700">{aiError}</p>}
+        {aiError && <ErrorNotice code="WT-UPLOAD-001" message={aiError} className="mt-2 text-xs text-red-700" />}
       </div>
       )}
     </div>
@@ -429,7 +448,7 @@ export function ImageField({
       {value && <button type="button" className="text-left text-xs text-neutral-600 underline" onClick={() => { onChange(''); setNotice('Image removed from this section. It remains in the library.') }}>Clear image selection</button>}
       {uploading && <p role="status" className="text-xs text-neutral-500">Uploading and saving image…</p>}
       {notice && <p role="status" className="text-xs text-neutral-600">{notice}</p>}
-      {error && <p role="alert" className="text-xs text-red-700">{error}</p>}
+      {error && <ErrorNotice code="WT-UPLOAD-001" message={error} className="text-xs text-red-700" />}
     </div>
   )
 }

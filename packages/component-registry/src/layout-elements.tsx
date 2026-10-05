@@ -9,7 +9,7 @@ export function annotateLayout(tree: ReactNode, props: Record<string, unknown>, 
     if (!isValidElement(child)) return child
     const element = child as ReactElement<Record<string, unknown>>
     const path = `${prefix}/${index}`
-    const box = element.type === Container || element.type === Section || typeof element.type === 'string' && ['div', 'article', 'section', 'form', 'nav', 'aside'].includes(element.type)
+    const box = element.type === Container || element.type === Section || typeof element.type === 'string' && ['div', 'article', 'section', 'form', 'nav', 'aside', 'header', 'footer'].includes(element.type)
     const appearance = elementColor(props, path)
     const children = Children.toArray(element.props.children as ReactNode)
     const onlyChild = children.length === 1 && isValidElement(children[0]) ? children[0] as ReactElement<Record<string, unknown>> : undefined

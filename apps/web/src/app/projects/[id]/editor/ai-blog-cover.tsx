@@ -1,4 +1,5 @@
 'use client'
+import { ErrorNotice } from '@/components/error-notice'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBlogCover, readContentResult } from '@/app/actions/content-jobs'
@@ -58,6 +59,6 @@ export function AiBlogCover({ projectId, topic, keyword, details, onUse }: {
     {jobId && <p role="status">You can keep working. If you close this form, choose the completed cover from your image library when the notification says it is ready.</p>}
     {result && <><LibraryThumbnail src={`/api/projects/${projectId}/editor-image?thumbnail=1&url=${encodeURIComponent(result.url)}`} name={result.alt} /><button type="button" className="rounded border border-violet-400 p-2 text-violet-900" onClick={() => { onUse(result.url, result.alt); setUsed(true) }}>Use this cover</button></>}
     {used && <p role="status">Cover selected for this blog.</p>}
-    {error && <p role="alert" className="text-red-700">{error}</p>}
+    {error && <ErrorNotice code="WT-CONTENT-001" message={error} className="text-red-700" />}
   </div>
 }

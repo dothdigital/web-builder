@@ -23,7 +23,7 @@ export function contactState(contact: MarketingContact, now = new Date()) {
   const workspaces = contact.user.memberships.map(m => m.workspace).filter(w => w.status === 'ACTIVE')
   const paid = workspaces.some(w => w.billingPlanId && w.billingStatus === 'active' && w.billingPeriodEnd && w.billingPeriodEnd > now)
   const complimentary = workspaces.some(w => w.billingExempt)
-  const trial = workspaces.some(w => w.trialEndsAt > now)
+  const trial = false
   const website = workspaces.flatMap(w => w.projects)[0]
   const trialEnd = workspaces.map(w => w.trialEndsAt).sort((a, b) => b.getTime() - a.getTime())[0]
   const verified = !!contact.user.emailVerified || contact.user.accounts.some(a => ['google', 'microsoft-entra-id'].includes(a.provider))

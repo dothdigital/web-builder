@@ -10,7 +10,8 @@ import { distributionDetails } from '@/lib/hosting/aws'
 import { withHostingLock, prepareSite, syncHosting, publishSite } from '@/lib/hosting/service'
 
 async function run(projectId: string, task: () => Promise<unknown>) {
-  const { project } = await requireProject(projectId)
+  const { user, project } = await requireProject(projectId)
+  if (user.isPlatformSupport && !user.isPlatformAdmin) return { ok: false, message: 'Support access allows website editing. Publishing and domain changes require the customer or an administrator.' }
   if (!paidAccess(project.workspace)) redirect('/billing?reason=live-domain')
   await requireProject(projectId, WorkspaceRole.EDITOR)
   try { await withHostingLock(projectId, task); revalidatePath(`/projects/${projectId}/publishing`); revalidatePath('/dashboard'); return { ok: true, message: 'Updated. DNS and AWS deployment changes can take several minutes.' } }

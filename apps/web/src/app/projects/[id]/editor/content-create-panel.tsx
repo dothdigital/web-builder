@@ -1,4 +1,5 @@
 'use client'
+import { ErrorNotice } from '@/components/error-notice'
 import { useEffect, useRef, useState } from 'react'
 import type { WebsiteModel } from '@awb/website-model'
 import { AiBlogCover } from './ai-blog-cover'
@@ -48,7 +49,7 @@ export function ContentCreatePanel({ projectId, model, onSelect, imageUrls, open
         }}>{busy ? 'Queuing…' : 'Generate in background'}</button>
       </fieldset>
       {queued && <p role="status">Queued. You can keep working or close this page. Review the result in the notification at the top when it is ready.</p>}
-      {error && <p role="alert" className="text-red-700">{error}</p>}
+      {error && <ErrorNotice code="WT-CONTENT-001" message={error} className="text-red-700" />}
     </>}
   </fieldset>
 }

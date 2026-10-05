@@ -1,8 +1,11 @@
-import Link from 'next/link'
-import { AuthFrame } from '@/components/account/auth-frame'
-import { ActionForm } from '@/components/account/action-form'
-import { finishAccountToken } from '@/app/actions/account'
+import type { Metadata } from 'next'
+import { AccountConfirmation } from '@/components/account/account-confirmation'
+import { EmailVerification } from '@/components/account/email-verification'
+
+export const dynamic = 'force-dynamic'
+export const metadata: Metadata = { title: 'Verify Your Email | Webtummy', robots: { index: false, follow: false }, referrer: 'no-referrer' }
+
 export default async function VerifyEmailPage({ searchParams }: { searchParams: Promise<{ token?: string }> }) {
   const { token } = await searchParams
-  return <AuthFrame title="Verify your email" description="Confirm your address to activate your account."><ActionForm action={finishAccountToken} label="Verify email"><input type="hidden" name="token" value={token ?? ''} /><input type="hidden" name="purpose" value="verify" /></ActionForm><p className="wt-auth-links"><Link href="/signin">Continue to sign in</Link></p></AuthFrame>
+  return <AccountConfirmation><EmailVerification key={token} token={token} /></AccountConfirmation>
 }

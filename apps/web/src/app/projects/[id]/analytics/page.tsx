@@ -1,6 +1,7 @@
+import { ErrorNotice } from '@/components/error-notice'
 import Link from 'next/link'
 import { prisma, WorkspaceRole } from '@awb/database'
-import { requireProject } from '@/lib/tenancy'
+import { requireProjectOnPage } from '@/lib/tenancy'
 import { loadAnalytics } from '@/app/actions/analytics'
 import { AnalyticsConnection, TrackingHost, RefreshReport } from './connection'
 import type { AnalyticsReport } from '@/lib/analytics-reports'
@@ -12,7 +13,7 @@ function Breakdown({ title, rows, metric = 'Page views' }: { title: string; rows
 }
 export default async function AnalyticsPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ source?: string; days?: string }> }) {
   const { id } = await params
-  const { project, role } = await requireProject(id)
+  const { project, role } = await requireProjectOnPage(id)
   const search = await searchParams
   const source = search.source === 'google' ? 'google' : 'website'
   const days = [7, 30, 90].includes(Number(search.days)) ? Number(search.days) : 30
@@ -32,7 +33,7 @@ export default async function AnalyticsPage({ params, searchParams }: { params: 
     {source === 'google' && !integration?.analyticsPropertyId && <p className="rounded-lg bg-sky-50 p-4 text-sm">Connect a GA4 property to show real Google Analytics data. A measurement ID alone cannot read reports.</p>}
     {source === 'website' && role !== WorkspaceRole.VIEWER && <TrackingHost projectId={id} hostname={integration?.analyticsTrackingHost} />}
     {source === 'website' && <p className="rounded-lg bg-sky-50 p-4 text-sm">Direct counts come from the tracking code in new website exports. Deploy a new export from a public builder URL and register the website’s domain with this project. Editor and preview visits are excluded. Visitors are browser identifiers, not identified people. Location is available on Vercel hosting; other hosts show Unknown. Dates use UTC.</p>}
-    {error && <p role="alert" className="rounded-lg bg-red-50 p-4 text-sm text-red-800">{error}</p>}
+    {error && <ErrorNotice code="WT-ANALYTICS-001" message={error} className="rounded-lg bg-red-50 p-4 text-sm text-red-800" />}
     {report && <>
       <div className="grid gap-4 sm:grid-cols-2">{[['Page views (hits)', report.views], ['Visitors', report.visitors]].map(([label, value]) => <section key={label} className="rounded-xl border bg-white p-5"><p className="text-sm text-neutral-500">{label}</p><p className="mt-2 text-3xl font-semibold tabular-nums">{Number(value).toLocaleString()}</p></section>)}</div>
       <section className="rounded-xl border bg-white p-5"><h2 className="font-semibold">Daily page views</h2>{report.views === 0 ? <p className="py-8 text-sm text-neutral-500">No visits recorded in this period yet.</p> : <><svg role="img" aria-label="Daily page views chart; hover a bar for its date and count" viewBox="0 0 900 230" className="mt-4 w-full">{report.daily.map((entry, index) => { const width = 900 / Math.max(1, report!.daily.length); const height = entry.value / maximum * 210; return <rect key={entry.label} x={index * width + 1} y={220 - height} width={Math.max(1, width - 2)} height={Math.max(1, height)} fill="#0284c7" rx="2"><title>{dateLabel(entry.label)}: {entry.value} page views</title></rect> })}</svg><div className="flex justify-between text-xs text-neutral-500"><span>{dateLabel(report.daily[0]?.label ?? '')}</span><span>{dateLabel(report.daily.at(-1)?.label ?? '')}</span></div><details className="mt-3 text-sm"><summary>Daily values</summary><table className="mt-2 w-full"><tbody>{report.daily.map((row) => <tr key={row.label}><td>{dateLabel(row.label)}</td><td className="text-right">{row.value}</td></tr>)}</tbody></table></details></>}</section>

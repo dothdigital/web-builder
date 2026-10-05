@@ -1,0 +1,9 @@
+ALTER TABLE "Workspace" DROP CONSTRAINT IF EXISTS "Workspace_trialWebsiteLimit_check";
+ALTER TABLE "Workspace" ADD CONSTRAINT "Workspace_trialWebsiteLimit_check" CHECK ("trialWebsiteLimit" >= 0);
+ALTER TABLE "Workspace" ALTER COLUMN "trialEndsAt" SET DEFAULT timezone('UTC', CURRENT_TIMESTAMP), ALTER COLUMN "trialWebsiteLimit" SET DEFAULT 0;
+UPDATE "Workspace" SET "trialEndsAt" = timezone('UTC', CURRENT_TIMESTAMP), "trialWebsiteLimit" = 0;
+ALTER TABLE "Workspace" ADD COLUMN "billingExemptionReason" TEXT, ADD COLUMN "billingPaidThrough" TIMESTAMP(3), ADD COLUMN "billingDelinquentSince" TIMESTAMP(3), ADD COLUMN "billingNextRetryAt" TIMESTAMP(3), ADD COLUMN "billingCancellationReason" TEXT, ADD COLUMN "billingSubscriptionEndedAt" TIMESTAMP(3), ADD COLUMN "billingSuspendedAt" TIMESTAMP(3), ADD COLUMN "billingRetentionEndsAt" TIMESTAMP(3), ADD COLUMN "billingDeletionEligibleAt" TIMESTAMP(3), ADD COLUMN "billingLegalHold" BOOLEAN NOT NULL DEFAULT false, ADD COLUMN "billingLastReconciledAt" TIMESTAMP(3);
+ALTER TABLE "HostingSite" ADD COLUMN "billingGateApplied" BOOLEAN NOT NULL DEFAULT false;
+CREATE TABLE "BillingNotice" ("id" TEXT NOT NULL PRIMARY KEY, "workspaceId" TEXT NOT NULL REFERENCES "Workspace"("id") ON DELETE CASCADE ON UPDATE CASCADE, "dedupeKey" TEXT NOT NULL, "kind" TEXT NOT NULL, "cycleKey" TEXT NOT NULL, "recipient" TEXT NOT NULL, "subject" TEXT NOT NULL, "body" TEXT NOT NULL, "status" TEXT NOT NULL DEFAULT 'PENDING', "attempts" INTEGER NOT NULL DEFAULT 0, "nextAttemptAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "sentAt" TIMESTAMP(3), "lastError" TEXT, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE UNIQUE INDEX "BillingNotice_dedupeKey_key" ON "BillingNotice"("dedupeKey");
+CREATE INDEX "BillingNotice_status_nextAttemptAt_idx" ON "BillingNotice"("status", "nextAttemptAt");

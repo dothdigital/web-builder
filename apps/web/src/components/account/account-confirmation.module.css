@@ -1,0 +1,18 @@
+.page { min-height: 100dvh; padding: 24px; align-items: center; justify-content: center; background: #F8F7FC; gap: 24px; }
+.brand { display: flex; align-items: center; gap: 10px; font-size: 24px; font-weight: 800; color: #14243A; letter-spacing: -.03em; }
+.brand span { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 10px; background: #6B4EE6; color: white; font-size: 22px; }
+.card { width: 100%; max-width: 480px; padding: 36px; background: #fff; border: 1px solid #E7E5EF; border-radius: 20px; box-shadow: 0 30px 60px -30px rgba(20,36,58,.25); text-align: center; }
+.card h1 { margin: 18px 0 12px; font-size: 30px; line-height: 1.2; font-weight: 800; letter-spacing: -.03em; }
+.card p { margin: 12px 0; font-size: 14px; line-height: 1.7; color: #55607A; }
+.card :global(.wt-form) { text-align: left; margin-top: 24px; }
+.card :global(.wt-form) label { font-size: 13px; color: #14243A; }
+.card :global(.wt-form) input { font-size: 16px; border-radius: 9px; padding: 12px; color: #14243A; }
+.card :global(.wt-button), .button { display: flex; width: 100%; justify-content: center; padding: 14px 20px; border-radius: 10px; background: #6B4EE6; color: #fff; font-weight: 700; font-size: 15px; margin-top: 20px; }
+.card :global(.wt-button) { margin-top: 0; justify-self: stretch; }
+.button:hover { background: #5638D6; }
+.card :global(.wt-message) { text-align: left; color: #14243A; }
+.icon { width: 64px; height: 64px; margin: 0 auto; display: grid; place-items: center; border-radius: 50%; background: #E0F5F2; color: #0E8F82; font-size: 30px; font-weight: 800; }
+.loadingIcon { background: #F1EDFF; color: #6B4EE6; }
+.secondary { display: inline-block; margin-top: 18px; color: #6B4EE6; font-size: 13px; font-weight: 600; }
+.footer { margin: 0; color: #55607A; font-size: 12px; }
+@media (max-width: 480px) { .page { padding: 20px; gap: 20px; } .card { padding: 28px 22px; } .card h1 { font-size: 27px; } }

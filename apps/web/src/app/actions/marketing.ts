@@ -88,7 +88,7 @@ export async function cancelEmailCampaign(_state: { message: string }, form: For
 export async function saveMarketingPreference(_state: { message: string }, form: FormData) {
   const user = await requireUser(); const optedIn = form.get('optedIn') === 'on'
   await prisma.emailContact.upsert({ where: { userId: user.id }, create: { userId: user.id, optedIn, consentAt: optedIn ? new Date() : null, firstLoginAt: new Date() }, update: { optedIn, ...(optedIn ? { consentAt: new Date() } : {}) } })
-  revalidatePath('/account'); return { ok: true, message: optedIn ? 'You will receive tips, trial reminders and offers.' : 'You are unsubscribed from tips, trial reminders and offers. Account and security emails continue.' }
+  revalidatePath('/account'); return { ok: true, message: optedIn ? 'You will receive tips and offers.' : 'You are unsubscribed from tips and offers. Account and security emails continue.' }
 }
 export async function unsubscribeMarketing(_state: { message: string }, form: FormData) {
   const token = z.string().uuid().safeParse(form.get('token'))

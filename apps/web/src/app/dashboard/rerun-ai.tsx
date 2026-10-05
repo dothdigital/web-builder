@@ -1,4 +1,5 @@
 'use client'
+import { ErrorNotice } from '@/components/error-notice'
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -33,7 +34,7 @@ export function RerunAi({ projectId, generating }: { projectId: string; generati
       >
         {pending ? 'Starting AI…' : generating ? 'AI running…' : 'Rerun with AI'}
       </button>
-      {error && <p role="alert" className="max-w-xs text-xs text-red-700">{error}</p>}
+      {error && <ErrorNotice code="WT-CONTENT-001" message={error} className="max-w-xs text-xs text-red-700" />}
     </div>
   )
 }

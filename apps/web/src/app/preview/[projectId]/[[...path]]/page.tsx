@@ -7,7 +7,8 @@ import { buildFaqJsonLd, buildPageJsonLd, buildBlogJsonLd } from '@awb/seo'
 import { SiteRenderer } from '@/components/site-renderer'
 import { resolvePreviewAssets } from '@/lib/preview-assets'
 import { loadDraftModel } from '@/lib/website'
-import { requireProject } from '@/lib/tenancy'
+import { requireProjectOnPage } from '@/lib/tenancy'
+import { generationProgressHref } from '@/lib/generation-navigation'
 
 export default async function PreviewPage({
   params,
@@ -18,7 +19,8 @@ export default async function PreviewPage({
 
   /// Previews are drafts, so they stay behind the same tenant check as the
   /// editor and are never publicly indexable.
-  await requireProject(projectId)
+  const { project } = await requireProjectOnPage(projectId)
+  if (project.status === 'GENERATING') redirect(await generationProgressHref(projectId))
 
   const draft = await loadDraftModel(projectId)
 

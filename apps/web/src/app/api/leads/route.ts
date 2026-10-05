@@ -1,4 +1,7 @@
+import { hostingAccess } from '@/lib/billing/access'
 import { decryptRecaptchaSecret, verifyRecaptcha } from '@/lib/recaptcha'
+import { rateLimit } from '@/lib/account-security'
+import { readBoundedBody, RequestBodyTooLarge } from '@/lib/request-body'
 import { LeadStatus, prisma } from '@awb/database'
 
 export const runtime = 'nodejs'
@@ -6,19 +9,30 @@ export const runtime = 'nodejs'
 /// Public endpoint used by rendered contact forms. It stores the lead against
 /// the project resolved from the referring preview/site path.
 export async function POST(request: Request) {
-  const form = await request.formData()
+  let form: FormData
+  try {
+    const bytes = await readBoundedBody(request, 32768)
+    form = await new Response(bytes, { headers: { 'Content-Type': request.headers.get('content-type') ?? '' } }).formData()
+  } catch (error) { return Response.json({ error: 'Invalid or oversized form' }, { status: error instanceof RequestBodyTooLarge ? 413 : 400 }) }
   const projectId = String(form.get('projectId') ?? '')
 
   if (!projectId) {
     return Response.json({ error: 'projectId is required' }, { status: 400 })
   }
 
-  const project = await prisma.project.findUnique({ where: { id: projectId } })
+  if (projectId.length > 100 || [...form.entries()].length > 30 || [...form.entries()].some(([key, value]) => key.length > 100 || typeof value !== 'string' || value.length > 5000)) return Response.json({ error: 'Invalid form' }, { status: 400 })
+  try {
+    await rateLimit(`lead-ip:${request.headers.get('x-forwarded-for')?.split(',')[0] ?? 'unknown'}`, 20, 1)
+    await rateLimit(`lead-project:${projectId}`, 300, 5)
+  } catch { return Response.json({ error: 'Too many submissions. Please try again later.' }, { status: 429 }) }
+
+  const project = await prisma.project.findUnique({ where: { id: projectId }, include: { workspace: true } })
 
   if (!project) {
     return Response.json({ error: 'Unknown project' }, { status: 404 })
   }
 
+  if (!hostingAccess(project.workspace)) return Response.json({ error: 'This website is temporarily unavailable.' }, { status: 503 })
   const integration = await prisma.integration.findUnique({ where: { projectId } })
   if (integration?.recaptchaEnabled) {
     const token = String(form.get('g-recaptcha-response') ?? '')

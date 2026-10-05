@@ -1,8 +1,11 @@
+import { rateLimit } from '@/lib/account-security'
+import { sameOriginRequest } from '@/lib/request-origin'
 import { AssetKind, AssetSource, WorkspaceRole, prisma } from '@awb/database'
-import { assetKey, extractLogoColors, getStorage } from '@awb/shared'
+import { assetKey, extractLogoColors, getStorage, MAX_IMAGE_BYTES, normalizeUploadedImage } from '@awb/shared'
 import { paletteAlternatives } from '@awb/ai'
 import { defaultTokens } from '@awb/component-registry'
-import { requireProject } from '@/lib/tenancy'
+import { requireProject, requireUser, withApiAuthorization } from '@/lib/tenancy'
+import { readBoundedBody, RequestBodyTooLarge } from '@/lib/request-body'
 import { assetReadUrl } from '@/lib/asset-read-url'
 
 export const runtime = 'nodejs'
@@ -10,8 +13,15 @@ export const runtime = 'nodejs'
 /// Uploads an image or logo for a project. When the upload is a logo we also
 /// return a palette derived from it plus alternatives, so onboarding can offer
 /// colours instead of asking the user to invent them.
-export async function POST(request: Request) {
-  const form = await request.formData()
+async function handlePOST(request: Request) {
+  if (Number(request.headers.get('content-length') ?? 0) > MAX_IMAGE_BYTES + 65536) return Response.json({ error: 'Choose an image under 5 MB.' }, { status: 413 })
+  if (!sameOriginRequest(request)) return Response.json({ error: 'Origin not allowed' }, { status: 403 })
+  const user = await requireUser()
+  try { await rateLimit(`image-upload:${user.id}`, 30) }
+  catch { return Response.json({ error: 'Too many uploads. Please try again later.' }, { status: 429 }) }
+  let form: FormData
+  try { const bytes = await readBoundedBody(request, MAX_IMAGE_BYTES + 65536); form = await new Response(bytes, { headers: { 'Content-Type': request.headers.get('content-type') ?? '' } }).formData() }
+  catch (error) { return Response.json({ error: 'Invalid or oversized upload' }, { status: error instanceof RequestBodyTooLarge ? 413 : 400 }) }
   const projectId = String(form.get('projectId') ?? '')
   const kind = String(form.get('kind') ?? 'IMAGE') === 'LOGO' ? AssetKind.LOGO : AssetKind.IMAGE
   const file = form.get('file')
@@ -21,9 +31,12 @@ export async function POST(request: Request) {
   }
 
   const { project } = await requireProject(projectId, WorkspaceRole.EDITOR)
-  const bytes = Buffer.from(await file.arrayBuffer())
+  if (!file.size || file.size > MAX_IMAGE_BYTES) return Response.json({ error: 'Choose an image under 5 MB.' }, { status: 413 })
+  let bytes: Buffer
+  try { bytes = await normalizeUploadedImage(Buffer.from(await file.arrayBuffer())) }
+  catch { return Response.json({ error: 'Choose a valid PNG, JPG, WebP, GIF, AVIF or SVG image.' }, { status: 400 }) }
   const storage = getStorage()
-  const stored = await storage.put(assetKey(project.workspaceId, projectId, file.name), bytes, file.type || 'image/png')
+  const stored = await storage.put(assetKey(project.workspaceId, projectId, file.name.replace(/\.[^.]*$/, '') + '.png'), bytes, 'image/png')
 
   const asset = await prisma.asset.create({
     data: {
@@ -40,6 +53,21 @@ export async function POST(request: Request) {
   })
 
   if (kind !== AssetKind.LOGO) {
+    return Response.json({ asset })
+  }
+
+  // A logo added after intake should preserve the client's chosen theme.
+  if (form.get('preserveBrandColors') === 'true') {
+    await prisma.brandProfile.upsert({
+      where: { projectId },
+      create: { projectId, logoAssetId: asset.id },
+      update: { logoAssetId: asset.id },
+    })
+    if (form.get('suggestBrandColors') === 'true') {
+      const colors = await extractLogoColors(bytes)
+      const suggestions = paletteAlternatives(defaultTokens, colors.map((color) => color.hex))
+      return Response.json({ asset, colors, suggestions })
+    }
     return Response.json({ asset })
   }
 
@@ -61,3 +89,5 @@ export async function POST(request: Request) {
 
   return Response.json({ asset, previewUrl: await assetReadUrl(asset), colors, suggestions })
 }
+
+export const POST = withApiAuthorization(handlePOST)

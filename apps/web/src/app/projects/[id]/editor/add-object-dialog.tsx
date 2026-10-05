@@ -1,4 +1,5 @@
 'use client'
+import { ErrorNotice } from '@/components/error-notice'
 import { useEffect, useRef, useState } from 'react'
 import { objectChoices, type ManualObjectKind } from '@/lib/add-manual-object'
 
@@ -26,6 +27,6 @@ export function AddObjectDialog({ sections, initialSectionId, onAdd, onClose }: 
       <p className="mt-2 text-xs text-neutral-500">Choose an object, then edit it in Properties. No AI required.</p>
     </div>
     <div className="grid grid-cols-3 gap-3 p-4">{objectChoices.map(([kind, label]) => <button key={kind} type="button" className="flex min-h-28 flex-col items-center justify-center gap-3 rounded-lg border border-neutral-300 bg-white px-2 py-4 text-sm font-medium shadow-sm hover:border-sky-500 hover:bg-sky-50 focus-visible:outline-2 focus-visible:outline-sky-600" onClick={() => { try { onAdd(kind, target); onClose() } catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not add object.') } }}><ObjectIcon kind={kind} />{label}</button>)}</div>
-    {error && <p role="alert" className="px-4 pb-4 text-sm text-red-700">{error}</p>}
+    {error && <ErrorNotice code="WT-EDITOR-001" message={error} className="px-4 pb-4 text-sm text-red-700" />}
   </dialog>
 }

@@ -8,6 +8,7 @@ import { buildStaticExport } from '../static-export'
 import { assertHostingConfigured } from './config'
 import { checkDomainDns } from './dns'
 import * as aws from './aws'
+import { billingLifecycle } from '@awb/database/billing-policy'
 
 export async function withHostingLock<T>(projectId: string, fn: () => Promise<T>) {
   await prisma.hostingSite.upsert({ where: { projectId }, create: { projectId }, update: {} })
@@ -118,4 +119,15 @@ export async function publishSite(projectId: string, userId: string) {
     throw new Error(activationStarted ? 'AWS deployment needs a status check. Use Check status before retrying; the deployment may still complete.' : 'Publishing failed before activation. Check the AWS setup and try again.')
   }
   return release.id
+}
+
+export async function syncBillingHosting(projectId: string) {
+  const site = await prisma.hostingSite.findUnique({ where: { projectId }, include: { project: { include: { workspace: true } } } })
+  if (!site?.distributionId) return
+  const suspended = !billingLifecycle(site.project.workspace).hosting
+  if (suspended === site.billingGateApplied) return
+  assertHostingConfigured()
+  await aws.setBillingGate({ projectId, distributionId: site.distributionId, suspended, functionArn: site.functionArn })
+  await prisma.hostingSite.update({ where: { projectId }, data: { billingGateApplied: suspended } })
+  await prisma.auditEvent.create({ data: { workspaceId: site.project.workspaceId, action: suspended ? 'billing.hosting.suspend' : 'billing.hosting.restore', targetType: 'Project', targetId: projectId } })
 }

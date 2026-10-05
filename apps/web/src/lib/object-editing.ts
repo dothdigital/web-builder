@@ -57,6 +57,14 @@ export function editObjectProps(props: Record<string, unknown>, path: string, ac
     return target.root ? setAtPointer(props, `/freeElements/${target.index}/zIndex`, zIndex) : setAtPointer(props, `${target.prefix}/elementColors`, { ...styles, [target.path]: { ...styles[target.path], zIndex } })
   }
   const scope = objectScope(props, path)
+  if (action.type === 'style' && scope.path === '/layout/0' && typeof action.value.backgroundColor === 'string') {
+    const { backgroundColor, ...rest } = action.value
+    const rootProps = scope.props.imageLayout === 'background'
+      ? { ...scope.props, overlayColor: backgroundColor }
+      : { ...scope.props, sectionBackgroundMode: 'colour', sectionBackgroundColor: backgroundColor }
+    const next = scope.prefix ? setAtPointer(props, scope.prefix, rootProps) : rootProps
+    return Object.keys(rest).length ? editObjectProps(next, path, { type: 'style', value: rest }) : next
+  }
   if (action.type === 'fullWidth') {
     if (scope.root) return editObjectProps(props, path, { type: 'placement', value: { x: 0, width: 100 } })
     const styled = editObjectProps(props, path, { type: 'style', value: { width: 100, widthBasis: 'section', height: Math.max(24, Math.min(3000, action.height)) } })

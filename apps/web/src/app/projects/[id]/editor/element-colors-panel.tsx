@@ -4,12 +4,12 @@ import { ColorInput } from './color-input'
 import { useEffect, useState } from 'react'
 import { colorTargets } from '@awb/component-registry'
 
-type Colors = { verticalAlign?: 'top' | 'middle' | 'bottom'; textAlign?: 'left' | 'center' | 'right' | 'justify'; fontStyle?: 'normal' | 'italic'; fontFamily?: string; fontWeight?: number; width?: number; height?: number; fontSize?: number; color?: string; backgroundColor?: string; borderColor?: string }
+type Colors = { verticalAlign?: 'top' | 'middle' | 'bottom'; textAlign?: 'left' | 'center' | 'right' | 'justify'; fontStyle?: 'normal' | 'italic'; fontFamily?: string; fontWeight?: number; width?: number; height?: number; fontSize?: number; color?: string; backgroundColor?: string; borderColor?: string; borderWidth?: number; borderRadius?: number; borderStyle?: string }
 export function ElementColorsPanel({ renderedPathPrefix = '', componentId, props, onChange, selectedPath, onSelect, buttonPanel = false }: { renderedPathPrefix?: string; buttonPanel?: boolean; selectedPath?: string; onSelect?: (path: string) => void; componentId: string; props: Record<string, unknown>; onChange: (path: string, value: unknown) => void }) {
   const targets = colorTargets(componentId, props)
   if (selectedPath?.startsWith('/layout/')) targets.push({ path: selectedPath, label: 'Layout box', surface: true })
   const [selected, setSelected] = useState('')
-  const appearancePath = selectedPath?.replace(/^(\/extraElements\/\d+)\/[^/]+$/, '$1').replace(/^(\/(?:cta|primaryCta|secondaryCta))\/(?:label|href)$/, '$1')
+  const appearancePath = (componentId === 'ContactSplit' && selectedPath === '/submitLabel' ? '/submitButton' : selectedPath)?.replace(/^(\/extraElements\/\d+)\/[^/]+$/, '$1').replace(/^(\/(?:cta|primaryCta|secondaryCta))\/(?:label|href)$/, '$1')
   const target = targets.find((item) => item.path === (appearancePath ?? selected)) ?? (selectedPath ? undefined : targets[0])
   const [rendered, setRendered] = useState<Record<string, string>>({})
   const targetPath = target?.path
@@ -45,13 +45,18 @@ export function ElementColorsPanel({ renderedPathPrefix = '', componentId, props
   const current = colors[target.path] ?? {}
   const fontSize = current.fontSize ?? (parseFloat(rendered.fontSize ?? '') || undefined)
   const inheritedStyle = rendered.fontWeight ? `${rendered.fontStyle === 'italic' ? 'Italic' : 'Normal'} · weight ${rendered.fontWeight}` : 'Theme default'
-  const isButton = /^\/(cta|primaryCta|secondaryCta)$/.test(target.path) || (/^\/extraElements\/\d+$/.test(target.path) && (props.extraElements as Array<{ kind: string }> | undefined)?.[Number(target.path.split('/')[2])]?.kind === 'button')
+  const isButton = /^\/(cta|primaryCta|secondaryCta|submitButton)$/.test(target.path) || (/^\/extraElements\/\d+$/.test(target.path) && (props.extraElements as Array<{ kind: string }> | undefined)?.[Number(target.path.split('/')[2])]?.kind === 'button')
   const update = (key: keyof Colors, value: string | number) => onChange('/elementColors', { ...colors, [target.path]: { ...current, [key]: value } })
   return <fieldset className="m-4 grid gap-3 rounded-lg border border-neutral-200 p-3">
     <legend className="px-1 text-sm font-semibold">{buttonPanel ? `${target.label} appearance` : 'Element appearance'}</legend>
     {!buttonPanel && <p className="text-xs text-neutral-500">Choose the text, card or chip to change. Other elements keep their colours.</p>}
     {!buttonPanel && <label className="grid gap-1 text-xs">Element<select className="min-w-0 w-full rounded border border-neutral-300 p-2" value={target.path} onChange={(event) => { setSelected(event.target.value); onSelect?.(event.target.value) }}>{targets.map((item) => <option key={item.path} value={item.path}>{item.label}</option>)}</select></label>}
     {(['color', 'backgroundColor', 'borderColor'] as Array<'color' | 'backgroundColor' | 'borderColor'>).map((key) => <div key={key} className="grid gap-2 text-xs"><span>{key === 'color' ? 'Font colour' : key === 'backgroundColor' ? (isButton ? 'Button background colour' : 'Background colour') : 'Border colour'}{!current[key] && <span className="block text-[10px] text-neutral-500">Using existing colour</span>}</span><ColorInput label={`${target.label} ${key === 'backgroundColor' ? 'background colour' : key === 'color' ? 'text colour' : 'border colour'}`} value={current[key] ?? rendered[key] ?? (key === 'backgroundColor' ? '#ffffff' : '#182225')} onChange={(value) => update(key, value)} /></div>)}
+    {target.surface && <>
+      <label className="grid gap-1 text-xs">Border width (px)<input aria-label="Border width" type="number" min={0} max={20} className="rounded border p-2" value={current.borderWidth ?? ''} placeholder="Existing width" onChange={(event) => { const value = Number(event.target.value); if (event.target.value && value >= 0 && value <= 20) update('borderWidth', value) }} /></label>
+      <label className="grid gap-1 text-xs">Border style<select aria-label="Border style" className="rounded border p-2" value={current.borderStyle ?? ''} onChange={(event) => { const next = { ...current }; if (event.target.value) next.borderStyle = event.target.value; else delete next.borderStyle; onChange('/elementColors', { ...colors, [target.path]: next }) }}><option value="">Existing style</option><option value="solid">Solid</option><option value="dashed">Dashed</option><option value="dotted">Dotted</option><option value="none">None</option></select></label>
+      <label className="grid gap-1 text-xs">Corner radius (px)<input aria-label="Corner radius" type="number" min={0} max={200} className="rounded border p-2" value={current.borderRadius ?? ''} placeholder="Existing radius" onChange={(event) => { const value = Number(event.target.value); if (event.target.value && value >= 0 && value <= 200) update('borderRadius', value) }} /></label>
+    </>}
     <fieldset className="grid gap-1">
       <legend className="mb-1 text-xs">Text alignment</legend>
       <div className="grid grid-cols-4 gap-1">

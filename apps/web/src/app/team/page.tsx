@@ -1,9 +1,12 @@
+import { redirect } from 'next/navigation'
+import { CUSTOMER_TEAMS_ENABLED } from '@/lib/features'
 import { prisma } from '@awb/database'
 import { primaryWorkspace, requirePageUser, requireWorkspace } from '@/lib/tenancy'
 import { AppShell } from '@/components/account/app-shell'
 import { ActionForm } from '@/components/account/action-form'
 import { inviteMember, changeMember, revokeInvitation } from '@/app/actions/team'
 export default async function TeamPage() {
+  if (!CUSTOMER_TEAMS_ENABLED) redirect('/dashboard')
   const user = await requirePageUser(); const workspace = await primaryWorkspace(user.id); if (!workspace) return null
   const { membership } = await requireWorkspace(workspace.id)
   const owner = membership.role === 'OWNER'

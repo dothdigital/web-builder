@@ -1,12 +1,12 @@
 import Link from 'next/link'
 import { prisma, type Prisma } from '@awb/database'
-import { requireAdmin } from '@/lib/tenancy'
+import { requireSupport } from '@/lib/tenancy'
 import { AppShell } from '@/components/account/app-shell'
 
 export default async function AdminWebsitesPage({ searchParams }: {
   searchParams: Promise<{ q?: string; page?: string; userId?: string }>
 }) {
-  await requireAdmin()
+  const actor = await requireSupport()
   const query = await searchParams
   const q = String(query.q ?? '').trim().slice(0, 100)
   const userId = String(query.userId ?? '').slice(0, 100)
@@ -30,7 +30,7 @@ export default async function AdminWebsitesPage({ searchParams }: {
   ])
   const pageHref = (value: number) => `/admin/websites?${new URLSearchParams({ q, ...(userId ? { userId } : {}), page: String(value) })}`
   return <AppShell title="Website management" active="/admin/websites">
-    <div className="wt-heading"><p className="wt-eyebrow">PLATFORM ADMIN</p><h1>Customer websites.</h1>
+    <div className="wt-heading"><p className="wt-eyebrow">{actor.isPlatformAdmin ? 'PLATFORM ADMIN' : 'PLATFORM SUPPORT'}</p><h1>Customer websites.</h1>
       <p>{total} websites{userId ? ` · ${selectedUser?.name ?? selectedUser?.email ?? 'Selected user'}` : ' across all workspaces'}</p>
       {userId && <Link href="/admin/websites">View all websites →</Link>}
     </div>

@@ -64,6 +64,18 @@ const marketingTimer = setInterval(() => {
   marketing = true
   void dispatchMarketing().then(() => deliverMarketingEmails()).catch(() => console.error('[worker] Marketing email processing delayed; retrying.')).finally(() => { marketing = false })
 }, 15000)
+let billing = false
+const billingTimer = setInterval(() => {
+  const base = process.env.PUBLIC_APP_URL || process.env.AUTH_URL
+  const secret = process.env.BILLING_CRON_SECRET
+  if (billing || !base || !secret) return
+  billing = true
+  void fetch(`${new URL(base).origin}/api/internal/billing/sync`, { method: 'POST', headers: { authorization: `Bearer ${secret}` }, signal: AbortSignal.timeout(90000) }).then(async response => {
+    if (!response.ok) throw new Error('Billing reconciliation unavailable')
+    const result = await response.json() as { failed?: number }
+    if (result.failed) console.error('[worker] Some billing lifecycle checks need retry.')
+  }).catch(() => console.error('[worker] Billing lifecycle check delayed; retrying.')).finally(() => { billing = false })
+}, 60000)
 for (const current of [worker, contentWorker]) {
   current.on('error', () => console.error('[worker] Queue connection interrupted; reconnecting.'))
   current.on('failed', (job) => {
@@ -93,6 +105,7 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const) {
     clearInterval(timer)
     clearInterval(mailTimer)
     clearInterval(marketingTimer)
+    clearInterval(billingTimer)
     await Promise.all([worker.close(), contentWorker.close()])
     process.exit(0)
   })

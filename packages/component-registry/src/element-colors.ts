@@ -20,6 +20,8 @@ export const elementColorsSchema = z.record(z.string().regex(/^\/[a-zA-Z0-9_/-]+
   verticalAlign: z.enum(['top', 'middle', 'bottom']).optional(),
   textAlign: z.enum(['left', 'center', 'right', 'justify']).optional(),
   borderRadius: z.number().min(0).max(200).optional(),
+  borderWidth: z.number().min(0).max(20).optional(),
+  borderStyle: z.enum(['solid', 'dashed', 'dotted', 'none']).optional(),
   opacity: z.number().min(0).max(1).optional(),
   fontStyle: z.enum(['normal', 'italic']).optional(),
   fontWeight: z.union([z.literal(400), z.literal(700)]).optional(),
@@ -33,7 +35,7 @@ export function elementColor(props: unknown, path: string): CSSProperties {
   const { widthBasis, verticalAlign, layoutColumns, layoutGap, ...styles } = (props as { elementColors?: Record<string, CSSProperties & { layoutColumns?: number; layoutGap?: number; widthBasis?: 'parent' | 'section'; verticalAlign?: 'top' | 'middle' | 'bottom' }> }).elementColors?.[path] ?? {}
   const gap = layoutGap ?? 24
   const layout: CSSProperties = layoutColumns ? { display: 'grid', gridTemplateColumns: layoutColumns === 1 ? 'minmax(0, 1fr)' : `repeat(auto-fit, minmax(min(100%, max(180px, calc((100% - ${gap * (layoutColumns - 1)}px) / ${layoutColumns}))), 1fr))`, gridAutoFlow: 'row', gap, alignItems: 'start', justifyItems: 'stretch', height: 'auto', minHeight: 0 } : {}
-  return { ...styles, ...(typeof styles.zIndex === 'number' ? { position: 'relative' as const } : {}), ...(typeof styles.height === 'number' ? { boxSizing: 'border-box' as const } : {}), ...(typeof styles.width === 'number' ? { width: widthBasis === 'section' ? `${styles.width}cqw` : `${styles.width}%`, minWidth: 0, maxWidth: widthBasis === 'section' ? '100cqw' : '100%', display: 'block', overflowWrap: 'anywhere' as const } : {}), ...(verticalAlign ? { display: 'flex', flexDirection: 'column' as const, alignItems: 'stretch', justifyContent: verticalAlign === 'middle' ? 'center' : verticalAlign === 'bottom' ? 'flex-end' : 'flex-start' } : {}), ...(styles.backgroundColor ? { background: styles.backgroundColor } : {}), ...(styles.borderColor ? { borderStyle: 'solid', borderWidth: '1px' } : {}), ...layout }
+  return { ...styles, ...(typeof styles.zIndex === 'number' ? { position: 'relative' as const } : {}), ...(typeof styles.height === 'number' ? { boxSizing: 'border-box' as const } : {}), ...(typeof styles.width === 'number' ? { width: widthBasis === 'section' ? `${styles.width}cqw` : `${styles.width}%`, minWidth: 0, maxWidth: widthBasis === 'section' ? '100cqw' : '100%', display: 'block', overflowWrap: 'anywhere' as const } : {}), ...(verticalAlign ? { display: 'flex', flexDirection: 'column' as const, alignItems: 'stretch', justifyContent: verticalAlign === 'middle' ? 'center' : verticalAlign === 'bottom' ? 'flex-end' : 'flex-start' } : {}), ...(styles.backgroundColor ? { background: styles.backgroundColor } : {}), ...(styles.borderColor ? { borderStyle: styles.borderStyle ?? 'solid', borderWidth: styles.borderWidth ?? '1px' } : {}), ...layout }
 }
 
 // Cards with their own surface should use theme text, not the section overlay text.
@@ -77,7 +79,10 @@ export function colorTargets(componentId: string, props: Record<string, unknown>
     if (list === 'testimonials') targets.push({ path: `/${list}/${index}/avatar`, label: `${label} — initials chip`, surface: true })
     for (const key of ['title', 'description', 'body', 'quote', 'author', 'source', 'question', 'answer', 'category', 'issuer', 'year', 'linkLabel']) if (typeof item[key] === 'string') targets.push({ path: `/${list}/${index}/${key}`, label: `${label} — ${key}` })
   })
-  if (componentId === 'ContactSplit') targets.push({ path: '/contact-panel', label: 'Contact information panel', surface: true }, { path: '/form', label: 'Enquiry form panel', surface: true })
+  if (componentId === 'ContactSplit') {
+    targets.push({ path: '/contact-panel', label: 'Contact information panel', surface: true }, { path: '/form', label: 'Enquiry form panel', surface: true }, { path: '/submitButton', label: 'Submit button', surface: true })
+    if (Array.isArray(props.formFields)) props.formFields.forEach((field, index) => targets.push({ path: `/formFields/${index}/input`, label: `${(field as { label?: string }).label || `Field ${index + 1}`} — input`, surface: true }))
+  }
   if (componentId === 'HeroTypographic' && Array.isArray(props.keywords)) props.keywords.forEach((keyword, index) => targets.push({ path: `/keywords/${index}`, label: `${String(keyword)} — chip`, surface: true }))
   const addText = (path: string, label: string) => { if (!targets.some((target) => target.path === path)) targets.push({ path, label }) }
   for (const key of ['businessName', 'tagline', 'logoText', 'address', 'phone', 'email', 'submitLabel', 'consentText']) if (typeof props[key] === 'string') addText(`/${key}`, key)

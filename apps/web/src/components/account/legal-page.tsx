@@ -2,8 +2,9 @@ import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { SiteFooter } from './site-footer'
 
-export function LegalPage({ title, introduction, sections }: {
+export function LegalPage({ title, introduction, sections, effectiveDate = 'October 4, 2026' }: {
   title: string
+  effectiveDate?: string
   introduction: ReactNode
   sections: { title: string; content: ReactNode }[]
 }) {
@@ -16,7 +17,7 @@ export function LegalPage({ title, introduction, sections }: {
       <article className="wt-legal-document">
         <p className="wt-eyebrow">DOTH DIGITAL INC. · ONTARIO, CANADA</p>
         <h1>{title}</h1>
-        <p className="wt-legal-date">Effective October 4, 2026</p>
+        <p className="wt-legal-date">Effective {effectiveDate}</p>
         <p className="wt-legal-intro">{introduction}</p>
         <nav className="wt-legal-switch" aria-label="Legal documents">
           <Link href="/privacy">Privacy Policy</Link>

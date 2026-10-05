@@ -96,3 +96,29 @@ export async function deleteReleaseFunction(projectId: string, releaseId: string
   const current = await client.send(new DescribeFunctionCommand({ Name, Stage: 'DEVELOPMENT' }))
   await client.send(new DeleteFunctionCommand({ Name, IfMatch: current.ETag }))
 }
+
+export const TEMPORARY_SITE_PAGE = '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Temporarily unavailable</title><style>body{font-family:system-ui,sans-serif;max-width:640px;margin:15vh auto;padding:24px;color:#334155;background:#f8fafc}h1{font-size:28px}</style></head><body><h1>This website is temporarily unavailable</h1><p>Please check back later.</p></body></html>'
+export function suspensionFunction() {
+  return `function handler(event){return {statusCode:503,statusDescription:'Service Unavailable',headers:{'content-type':{value:'text/html; charset=utf-8'},'cache-control':{value:'no-store'},'retry-after':{value:'3600'},'x-robots-tag':{value:'noindex'},'content-security-policy':{value:"default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'"}},body:{encoding:'text',data:${JSON.stringify(TEMPORARY_SITE_PAGE)}}};}`
+}
+async function ensureSuspensionFunction(projectId: string) {
+  const client = cf(); const Name = `wt-${projectId}-billing`
+  const FunctionConfig = { Comment: `Webtummy temporary availability ${projectId}`, Runtime: 'cloudfront-js-2.0' as const }
+  let etag: string | undefined
+  try { etag = (await client.send(new DescribeFunctionCommand({ Name, Stage: 'DEVELOPMENT' }))).ETag } catch (error) { if ((error as { name?: string }).name !== 'NoSuchFunctionExists') throw error }
+  const FunctionCode = Buffer.from(suspensionFunction())
+  const result = etag ? await client.send(new UpdateFunctionCommand({ Name, IfMatch: etag, FunctionCode, FunctionConfig })) : await client.send(new CreateFunctionCommand({ Name, FunctionCode, FunctionConfig }))
+  const published = await client.send(new PublishFunctionCommand({ Name, IfMatch: result.ETag }))
+  const arn = published.FunctionSummary?.FunctionMetadata?.FunctionARN
+  if (!arn) throw new Error('Temporary availability function is unavailable.')
+  return arn
+}
+export async function setBillingGate(input: { distributionId: string; projectId: string; suspended: boolean; functionArn: string | null }) {
+  const client = cf()
+  const { DistributionConfig: config, ETag } = await client.send(new GetDistributionConfigCommand({ Id: input.distributionId }))
+  if (!config?.DefaultCacheBehavior) throw new Error('Hosting distribution configuration is missing.')
+  if (input.suspended && config.DefaultCacheBehavior.FunctionAssociations?.Items?.some(item => item.EventType === 'viewer-request' && item.FunctionARN?.endsWith(`/wt-${input.projectId}-billing`))) return
+  const functionArn = input.suspended ? await ensureSuspensionFunction(input.projectId) : input.functionArn
+  config.DefaultCacheBehavior.FunctionAssociations = functionArn ? { Quantity: 1, Items: [{ EventType: 'viewer-request', FunctionARN: functionArn }] } : { Quantity: 0 }
+  await client.send(new UpdateDistributionCommand({ Id: input.distributionId, IfMatch: ETag, DistributionConfig: config }))
+}

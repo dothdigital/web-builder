@@ -25,5 +25,9 @@
   "engines": {
     "node": ">=20"
   },
-  "packageManager": "npm@10.9.8"
+  "packageManager": "npm@10.9.8",
+  "overrides": {
+    "deepmerge-ts": "8.0.2",
+    "mysql2": "3.24.5"
+  }
 }

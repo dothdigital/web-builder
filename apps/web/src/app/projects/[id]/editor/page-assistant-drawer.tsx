@@ -1,4 +1,5 @@
 'use client'
+import { ErrorNotice } from '@/components/error-notice'
 
 import { useEffect, useRef, useState } from 'react'
 import type { WebsiteModel } from '@awb/website-model'
@@ -147,7 +148,7 @@ export function PageAssistantDrawer({ projectId, pageId, model, selection, image
       {tool && <button type="button" className="mb-2 text-xs underline" onClick={() => setTool(undefined)}>Close {tool === 'image' ? 'image picker' : 'creation form'}</button>}
       {imageUrl && <p className="mb-2 text-xs text-violet-700">Image attached <button type="button" className="ml-2 underline" onClick={() => setImageUrl('')}>Remove</button></p>}
       <textarea aria-label="Instruction for this page" value={instruction} onChange={event => setInstruction(event.target.value)} maxLength={4000} rows={3} placeholder="What would you like to change on this page?" className="w-full resize-none rounded-lg border p-2 text-sm" onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); void send() } }} />
-      {error && <p role="alert" className="my-2 text-xs text-red-700">{error}</p>}
+      {error && <ErrorNotice code="WT-CONTENT-001" message={error} className="my-2 text-xs text-red-700" />}
       <div className="mt-2 flex items-center justify-between gap-2"><span className="text-[11px] text-neutral-500">Draft edits · Save to update Preview</span><button type="button" disabled={busy || !instruction.trim()} className="rounded bg-violet-700 px-4 py-2 text-sm text-white disabled:opacity-40" onClick={() => void send()}>{busy ? 'Working…' : 'Send'}</button></div>
     </div>
   </aside>

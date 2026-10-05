@@ -2,17 +2,19 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { editingAccess } from '@/lib/billing/access'
 import { prisma, WorkspaceRole } from '@awb/database'
-import { requireProject } from '@/lib/tenancy'
+import { requireProjectOnPage } from '@/lib/tenancy'
 import { loadDraftModel } from '@/lib/website'
+import { generationProgressHref } from '@/lib/generation-navigation'
 import { EditorShell } from './editor-shell'
 
 export const dynamic = 'force-dynamic'
 
 export default async function EditorPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const { user, project, role } = await requireProject(id)
-  if (!user.isPlatformAdmin && (role === WorkspaceRole.VIEWER || !editingAccess(project.workspace))) redirect('/billing?reason=trial-ended')
-  await requireProject(id, WorkspaceRole.EDITOR)
+  const { user, project, role } = await requireProjectOnPage(id)
+  if (project.status === 'GENERATING') redirect(await generationProgressHref(id))
+  if (!user.isPlatformAdmin && !user.isPlatformSupport && (role === WorkspaceRole.VIEWER || !editingAccess(project.workspace))) redirect('/billing?reason=payment-required')
+  await requireProjectOnPage(id, WorkspaceRole.EDITOR)
 
   const model = await loadDraftModel(id)
 
