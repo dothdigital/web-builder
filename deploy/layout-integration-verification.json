@@ -1,0 +1,602 @@
+{
+  "date": "2026-10-07",
+  "deployed": false,
+  "paidAiCalls": 0,
+  "typechecks": "passed: component-registry, ai, pipeline, web",
+  "lint": "passed: all pending web source files",
+  "billingChecks": [
+    "billing-lifecycle",
+    "subscription-trials"
+  ],
+  "generation": {
+    "results": [
+      {
+        "id": "insurigo-1",
+        "pages": 6,
+        "textControls": 396,
+        "imageControls": 100,
+        "linkControls": 89,
+        "status": "passed"
+      },
+      {
+        "id": "insurigo-2",
+        "pages": 6,
+        "textControls": 430,
+        "imageControls": 88,
+        "linkControls": 99,
+        "status": "passed"
+      },
+      {
+        "id": "insurigo-3",
+        "pages": 6,
+        "textControls": 479,
+        "imageControls": 102,
+        "linkControls": 126,
+        "status": "passed"
+      },
+      {
+        "id": "insurigo-4",
+        "pages": 6,
+        "textControls": 406,
+        "imageControls": 97,
+        "linkControls": 111,
+        "status": "passed"
+      },
+      {
+        "id": "finbiz-1",
+        "pages": 6,
+        "textControls": 392,
+        "imageControls": 84,
+        "linkControls": 120,
+        "status": "passed"
+      },
+      {
+        "id": "finbiz-2",
+        "pages": 6,
+        "textControls": 426,
+        "imageControls": 98,
+        "linkControls": 134,
+        "status": "passed"
+      },
+      {
+        "id": "finbiz-3",
+        "pages": 6,
+        "textControls": 432,
+        "imageControls": 99,
+        "linkControls": 129,
+        "status": "passed"
+      },
+      {
+        "id": "finbiz-4",
+        "pages": 6,
+        "textControls": 321,
+        "imageControls": 72,
+        "linkControls": 103,
+        "status": "passed"
+      },
+      {
+        "id": "finbiz-5",
+        "pages": 6,
+        "textControls": 365,
+        "imageControls": 73,
+        "linkControls": 142,
+        "status": "passed"
+      },
+      {
+        "id": "finbiz-6",
+        "pages": 6,
+        "textControls": 371,
+        "imageControls": 79,
+        "linkControls": 128,
+        "status": "passed"
+      },
+      {
+        "id": "finbiz-7",
+        "pages": 6,
+        "textControls": 373,
+        "imageControls": 84,
+        "linkControls": 166,
+        "status": "passed"
+      },
+      {
+        "id": "finbiz-8",
+        "pages": 6,
+        "textControls": 460,
+        "imageControls": 103,
+        "linkControls": 141,
+        "status": "passed"
+      },
+      {
+        "id": "finbiz-9",
+        "pages": 6,
+        "textControls": 321,
+        "imageControls": 69,
+        "linkControls": 93,
+        "status": "passed"
+      },
+      {
+        "id": "finbiz-10",
+        "pages": 6,
+        "textControls": 352,
+        "imageControls": 81,
+        "linkControls": 152,
+        "status": "passed"
+      },
+      {
+        "id": "finbiz-11",
+        "pages": 6,
+        "textControls": 339,
+        "imageControls": 69,
+        "linkControls": 98,
+        "status": "passed"
+      },
+      {
+        "id": "finbiz-12",
+        "pages": 6,
+        "textControls": 433,
+        "imageControls": 83,
+        "linkControls": 124,
+        "status": "passed"
+      },
+      {
+        "id": "finbiz-13",
+        "pages": 6,
+        "textControls": 346,
+        "imageControls": 77,
+        "linkControls": 133,
+        "status": "passed"
+      },
+      {
+        "id": "finbiz-14",
+        "pages": 6,
+        "textControls": 417,
+        "imageControls": 83,
+        "linkControls": 130,
+        "status": "passed"
+      }
+    ],
+    "complete": true
+  },
+  "browser": {
+    "complete": true,
+    "results": [
+      {
+        "id": "insurigo-1",
+        "measurements": [
+          {
+            "width": 1440,
+            "scroll": 1440,
+            "height": 6919,
+            "headings": [
+              "Cedar Advisory · Bristol"
+            ],
+            "brokenImages": []
+          },
+          {
+            "width": 390,
+            "scroll": 390,
+            "height": 8850,
+            "headings": [
+              "Cedar Advisory · Bristol"
+            ],
+            "brokenImages": []
+          }
+        ],
+        "status": "passed"
+      },
+      {
+        "id": "insurigo-2",
+        "measurements": [
+          {
+            "width": 1440,
+            "scroll": 1440,
+            "height": 10334,
+            "headings": [
+              "Cedar Advisory ·Bristol"
+            ],
+            "brokenImages": []
+          },
+          {
+            "width": 390,
+            "scroll": 390,
+            "height": 12876,
+            "headings": [
+              "Cedar Advisory ·Bristol"
+            ],
+            "brokenImages": []
+          }
+        ],
+        "status": "passed"
+      },
+      {
+        "id": "insurigo-3",
+        "measurements": [
+          {
+            "width": 1440,
+            "scroll": 1440,
+            "height": 9088,
+            "headings": [
+              "Cedar Advisory · Bristol"
+            ],
+            "brokenImages": []
+          },
+          {
+            "width": 390,
+            "scroll": 390,
+            "height": 11107,
+            "headings": [
+              "Cedar Advisory · Bristol"
+            ],
+            "brokenImages": []
+          }
+        ],
+        "status": "passed"
+      },
+      {
+        "id": "insurigo-4",
+        "measurements": [
+          {
+            "width": 1440,
+            "scroll": 1440,
+            "height": 6583,
+            "headings": [
+              "Cedar Advisory · Bristol"
+            ],
+            "brokenImages": []
+          },
+          {
+            "width": 390,
+            "scroll": 390,
+            "height": 8707,
+            "headings": [
+              "Cedar Advisory · Bristol"
+            ],
+            "brokenImages": []
+          }
+        ],
+        "status": "passed"
+      },
+      {
+        "id": "finbiz-1",
+        "measurements": [
+          {
+            "width": 1440,
+            "scroll": 1440,
+            "height": 5899,
+            "headings": [
+              "CedarAdvisory · Bristol"
+            ],
+            "brokenImages": []
+          },
+          {
+            "width": 390,
+            "scroll": 390,
+            "height": 6865,
+            "headings": [
+              "CedarAdvisory · Bristol"
+            ],
+            "brokenImages": []
+          }
+        ],
+        "status": "passed"
+      },
+      {
+        "id": "finbiz-2",
+        "measurements": [
+          {
+            "width": 1440,
+            "scroll": 1440,
+            "height": 5767,
+            "headings": [
+              "CedarAdvisory · Bristol"
+            ],
+            "brokenImages": []
+          },
+          {
+            "width": 390,
+            "scroll": 390,
+            "height": 6689,
+            "headings": [
+              "CedarAdvisory · Bristol"
+            ],
+            "brokenImages": []
+          }
+        ],
+        "status": "passed"
+      },
+      {
+        "id": "finbiz-3",
+        "measurements": [
+          {
+            "width": 1440,
+            "scroll": 1440,
+            "height": 6277,
+            "headings": [
+              "Cedar Advisory · Bristol"
+            ],
+            "brokenImages": []
+          },
+          {
+            "width": 390,
+            "scroll": 390,
+            "height": 5872,
+            "headings": [
+              "Cedar Advisory · Bristol"
+            ],
+            "brokenImages": []
+          }
+        ],
+        "status": "passed"
+      },
+      {
+        "id": "finbiz-4",
+        "measurements": [
+          {
+            "width": 1440,
+            "scroll": 1440,
+            "height": 5488,
+            "headings": [
+              "Cedar Advisory· Bristol"
+            ],
+            "brokenImages": []
+          },
+          {
+            "width": 390,
+            "scroll": 390,
+            "height": 7025,
+            "headings": [
+              "Cedar Advisory· Bristol"
+            ],
+            "brokenImages": []
+          }
+        ],
+        "status": "passed"
+      },
+      {
+        "id": "finbiz-5",
+        "measurements": [
+          {
+            "width": 1440,
+            "scroll": 1440,
+            "height": 4846,
+            "headings": [
+              "Cedar Advisory  · Bristol"
+            ],
+            "brokenImages": []
+          },
+          {
+            "width": 390,
+            "scroll": 390,
+            "height": 5446,
+            "headings": [
+              "Cedar Advisory  · Bristol"
+            ],
+            "brokenImages": []
+          }
+        ],
+        "status": "passed"
+      },
+      {
+        "id": "finbiz-6",
+        "measurements": [
+          {
+            "width": 1440,
+            "scroll": 1440,
+            "height": 5970,
+            "headings": [
+              "Cedar Advisory·Bristol"
+            ],
+            "brokenImages": []
+          },
+          {
+            "width": 390,
+            "scroll": 390,
+            "height": 7979,
+            "headings": [
+              "Cedar Advisory·Bristol"
+            ],
+            "brokenImages": []
+          }
+        ],
+        "status": "passed"
+      },
+      {
+        "id": "finbiz-7",
+        "measurements": [
+          {
+            "width": 1440,
+            "scroll": 1440,
+            "height": 6674,
+            "headings": [
+              "Cedar Advisory ·Bristol"
+            ],
+            "brokenImages": []
+          },
+          {
+            "width": 390,
+            "scroll": 390,
+            "height": 7419,
+            "headings": [
+              "Cedar Advisory ·Bristol"
+            ],
+            "brokenImages": []
+          }
+        ],
+        "status": "passed"
+      },
+      {
+        "id": "finbiz-8",
+        "measurements": [
+          {
+            "width": 1440,
+            "scroll": 1440,
+            "height": 7048,
+            "headings": [
+              "Cedar Advisory · Bristol"
+            ],
+            "brokenImages": []
+          },
+          {
+            "width": 390,
+            "scroll": 390,
+            "height": 7490,
+            "headings": [
+              "Cedar Advisory · Bristol"
+            ],
+            "brokenImages": []
+          }
+        ],
+        "status": "passed"
+      },
+      {
+        "id": "finbiz-9",
+        "measurements": [
+          {
+            "width": 1440,
+            "scroll": 1440,
+            "height": 4762,
+            "headings": [
+              "CedarAdvisory · Bristol"
+            ],
+            "brokenImages": []
+          },
+          {
+            "width": 390,
+            "scroll": 390,
+            "height": 5853,
+            "headings": [
+              "CedarAdvisory · Bristol"
+            ],
+            "brokenImages": []
+          }
+        ],
+        "status": "passed"
+      },
+      {
+        "id": "finbiz-10",
+        "measurements": [
+          {
+            "width": 1440,
+            "scroll": 1440,
+            "height": 4994,
+            "headings": [
+              "Cedar Advisory· Bristol"
+            ],
+            "brokenImages": []
+          },
+          {
+            "width": 390,
+            "scroll": 390,
+            "height": 5146,
+            "headings": [
+              "Cedar Advisory· Bristol"
+            ],
+            "brokenImages": []
+          }
+        ],
+        "status": "passed"
+      },
+      {
+        "id": "finbiz-11",
+        "measurements": [
+          {
+            "width": 1440,
+            "scroll": 1440,
+            "height": 4903,
+            "headings": [
+              "CedarAdvisory· Bristol"
+            ],
+            "brokenImages": []
+          },
+          {
+            "width": 390,
+            "scroll": 390,
+            "height": 5019,
+            "headings": [
+              "CedarAdvisory· Bristol"
+            ],
+            "brokenImages": []
+          }
+        ],
+        "status": "passed"
+      },
+      {
+        "id": "finbiz-12",
+        "measurements": [
+          {
+            "width": 1440,
+            "scroll": 1440,
+            "height": 6252,
+            "headings": [
+              "Cedar Advisory· Bristol"
+            ],
+            "brokenImages": []
+          },
+          {
+            "width": 390,
+            "scroll": 390,
+            "height": 7276,
+            "headings": [
+              "Cedar Advisory· Bristol"
+            ],
+            "brokenImages": []
+          }
+        ],
+        "status": "passed"
+      },
+      {
+        "id": "finbiz-13",
+        "measurements": [
+          {
+            "width": 1440,
+            "scroll": 1440,
+            "height": 5932,
+            "headings": [
+              "CedarAdvisory· Bristol"
+            ],
+            "brokenImages": []
+          },
+          {
+            "width": 390,
+            "scroll": 390,
+            "height": 4640,
+            "headings": [
+              "CedarAdvisory· Bristol"
+            ],
+            "brokenImages": []
+          }
+        ],
+        "status": "passed"
+      },
+      {
+        "id": "finbiz-14",
+        "measurements": [
+          {
+            "width": 1440,
+            "scroll": 1440,
+            "height": 6745,
+            "headings": [
+              "CedarAdvisory· Bristol"
+            ],
+            "brokenImages": []
+          },
+          {
+            "width": 390,
+            "scroll": 390,
+            "height": 8592,
+            "headings": [
+              "CedarAdvisory· Bristol"
+            ],
+            "brokenImages": []
+          }
+        ],
+        "status": "passed"
+      }
+    ]
+  },
+  "limitations": [
+    "Browser automation uses isolated fixtures with the actual gallery and registry renderers. Authenticated onboarding and the complete editor require manual local smoke testing.",
+    "Paid AI output was not exercised."
+  ],
+  "localTestingGuide": "deploy/TEMPLATE_TESTING.md"
+}

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js'
 import { loadStripe } from '@stripe/stripe-js'
-import { loadBillingManagement, startPaymentUpdate, finishPaymentUpdate, cancelSubscription } from '@/app/actions/billing-management'
+import { loadBillingManagement, startPaymentUpdate, finishPaymentUpdate, cancelSubscription, resumeSubscription } from '@/app/actions/billing-management'
 import styles from './billing-management.module.css'
 
 type Summary = Extract<Awaited<ReturnType<typeof loadBillingManagement>>, { ok: true }>['summary']
@@ -41,20 +41,24 @@ function PaymentEditor({ setup, onSaved, onBusy }: { setup: Setup; onSaved: (mes
   return <Elements stripe={stripe} options={{ clientSecret: setup.clientSecret }}><PaymentUpdateForm returnUrl={setup.returnUrl} onSaved={onSaved} onBusy={onBusy} /></Elements>
 }
 
-export function BillingManagement({ initialSetupId }: { initialSetupId?: string }) {
+export function BillingManagement({ initialSetupId, initialResumeAvailable = false }: { initialSetupId?: string; initialResumeAvailable?: boolean }) {
   const router = useRouter(), dialog = useRef<HTMLDialogElement>(null), returnedSetup = useRef(false)
   const [summary, setSummary] = useState<Summary | null>(null), [setup, setSetup] = useState<Setup | null>(null)
   const [busy, setBusy] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState('')
   const [confirming, setConfirming] = useState(false), [confirmed, setConfirmed] = useState(false)
+  const [resuming, setResuming] = useState(false), [resumeConfirmed, setResumeConfirmed] = useState(false)
   async function refreshSummary() {
     const result = await loadBillingManagement()
-    if (result.ok) setSummary(result.summary)
+    if (result.ok) { setSummary(result.summary); return result.summary }
     else setError(result.message)
   }
-  async function open() {
-    setError(''); setNotice(''); setSetup(null); setConfirming(false); setConfirmed(false)
+  async function open(resumeRequested = false) {
+    setError(''); setNotice(''); setSetup(null); setConfirming(false); setConfirmed(false); setResuming(false); setResumeConfirmed(false)
     dialog.current?.showModal(); setBusy(true)
-    try { await refreshSummary() } catch { setError('Billing details could not load. Please try again.') }
+    try {
+      const current = await refreshSummary()
+      if (resumeRequested && current && ['active', 'trialing'].includes(current.status) && current.cancellationScheduled && current.periodEnd && new Date(current.periodEnd) > new Date()) setResuming(true)
+    } catch { setError('Billing details could not load. Please try again.') }
     finally { setBusy(false) }
   }
   useEffect(() => {
@@ -74,7 +78,7 @@ export function BillingManagement({ initialSetupId }: { initialSetupId?: string 
     })()
   }, [initialSetupId, router])
   async function startUpdate() {
-    setBusy(true); setError(''); setNotice(''); setConfirming(false)
+    setBusy(true); setError(''); setNotice(''); setConfirming(false); setResuming(false)
     try { const result = await startPaymentUpdate(); if (result.ok) setSetup(result); else setError(result.message) }
     catch { setError('Payment updates could not start. Please try again.') }
     finally { setBusy(false) }
@@ -89,10 +93,27 @@ export function BillingManagement({ initialSetupId }: { initialSetupId?: string 
     } catch { setError('Cancellation could not complete. Please refresh billing and try again.') }
     finally { setBusy(false) }
   }
+  async function resume() {
+    if (!resumeConfirmed || busy) return
+    setBusy(true); setError(''); setNotice('')
+    try {
+      const result = await resumeSubscription(resumeConfirmed)
+      if (result.ok) { setNotice(result.message); setResuming(false); setResumeConfirmed(false); await refreshSummary(); router.refresh() }
+      else setError(result.message)
+    } catch { setError('We could not resume renewal. Please refresh billing and try again.') }
+    finally { setBusy(false) }
+  }
   const ended = summary && ['canceled', 'incomplete_expired'].includes(summary.status)
+  const canResume = summary && ['active', 'trialing'].includes(summary.status) && summary.cancellationScheduled && !!summary.periodEnd && new Date(summary.periodEnd) > new Date()
+  const trialing = summary?.status === 'trialing'
+  const trialDate = summary?.trialEnd ? new Date(summary.trialEnd).toLocaleString('en-US', { timeZone: 'UTC', dateStyle: 'long', timeStyle: 'short' }) + ' UTC' : null
   const date = summary?.periodEnd ? new Date(summary.periodEnd).toLocaleDateString('en-US', { timeZone: 'UTC', dateStyle: 'long' }) : null
+  const showResume = summary ? canResume : initialResumeAvailable
   return <>
-    <button className="wt-button" type="button" onClick={() => void open()}>Manage payment, invoices & cancellation</button>
+    <div className={styles.actions}>
+      {showResume && <button className="wt-button" type="button" disabled={busy} onClick={() => void open(true)}>Resume subscription</button>}
+      <button className={`wt-button${showResume ? ' secondary' : ''}`} type="button" disabled={busy} onClick={() => void open()}>Manage payment, invoices & cancellation</button>
+    </div>
     <dialog ref={dialog} className={styles.dialog} aria-labelledby="billing-dialog-title" onCancel={event => { if (busy) event.preventDefault() }}>
       <header className={styles.header}><h2 id="billing-dialog-title">Manage billing</h2><button type="button" className="wt-button secondary" disabled={busy} onClick={() => dialog.current?.close()}>Close</button></header>
       <div className={styles.body}>
@@ -106,10 +127,17 @@ export function BillingManagement({ initialSetupId }: { initialSetupId?: string 
           {setup && <PaymentEditor setup={setup} onBusy={setBusy} onSaved={message => { setSetup(null); setNotice(message); void refreshSummary(); router.refresh() }} />}
           <section><h3>Invoices</h3><p>View payment history and download invoices on this page.</p><button type="button" className="wt-button secondary" disabled={busy} onClick={() => { dialog.current?.close(); document.getElementById('billing-payment-history')?.scrollIntoView({ behavior: 'smooth' }) }}>View invoices</button></section>
           <section><h3>Subscription</h3>
-            <p>{ended ? 'Your subscription has ended.' : summary.cancellationScheduled ? `Renewal is cancelled.${date ? ` Access continues through ${date}.` : ''}` : `Your subscription renews automatically.${date ? ` Current period ends ${date}.` : ''}`}</p>
+            <p>{ended ? 'Your subscription has ended.' : trialing ? `Your trial ends${trialDate ? ` on ${trialDate}` : ' after 7 days'}. ${summary.cancellationScheduled ? 'Automatic billing is cancelled. No first subscription payment will be charged unless you resume.' : 'Your card will then be billed at US$29/month, subject to your checkout discount. Cancel before the trial ends to avoid the first charge.'}` : summary.cancellationScheduled ? `Renewal is cancelled.${date ? summary.paymentOverdue ? ` The subscription ends on ${date}; existing payment restrictions still apply.` : ` Access continues through ${date}.` : ''}` : `Your subscription renews automatically.${date ? ` Current period ends ${date}.` : ''}`}</p>
+            {ended && <a className="wt-button" href="/billing#reactivate-plan">Reactivate subscription</a>}
+            {canResume && !resuming && <button type="button" className="wt-button" disabled={busy} onClick={() => { setSetup(null); setError(''); setNotice(''); setResumeConfirmed(false); setResuming(true) }}>Resume subscription</button>}
+            {resuming && <div className={styles.cancellation}>
+              <h3>Resume your subscription?</h3>{trialing && <p>Your original trial still ends{trialDate ? ` on ${trialDate}` : ' on its original date'}. Resuming restores the automatic first charge after the trial; it does not extend the trial.</p>}<p>Remove the scheduled cancellation and restore automatic renewal{date ? ` on ${date}` : ''}. Your existing plan, discounts and saved card stay the same. No payment is charged today.</p>
+              <label className={styles.confirm}><input type="checkbox" checked={resumeConfirmed} onChange={event => setResumeConfirmed(event.target.checked)} />I agree to restore automatic renewal and pay the amount due at each renewal.</label>
+              <div className={styles.actions}><button type="button" className="wt-button secondary" disabled={busy} onClick={() => { setResuming(false); setResumeConfirmed(false) }}>Keep cancellation</button><button type="button" className="wt-button" disabled={busy || !resumeConfirmed} onClick={() => void resume()}>{busy ? 'Resuming…' : 'Confirm resume'}</button></div>
+            </div>}
             {!ended && !summary.cancellationScheduled && !confirming && <button type="button" className={styles.danger} disabled={busy} onClick={() => { setSetup(null); setError(''); setNotice(''); setConfirmed(false); setConfirming(true) }}>Cancel subscription</button>}
             {confirming && <div className={styles.cancellation}>
-              <h3>Confirm cancellation</h3><p>Cancel renewal? You will keep access{date ? ` through ${date}` : ' through your paid period'}. Your subscription will end after that period.</p>
+              <h3>Confirm cancellation</h3><p>{trialing ? `Cancel automatic billing? You keep full access until your trial ends${trialDate ? ` on ${trialDate}` : ''}. Your card will not be charged the first subscription payment unless you resume before then.` : summary.paymentOverdue ? `Cancel renewal? Your subscription will end${date ? ` on ${date}` : ' at the end of the current period'}. Existing payment restrictions still apply.` : `Cancel renewal? You will keep access${date ? ` through ${date}` : ' through your paid period'}. Your subscription will end after that period.`}</p>
               <label className={styles.confirm}><input type="checkbox" checked={confirmed} onChange={event => setConfirmed(event.target.checked)} />I understand that my subscription will not renew.</label>
               <div className={styles.actions}><button type="button" className="wt-button secondary" disabled={busy} onClick={() => { setConfirming(false); setConfirmed(false) }}>Keep subscription</button><button type="button" className={styles.danger} disabled={busy || !confirmed} onClick={() => void cancel()}>{busy ? 'Cancelling…' : 'Confirm cancellation'}</button></div>
             </div>}

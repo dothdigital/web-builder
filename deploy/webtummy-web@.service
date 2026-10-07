@@ -1,0 +1,25 @@
+[Unit]
+Description=Webtummy web release %i
+After=network-online.target postgresql@18-webtummy.service redis-webtummy.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/webtummy-releases/%i/apps/web
+Environment=NODE_ENV=production
+EnvironmentFile=/home/ubuntu/webtummy-releases/%i/deploy/runtime.env
+ExecStart=/usr/bin/node /home/ubuntu/webtummy-releases/%i/node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port ${WEBTUMMY_PORT}
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=450
+KillSignal=SIGTERM
+NoNewPrivileges=true
+PrivateTmp=true
+UMask=0077
+MemoryMax=1G
+CPUWeight=100
+
+[Install]
+WantedBy=multi-user.target

@@ -2,22 +2,33 @@ export const BILLING_DAY = 86400000
 export const GRACE_DAYS = 7
 export const HOSTING_GRACE_DAYS = 30
 export const RETENTION_DAYS = 90
+export const TRIAL_DAYS = 7
 export type BillingAccess = {
   status: string; billingExempt: boolean; billingStatus: string; billingPlanId: string | null;
   billingPaidThrough?: Date | null; billingPeriodEnd: Date | null; billingDelinquentSince?: Date | null;
   billingSubscriptionEndedAt?: Date | null; billingSuspendedAt?: Date | null; billingRetentionEndsAt?: Date | null;
   billingCancellationReason?: string | null; billingLegalHold?: boolean
+  cancelAtPeriodEnd?: boolean
+  billingTrialEnd?: Date | null
 }
 export function billingLifecycle(workspace: BillingAccess, now = new Date()) {
-  const result = (phase: 'ACTIVE' | 'GRACE' | 'PAST_DUE' | 'SUSPENDED' | 'PAYMENT_REQUIRED', editing: boolean, hosting: boolean, suspendAt: Date | null = null) => {
+  const result = (phase: 'ACTIVE' | 'TRIAL' | 'GRACE' | 'PAST_DUE' | 'SUSPENDED' | 'PAYMENT_REQUIRED', editing: boolean, hosting: boolean, suspendAt: Date | null = null) => {
     const retentionEndsAt = suspendAt ? workspace.billingRetentionEndsAt ?? new Date(suspendAt.getTime() + RETENTION_DAYS * BILLING_DAY) : null
     return { phase, editing, hosting, suspendAt, retentionEndsAt, deletionEligible: !!retentionEndsAt && now >= retentionEndsAt && !workspace.billingLegalHold }
   }
   if (workspace.status !== 'ACTIVE') return result('SUSPENDED', false, false)
   if (workspace.billingExempt) return result('ACTIVE', true, true)
+  const trialEnd = workspace.billingTrialEnd
+  if (workspace.billingPlanId && workspace.billingStatus === 'trialing' && trialEnd && trialEnd > now) return result('TRIAL', true, true)
   const paidThrough = workspace.billingPaidThrough
   if (workspace.billingPlanId && workspace.billingStatus === 'active' && paidThrough && paidThrough > now) return result('ACTIVE', true, true)
-  if (!paidThrough || !workspace.billingPlanId) return result('PAYMENT_REQUIRED', false, false)
+  if (!paidThrough || !workspace.billingPlanId) {
+    if (workspace.billingPlanId && trialEnd && (trialEnd <= now || ['canceled', 'paused'].includes(workspace.billingStatus))) return result('SUSPENDED', false, false, workspace.billingSubscriptionEndedAt ?? trialEnd)
+    return result('PAYMENT_REQUIRED', false, false)
+  }
+  // A delayed Stripe webhook must not turn a scheduled cancellation into payment grace.
+  const cancellationEnd = workspace.billingPeriodEnd ?? paidThrough
+  if (workspace.cancelAtPeriodEnd && cancellationEnd <= now) return result('SUSPENDED', false, false, cancellationEnd)
   if (['past_due', 'unpaid', 'active'].includes(workspace.billingStatus) || workspace.billingStatus === 'canceled' && workspace.billingCancellationReason === 'payment_failed') {
     const since = workspace.billingDelinquentSince ?? paidThrough
     const age = now.getTime() - since.getTime()

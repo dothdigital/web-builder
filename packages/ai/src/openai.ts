@@ -2,7 +2,7 @@ import { assistantPlanSchema, assistantPrompt } from './editor-command'
 import { z } from 'zod'
 import type { AiPatch, DesignDna, DesignTokens, WebsiteModel } from '@awb/website-model'
 import { aiPatchSchema } from '@awb/website-model'
-import { registryCatalogue, validateSectionProps, getComponent } from '@awb/component-registry'
+import { registryCatalogue, validateSectionProps, getComponent, templateGenerationComponents, templateCopyCatalogue, initialTemplateProps, setTemplateHeading } from '@awb/component-registry'
 import type { CatalogueEntry } from '@awb/component-registry'
 import {
   plannedNavigationSchema,
@@ -306,6 +306,27 @@ export class OpenAiProvider implements AiProvider {
     tokens: DesignTokens,
     page: SitePlan['pages'][number],
   ): Promise<AiResult<PageContent>> {
+    if (brief.templateId) {
+      const ids=templateGenerationComponents(brief.templateId,page.path,brief.testimonials.length>0)
+      if(!ids.length)throw new Error('The selected layout has no sections for this page.')
+      const result=await this.complete('website_copy',pageContentSchema,
+        ['Fill the selected HTML layout with original business content. Keep exactly the prescribed componentIds in their original order. Do not choose a different layout or add sections.',
+        'Return path, h1, seo and sections with id, componentId, componentVersion:"1.0.0", hidden:false, props. Only fill the documented text properties. The application supplies images, navigation and links.',
+        'The sample wording explains each field’s visual role only. It is not factual evidence about this business. Rewrite all text fields. Use empty strings for unsupported statistics, years, addresses, pricing, awards, certifications, guarantees, staff, partner names, telephone numbers, email addresses, or opening hours. Never copy demo claims. Do not invent service areas or process details.',
+        'One H1: the hero heading property must equal the returned h1. Other headline properties must fit the business and the page intent. Keep short headings short enough to fit the original design. For service pages, explain the supplied service specifically.',
+        'For review sections use only exact supplied reviews and their real authors. Leave excess review fields empty.',
+        `Ordered layout fields and sample copy:\n${JSON.stringify(templateCopyCatalogue(ids))}`].join('\n\n'),
+        `${this.briefText(brief)}\nPage: ${JSON.stringify(page)}\nAnalysis: ${JSON.stringify(analysis)}`,
+        content=>[...(content.sections.map(section=>section.componentId).join(',')!==ids.join(',')?['Keep all prescribed componentIds in their original order']:[]),...content.sections.flatMap(section=>{
+          const expected=templateCopyCatalogue([section.componentId])[0]
+          if(!expected)return ['Unknown layout section']
+          return expected.fields.filter(field=>typeof section.props[field.path.slice(1)]!=='string').map(field=>`Provide ${section.componentId} ${field.path}, using an empty string when facts are missing`)
+        })])
+      result.data.sections=result.data.sections.map((section,index)=>({...section,id:`layout-${index}`,props:{...initialTemplateProps(section.componentId),...Object.fromEntries(templateCopyCatalogue([section.componentId])[0]!.fields.map(field=>[field.path.slice(1),section.props[field.path.slice(1)]]))}}))
+      const hero=result.data.sections.find(section=>getComponent(section.componentId)?.family==='HERO')
+      if(hero)setTemplateHeading(hero.componentId,hero.props,result.data.h1)
+      return result
+    }
     return this.complete(
       'website_copy',
       pageContentSchema,

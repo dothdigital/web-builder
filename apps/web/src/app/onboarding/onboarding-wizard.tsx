@@ -1,5 +1,7 @@
 'use client'
 import { ErrorNotice } from '@/components/error-notice'
+import { LayoutGallery } from '@/components/account/layout-gallery'
+import { layoutCatalogue } from '@awb/shared/layout-catalogue'
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -72,6 +74,8 @@ export function OnboardingWizard() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string>()
   const [projectId, setProjectId] = useState<string>()
+  const [layoutChosen, setLayoutChosen] = useState(false)
+  const [templateId, setTemplateId] = useState<string>()
 
   const [homepageLength, setHomepageLength] = useState<'compact' | 'expanded'>('expanded')
   const [homepageSections, setHomepageSections] = useState<Array<typeof homepageSectionOptions[number]>>([])
@@ -131,6 +135,7 @@ export function OnboardingWizard() {
       const reference = referenceUrl.trim() ? designReferenceSchema.safeParse({ url: referenceUrl, mode: referenceMode, notes: referenceNotes }) : undefined
       if (reference && !reference.success) throw new Error(reference.error.issues[0]?.message || 'Check the reference website address')
       const { projectId: created } = await createProjectFromBrief({
+        templateId,
         businessName,
         homepageLength,
         homepageSections,
@@ -287,8 +292,11 @@ export function OnboardingWizard() {
     }
   }
 
+  if (!layoutChosen) return <LayoutGallery onSelect={id => { setTemplateId(id); setLayoutChosen(true); setError(undefined) }} />
+
   return (
     <div className="mx-auto w-full min-w-0 max-w-5xl">
+      {!projectId && <div className="wt-notice mb-6 flex flex-wrap items-center justify-between gap-3"><span>Selected layout: <strong>{layoutCatalogue.find(layout => layout.id === templateId)?.name || 'Custom design'}</strong></span><button type="button" className="wt-button secondary" disabled={busy} onClick={() => setLayoutChosen(false)}>Change layout</button></div>}
       <ol aria-label="Website setup steps" className="flex flex-nowrap gap-2 overflow-x-auto pb-2 text-sm text-neutral-500">
         {steps.map((entry, index) => (
           <li key={entry.key} aria-current={index === stepIndex ? 'step' : undefined} className={`shrink-0 whitespace-nowrap ${index === stepIndex ? 'font-semibold text-neutral-900' : ''}`}>
@@ -351,7 +359,7 @@ export function OnboardingWizard() {
               </select>
             </Field>
           </div>
-          <fieldset className="grid gap-3 rounded-lg border border-neutral-200 p-4">
+          {!templateId && <fieldset className="grid gap-3 rounded-lg border border-neutral-200 p-4">
             <legend className="px-1 text-sm font-medium">Homepage length</legend>
             <p className="text-sm text-neutral-500">Choose how much of your business story to show on the homepage. Service detail pages are included with either option.</p>
             <label className="flex items-start gap-3 rounded-md border border-neutral-200 p-3">
@@ -362,7 +370,7 @@ export function OnboardingWizard() {
               <input type="radio" name="homepageLength" value="compact" checked={homepageLength === 'compact'} onChange={() => setHomepageLength('compact')} className="mt-1" />
               <span><span className="block text-sm font-medium">Compact · 3–4 sections</span><span className="text-xs text-neutral-500">A shorter introduction focused on key services and enquiries.</span></span>
             </label>
-          </fieldset>
+          </fieldset>}
           <fieldset className="grid gap-3 rounded-lg border border-neutral-200 p-4">
             <legend className="px-1 text-sm font-medium">Homepage topics (optional)</legend>
             <p className="text-sm text-neutral-500">Leave blank for AI to choose. Selected topics will be covered; related topics may share a section to fit your chosen page length. Add your approach, strengths and areas served in the business description so the content reflects your business.</p>

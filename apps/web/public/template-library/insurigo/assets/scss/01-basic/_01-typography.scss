@@ -1,0 +1,425 @@
+/*----------------------------------------*/
+/*  01. Typography CSS
+/*----------------------------------------*/
+
+@mixin placeholder {
+    &::-webkit-input-placeholder {
+        @content;
+    }
+
+    &:-moz-placeholder {
+        @content;
+    }
+
+    &::-moz-placeholder {
+        @content;
+    }
+
+    &:-ms-input-placeholder {
+        @content;
+    }
+}
+
+/* Common Style */
+*,
+*::after,
+*::before {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    height: 100%;
+}
+
+body {
+    font-family: $font-family-base;
+    font-size: 17px;
+    font-weight: 400;
+    font-style: normal;
+    line-height: 29px;
+    overflow-x: hidden;
+    color: $body-color;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-family: $headings-font-family;
+    font-weight: 700;
+    line-height: 1.2;
+    margin: 0;
+    color: $heading-color;
+}
+
+.h1,
+.h2,
+.h3,
+.h4,
+.h5,
+.h6 {
+    line-height: inherit;
+    margin: 0;
+}
+
+p {
+    margin: 0;
+}
+
+a,
+button {
+    line-height: inherit;
+    display: inline-block;
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+}
+
+*:focus {
+    outline: none;
+}
+
+button:focus,
+a:focus {
+    text-decoration: none;
+
+    color: inherit;
+    outline: none;
+}
+
+a:hover {
+    text-decoration: none;
+    color: $primary;
+}
+
+button,
+input[type="submit"] {
+    cursor: pointer;
+}
+
+img {
+    max-width: 100%;
+    vertical-align: middle;
+}
+
+input,
+textarea {
+    @include placeholder {
+        opacity: 1;
+    }
+}
+
+ul,ol{
+    margin: 0;
+    padding: 0;
+    list-style-type: none;
+}
+
+ul {
+    &:last-child {
+        margin-bottom: 0;
+    }
+}
+
+hr {
+    border-top-width: 2px;
+}
+
+::-moz-selection {
+    color: $white;
+    background: $primary;
+}
+  
+::selection {
+color: $white;
+background: $primary;
+}
+
+.home-2{
+    & ::-moz-selection,
+    & ::selection{
+        background: $theme-color-2;
+    }
+}
+
+.home-3{
+    & ::-moz-selection,
+    & ::selection{
+        background: $theme-color-3;
+    }
+}
+
+.home-4{
+    & ::-moz-selection,
+    & ::selection{
+        background: $theme-color-4;
+    }
+}
+
+// common-design //
+
+.align-items-start{
+    align-items: flex-start;
+}
+.align-items-center{
+    align-items: center;
+}
+.align-items-end{
+    align-items: flex-end;
+}
+
+.odometer.odometer-auto-theme, 
+.odometer.odometer-theme-default{
+    font-family: $font-family-base !important;
+}
+
+.main-btn{
+    padding: 14px 28px;
+    font-weight: 500;
+    color: $white;
+    background-color: $primary;
+    border-radius: 6px;
+    transition: $transition;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    i{
+        position: relative;
+        transition: $transition;
+    }
+    &:hover{
+        background-color: $secondary;
+        color: $white;
+        i{
+            transform: translateX(5px);
+        }
+    }
+}
+
+
+.section-title{
+    text-align: center;
+    & > span{
+        border: 1px solid #25826A66;
+        font-size: 16px;
+        font-weight: 500;
+        color: $primary;
+        border-radius: 40px;
+        line-height: 26px;
+        padding: 4px 20px 2px 20px;
+        display: inline-block;
+    }
+    .title{
+        font-size: 40px;
+        line-height: 50px;
+        margin-top: 20px;
+        margin-bottom: 33px;
+        @media #{$large-mobile} {
+          font-size: 26px;
+          line-height: 36px;
+        } 
+    }
+    &.white{
+        text-align: left;
+        & > span{
+            border-color: #6A8887;
+            color: $white;
+        }
+        .title{
+            color: $white;
+            & span{
+                color: #FFFFFF59;
+            }
+        }
+    }
+}
+
+.section-title-2{
+    text-align: center;
+    span{
+        font-size: 17px;
+        font-weight: 500;
+        color: $theme-color-2;
+    }
+    & .title{
+        font-size: 40px;
+        color: $black;
+        margin-top: 15px;
+        @media #{$desktop-device} {
+            font-size: 28px;
+            line-height: 38px;
+        }
+        @media #{$tablet-device} {
+            font-size: 28px;
+            line-height: 38px;
+        }
+        @media #{$large-mobile} {
+            font-size: 26px;
+            line-height: 36px;
+        }
+    }
+    &.section-title-3{
+        text-align: left;
+        & span{
+            color: $theme-color-3;
+            position: relative;
+            display: inline-block;
+            font-weight: 500;
+            &::before{
+                position: absolute;
+                content: '';
+                left: 0;
+                top: -1px;
+                height: 100%;
+                width: 23px;
+                clip-path: polygon(0 0,76% 0,100% 100%,0 100%);
+                -webkit-clip-path: polygon(0 0,76% 0,100% 100%,0 100%);
+                background: rgba(225,22,49,8%);
+                pointer-events: none;
+            }
+        }
+        & .title{
+            color: $dark-2;
+            @media #{$extra-minBig-device-2} {
+                font-size: 34px;
+                line-height: 44px;
+            }
+            @media #{$laptop-device} {
+                font-size: 28px;
+                line-height: 38px;
+            }
+            @media #{$desktop-device} {
+                font-size: 28px;
+                line-height: 38px;
+            }
+            @media #{$tablet-device} {
+                font-size: 28px;
+                line-height: 38px;
+            }
+            @media #{$large-mobile} {
+                font-size: 26px;
+                line-height: 36px;
+            }
+        }
+        p{
+            padding-right: 100px;
+            padding-top: 25px;
+            font-size: 16px;
+            line-height: 1.75;
+            @media #{$desktop-device} {
+                padding-right: 0;
+            }
+            @media #{$tablet-device} {
+                padding-right: 0;
+            }
+            @media #{$large-mobile} {
+                padding-right: 0;
+            }
+        }
+    }
+}
+
+
+.section-title-4{
+    & span{
+        background-color: $theme-color-5;
+        color: $white;
+        display: inline-block;
+        line-height: 32px;
+        border-radius: 3px;
+        padding: 0 10px;
+        font-size: 16px;
+        margin-bottom: 20px;
+    }
+    .title{
+        font-size: 40px;
+        color: #101010;
+        @media #{$laptop-device} {
+          font-size: 30px;
+        } 
+        @media #{$desktop-device} {
+          font-size: 30px;
+        } 
+        @media #{$tablet-device} {
+          font-size: 30px;
+        } 
+        @media #{$large-mobile} {
+          font-size: 28px;
+        } 
+    }
+    p{
+        margin-top: 13px;
+    }
+}
+
+// preloader //
+
+#pre-load {
+    background-color:#fff;
+    height:100%;
+    width:100%;
+    position:fixed;
+    margin-top:0;
+    top:0;
+    z-index:9999
+}
+.loader{
+    .loader-container {
+        position:absolute;
+        top:50%;
+        left:50%;
+        transform:translate(-50%,-50%);
+        width:100px;
+        height:100px;
+        border:3px solid #ebebec;
+        border-radius:50%;
+        &::before{
+            position:absolute;
+            content:"";
+            display:block;
+            top:50%;
+            left:50%;
+            transform:translate(-50%,-50%);
+            width:100px;
+            height:100px;
+            border-top:3px solid $primary;
+            border-radius:50%;
+            animation:loaderspin 1.8s infinite ease-in-out;
+            -webkit-animation:loaderspin 1.8s infinite ease-in-out;
+        }
+    }
+    .loader-icon{
+        position:absolute;
+        top:50%;
+        left:50%;
+        transform:translate(-50%,-50%);
+        width:80px;
+        text-align:center;
+        img{
+            width:45px
+        }
+    }
+}
+
+
+@keyframes loaderspin {
+    0% {
+        transform:translate(-50%,-50%) rotate(0deg)
+    }
+    100% {
+        transform:translate(-50%,-50%) rotate(360deg)
+    }
+}
+@-webkit-keyframes loaderspin {
+    0% {
+        transform:translate(-50%,-50%) rotate(0deg)
+    }
+    100% {
+        transform:translate(-50%,-50%) rotate(360deg)
+    }
+}
+
+// preloader //

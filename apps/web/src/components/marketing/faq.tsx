@@ -177,7 +177,7 @@ export function MarketingFAQ() {
               </summary>
               <div className={styles.s185}>
                 <p className={styles.s186}>
-                  {"Yes. Cancel renewal through Plans & billing. Your paid access continues until the end of the paid period."}
+                  {"Yes. Cancel through Plans & billing before your trial ends to avoid the first charge. Full access continues until the original trial end. After paid billing starts, cancellation stops future renewals; access continues until the end of the paid period."}
                 </p>
               </div>
             </details>
@@ -243,7 +243,7 @@ export function MarketingFAQ() {
               </summary>
               <div className={styles.s185}>
                 <p className={styles.s186}>
-                  {"There is no free trial. The Individual plan is US$29 per month, and payment is required before building your website."}
+                  {"Eligible new customers receive a 7-day free trial with full access. Add your card at checkout; your subscription automatically continues at US$29 per month when the trial ends. Cancel before the trial ends to avoid the first subscription charge. One trial per customer."}
                 </p>
               </div>
             </details>

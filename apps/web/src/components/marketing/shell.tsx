@@ -18,7 +18,7 @@ export function MarketingShell({ active, children }: { active: string; children:
             {navigation.map(([href, label]) => <Link key={href} href={href} aria-current={active === href ? 'page' : undefined}>{label}</Link>)}
           </nav>
           <div className={styles.accountLinks}>
-            <Link href="/signup" className={styles.startButton}>Start Building</Link>
+            <Link href="/signup" className={styles.startButton}>Start free trial</Link>
             <Link href="/signin" className={styles.signIn}>Sign in</Link>
           </div>
         </div>

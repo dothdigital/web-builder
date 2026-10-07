@@ -1,10 +1,10 @@
 import { websiteTracker } from './website-tracker'
 import { HEADER_MENU_SCRIPT } from './header-menu-script'
-import { readFile } from 'node:fs/promises'
+import { access, readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import type { ReactElement } from 'react'
 import JSZip from 'jszip'
-import { tokensToCssVars } from '@awb/component-registry'
+import { tokensToCssVars, layoutTheme } from '@awb/component-registry'
 import { buildPageJsonLd, buildBlogJsonLd, buildFaqJsonLd, buildLlmsTxt, buildLocalBusinessJsonLd, buildRobotsTxt, buildSitemapXml } from '@awb/seo'
 import { localUploadRoot, readPublicImage } from '@awb/shared'
 import type { WebsiteModel, WebsitePage } from '@awb/website-model'
@@ -259,7 +259,7 @@ async function renderPage(
 </html>
 `
 
-  return rewriteLinks(html, model, root).split(ROOT_TOKEN).join(root)
+  return rewriteLinks(html, model, root).replaceAll('/template-library/',`${root}template-library/`).split(ROOT_TOKEN).join(root)
 }
 
 export async function buildStaticExport(
@@ -268,6 +268,22 @@ export async function buildStaticExport(
 ): Promise<Buffer> {
   const { model, files } = await bundleImages(source)
   const zip = new JSZip()
+
+  const componentIds=[model.globalComponents.header.componentId,model.globalComponents.footer.componentId,...model.pages.flatMap(page=>page.sections.map(section=>section.componentId))]
+  const themes=[...new Set(componentIds.map(layoutTheme).filter((theme):theme is string=>!!theme))]
+  for(const theme of themes){
+    const directory=await templateAssetDirectory(theme)
+    const editable=await readFile(path.join(directory,'editable.css'),'utf8')
+    zip.file(`template-library/${theme}/editable.css`,editable.replaceAll(`/template-library/${theme}/`,'./'))
+    async function copyAssets(relative:string){
+      for(const entry of await readdir(path.join(directory,relative),{withFileTypes:true})){
+        const child=path.posix.join(relative,entry.name)
+        if(entry.isDirectory())await copyAssets(child)
+        else if(/\.(?:png|jpe?g|webp|avif|gif|svg|woff2?|ttf|otf|eot)$/i.test(entry.name))zip.file(`template-library/${theme}/${child}`,await readFile(path.join(directory,child)))
+      }
+    }
+    await copyAssets('assets')
+  }
 
   for (const file of files) {
     zip.file(file.path, file.body)
@@ -296,4 +312,17 @@ Global and page custom scripts execute in this export. reCAPTCHA secret keys are
   )
 
   return zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' })
+}
+
+async function templateAssetDirectory(theme: string): Promise<string> {
+  let current = process.cwd()
+  while (true) {
+    for (const publicRoot of ['public', 'apps/web/public']) {
+      const directory = path.join(current, publicRoot, 'template-library', theme)
+      try { await access(path.join(directory, 'editable.css')); return directory } catch { /* Try the workspace parent. */ }
+    }
+    const parent = path.dirname(current)
+    if (parent === current) throw new ExportAssetError(`Could not locate assets for the ${theme} layout.`)
+    current = parent
+  }
 }

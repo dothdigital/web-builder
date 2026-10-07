@@ -57,10 +57,10 @@ export function MarketingPlans() {
                 {"Everything you need to launch and grow your business online."}
               </p>
               <Link className={styles.s279} href="/signup">
-                {"Start for $29"}
+                {"Start 7-day free trial"}
               </Link>
               <div className={styles.s280}>
-                {"US$29 monthly. No trial. Cancel renewal anytime."}
+                {"Full access free for 7 days for eligible new customers. Card required. Automatic US$29/month billing after the trial. Cancel before it ends to avoid the first charge."}
               </div>
             </div>
             <div className={styles.s281}>

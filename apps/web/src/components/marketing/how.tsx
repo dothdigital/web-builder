@@ -370,7 +370,7 @@ export function MarketingHowItWorks() {
             {"Build in minutes. Grow for years."}
           </h2>
           <p className={styles.s263}>
-            {"No coding required. Hosting included. Cancel anytime."}
+            {"Full access free for 7 days for eligible new customers. Card required. Automatic US$29/month billing afterward unless you cancel before the trial ends."}
           </p>
         </div>
         <div className={styles.s264}>

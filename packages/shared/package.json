@@ -6,6 +6,7 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
+    "./layout-catalogue": "./src/layout-catalogue.ts",
     ".": "./src/index.ts",
     "./email-design": "./src/email-design.ts",
     "./email-render": "./src/email-render.ts",

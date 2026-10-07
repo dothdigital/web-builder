@@ -1,0 +1,146 @@
+[
+  {
+    "id": "insurigo-1",
+    "theme": "insurigo",
+    "name": "Insurance Classic",
+    "category": "Insurance",
+    "preview": "/template-library/insurigo/index.html",
+    "thumbnail": "/template-library/thumbnails/insurigo-1.webp"
+  },
+  {
+    "id": "insurigo-2",
+    "theme": "insurigo",
+    "name": "Insurance Modern",
+    "category": "Insurance",
+    "preview": "/template-library/insurigo/index-2.html",
+    "thumbnail": "/template-library/thumbnails/insurigo-2.webp"
+  },
+  {
+    "id": "insurigo-3",
+    "theme": "insurigo",
+    "name": "Insurance Editorial",
+    "category": "Insurance",
+    "preview": "/template-library/insurigo/index-3.html",
+    "thumbnail": "/template-library/thumbnails/insurigo-3.webp"
+  },
+  {
+    "id": "insurigo-4",
+    "theme": "insurigo",
+    "name": "Insurance Bold",
+    "category": "Insurance",
+    "preview": "/template-library/insurigo/index-4.html",
+    "thumbnail": "/template-library/thumbnails/insurigo-4.webp"
+  },
+  {
+    "id": "finbiz-1",
+    "theme": "finbiz",
+    "name": "Business Classic",
+    "category": "Business",
+    "preview": "/template-library/finbiz/index.html",
+    "thumbnail": "/template-library/thumbnails/finbiz-1.webp"
+  },
+  {
+    "id": "finbiz-2",
+    "theme": "finbiz",
+    "name": "Consulting Modern",
+    "category": "Business",
+    "preview": "/template-library/finbiz/index-two.html",
+    "thumbnail": "/template-library/thumbnails/finbiz-2.webp"
+  },
+  {
+    "id": "finbiz-3",
+    "theme": "finbiz",
+    "name": "Business Strategy",
+    "category": "Business",
+    "preview": "/template-library/finbiz/index-three.html",
+    "thumbnail": "/template-library/thumbnails/finbiz-3.webp"
+  },
+  {
+    "id": "finbiz-4",
+    "theme": "finbiz",
+    "name": "Insurance Professional",
+    "category": "Insurance",
+    "preview": "/template-library/finbiz/index-four.html",
+    "thumbnail": "/template-library/thumbnails/finbiz-4.webp"
+  },
+  {
+    "id": "finbiz-5",
+    "theme": "finbiz",
+    "name": "Marketing Studio",
+    "category": "Marketing",
+    "preview": "/template-library/finbiz/index-five.html",
+    "thumbnail": "/template-library/thumbnails/finbiz-5.webp"
+  },
+  {
+    "id": "finbiz-6",
+    "theme": "finbiz",
+    "name": "Financial Advisory",
+    "category": "Finance",
+    "preview": "/template-library/finbiz/index-six.html",
+    "thumbnail": "/template-library/thumbnails/finbiz-6.webp"
+  },
+  {
+    "id": "finbiz-7",
+    "theme": "finbiz",
+    "name": "Business Partnership",
+    "category": "Business",
+    "preview": "/template-library/finbiz/index-seven.html",
+    "thumbnail": "/template-library/thumbnails/finbiz-7.webp"
+  },
+  {
+    "id": "finbiz-8",
+    "theme": "finbiz",
+    "name": "IT & Staffing",
+    "category": "Technology",
+    "preview": "/template-library/finbiz/index-eight.html",
+    "thumbnail": "/template-library/thumbnails/finbiz-8.webp"
+  },
+  {
+    "id": "finbiz-9",
+    "theme": "finbiz",
+    "name": "Digital Agency",
+    "category": "Agency",
+    "preview": "/template-library/finbiz/index-nine.html",
+    "thumbnail": "/template-library/thumbnails/finbiz-9.webp"
+  },
+  {
+    "id": "finbiz-10",
+    "theme": "finbiz",
+    "name": "Startup Studio",
+    "category": "Business",
+    "preview": "/template-library/finbiz/index-ten.html",
+    "thumbnail": "/template-library/thumbnails/finbiz-10.webp"
+  },
+  {
+    "id": "finbiz-11",
+    "theme": "finbiz",
+    "name": "Branding Agency",
+    "category": "Agency",
+    "preview": "/template-library/finbiz/index-eleven.html",
+    "thumbnail": "/template-library/thumbnails/finbiz-11.webp"
+  },
+  {
+    "id": "finbiz-12",
+    "theme": "finbiz",
+    "name": "Growth Consulting",
+    "category": "Business",
+    "preview": "/template-library/finbiz/index-twelve.html",
+    "thumbnail": "/template-library/thumbnails/finbiz-12.webp"
+  },
+  {
+    "id": "finbiz-13",
+    "theme": "finbiz",
+    "name": "Business Management",
+    "category": "Business",
+    "preview": "/template-library/finbiz/index-thirteen.html",
+    "thumbnail": "/template-library/thumbnails/finbiz-13.webp"
+  },
+  {
+    "id": "finbiz-14",
+    "theme": "finbiz",
+    "name": "Business Growth",
+    "category": "Business",
+    "preview": "/template-library/finbiz/index-fourteen.html",
+    "thumbnail": "/template-library/thumbnails/finbiz-14.webp"
+  }
+]

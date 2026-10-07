@@ -4,8 +4,8 @@ import { MarketingShell } from '@/components/marketing/shell'
 
 
 export const metadata: Metadata = {
-  title: "Individual Plan — US$29 per Month | Webtummy",
-  description: "One website, AI creation and editing, SEO, content, managed hosting and security. US$29 per month with no trial. Cancel renewal anytime.",
+  title: "7-Day Free Trial, Then US$29 per Month | Webtummy",
+  description: "One website, AI creation and editing, SEO, content, managed hosting and security. 7 days free for eligible new customers, then US$29 per month. Cancel renewal anytime.",
   alternates: { canonical: "https://webtummy.com/pricing" },
 }
 

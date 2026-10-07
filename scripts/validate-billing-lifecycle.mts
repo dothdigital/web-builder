@@ -18,7 +18,13 @@ for (const [days, phase, editing, hosting] of [[0, 'GRACE', true, true], [6.999,
   const state = billingLifecycle({ ...paid, billingStatus: 'past_due', billingPaidThrough: new Date(now.getTime() - BILLING_DAY), billingDelinquentSince: new Date(now.getTime() - days * BILLING_DAY) }, now)
   assert.deepEqual([state.phase, state.editing, state.hosting], [phase, editing, hosting])
 }
-assert.equal(billingLifecycle({ ...paid, cancelAtPeriodEnd: true } as any, now).editing, true)
+assert.equal(billingLifecycle({ ...paid, cancelAtPeriodEnd: true }, now).editing, true)
+const cancellationEnd = new Date(now.getTime() - BILLING_DAY)
+const delayedCancellation = billingLifecycle({ ...paid, cancelAtPeriodEnd: true, billingPaidThrough: cancellationEnd, billingPeriodEnd: cancellationEnd }, now)
+assert.equal(delayedCancellation.phase, 'SUSPENDED', 'Scheduled cancellation has no failed-payment grace, even before its webhook arrives')
+assert.equal(delayedCancellation.suspendAt?.getTime(), cancellationEnd.getTime())
+assert.equal(delayedCancellation.retentionEndsAt?.getTime(), cancellationEnd.getTime() + 90 * BILLING_DAY)
+assert.equal(billingLifecycle({ ...paid, billingStatus: 'past_due', cancelAtPeriodEnd: true, billingPaidThrough: cancellationEnd, billingDelinquentSince: cancellationEnd }, now).phase, 'GRACE', 'Scheduling cancellation during a failed-payment grace period does not end grace early')
 assert.equal(billingLifecycle({ ...paid, billingStatus: 'canceled', billingSubscriptionEndedAt: now }, now).hosting, false)
 assert.equal(billingLifecycle({ ...paid, billingStatus: 'canceled', billingCancellationReason: 'payment_failed', billingDelinquentSince: new Date(now.getTime() - 15 * BILLING_DAY) }, now).hosting, true)
 assert.equal(billingLifecycle({ ...paid, billingDelinquentSince: new Date(now.getTime() - 60 * BILLING_DAY) }, now).phase, 'ACTIVE')
@@ -38,8 +44,8 @@ try {
   const end = Math.floor(Date.now() / 1000) + 30 * 86400
   let subscription: any = { id: `sub_${marker}`, customer: workspace.stripeCustomerId, status: 'active', cancel_at_period_end: false, ended_at: null, cancellation_details: null, items: { data: [{ id: 'si_fixture', quantity: 1, current_period_end: end, price: { id: price.stripePriceId } }] }, latest_invoice: { id: 'in_fixture', created: Math.floor(Date.now() / 1000), status: 'paid', attempted: true, lines: { data: [{ parent: { type: 'subscription_item_details' }, pricing: { price_details: { price: price.stripePriceId } }, period: { end } }] } } }
   let oldOutstanding: any = null
-  const client = { invoices: { list: async () => ({ data: oldOutstanding ? [oldOutstanding] : subscription.latest_invoice.status === 'open' ? [subscription.latest_invoice] : [], has_more: false }) }, subscriptions: { retrieve: async () => structuredClone(subscription) } } as any
-  const event = (type: string) => { const id = `evt_${marker}_${events.length}`; events.push(id); return { id, type, created: Math.floor(Date.now() / 1000) } as any }
+  const client = { invoices: { retrieve: async () => structuredClone(subscription.latest_invoice), list: async () => ({ data: oldOutstanding ? [oldOutstanding] : subscription.latest_invoice.status === 'open' ? [subscription.latest_invoice] : [], has_more: false }) }, subscriptions: { retrieve: async () => structuredClone(subscription) } } as any
+  const event = (type: string) => { const id = `evt_${marker}_${events.length}`; events.push(id); return { id, type, created: Math.floor(Date.now() / 1000), data: { object: { id: subscription.latest_invoice.id } } } as any }
   const success = event('invoice.paid')
   await syncSubscription(workspace.id, subscription.id, success, client)
   await syncSubscription(workspace.id, subscription.id, success, client)

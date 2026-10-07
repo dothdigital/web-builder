@@ -3,10 +3,13 @@
 import { prisma, WorkspaceRole } from '@awb/database'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
+import { after } from 'next/server'
+import type Stripe from 'stripe'
 import { primaryWorkspace, requireUser, requireWorkspace } from '@/lib/tenancy'
 import { appUrl } from '@/lib/account-security'
-import { billingManagementSummary, createPaymentSetup, applyPaymentSetup, scheduleSubscriptionCancellation } from '@/lib/billing/management'
+import { billingManagementSummary, createPaymentSetup, applyPaymentSetup, scheduleSubscriptionCancellation, resumeSubscriptionRenewal } from '@/lib/billing/management'
 import { syncSubscription } from '@/lib/billing/service'
+import { deliverTransactionalEmails, queueSubscriptionEmail } from '@/lib/transactional-email'
 
 async function ownerWorkspace() {
   const user = await requireUser()
@@ -45,13 +48,41 @@ export async function cancelSubscription(confirmed: boolean) {
   try {
     const workspace = await ownerWorkspace()
     const subscription = await scheduleSubscriptionCancellation(workspace, z.literal(true).parse(confirmed))
-    // Stripe is authoritative even when the webhook has not reached this server.
-    try { await syncSubscription(workspace.id, subscription.id) }
-    catch {
-      await prisma.workspace.update({ where: { id: workspace.id, stripeSubscriptionId: subscription.id }, data: { cancelAtPeriodEnd: true } })
-    }
+    await reconcileRenewalChange(workspace.id, subscription)
+    after(() => deliverTransactionalEmails().catch(() => console.error('Subscription email delivery delayed; queued for retry.')))
     revalidatePath('/billing')
     revalidatePath('/dashboard')
-    return { ok: true as const, message: 'Renewal cancelled. Your access continues through your paid period.' }
+    return { ok: true as const, message: 'Renewal cancelled. Check Plans & billing for your access and subscription end date.' }
   } catch { return { ok: false as const, message: 'Cancellation could not complete. Please refresh billing and try again.' } }
+}
+
+async function reconcileRenewalChange(workspaceId: string, subscription: Stripe.Subscription) {
+  // Persist the Stripe-confirmed renewal flag and its email together, even if invoice
+  // reconciliation is temporarily unavailable. Full access is never granted here.
+  try { await syncSubscription(workspaceId, subscription.id) }
+  catch {
+    await prisma.$transaction(async tx => {
+      await tx.$queryRaw`SELECT "id" FROM "Workspace" WHERE "id" = ${workspaceId} FOR UPDATE`
+      const current = await tx.workspace.findUniqueOrThrow({ where: { id: workspaceId } })
+      if (current.stripeSubscriptionId !== subscription.id) throw new Error('Subscription changed; refresh billing.')
+      const changed = current.cancelAtPeriodEnd !== subscription.cancel_at_period_end
+      const workspace = await tx.workspace.update({ where: { id: workspaceId }, data: { cancelAtPeriodEnd: subscription.cancel_at_period_end, billingLastReconciledAt: null } })
+      if (changed) {
+        const audit = await tx.auditEvent.create({ data: { workspaceId, action: 'billing.renewal.change', targetType: 'Subscription', targetId: subscription.id, metadata: { cancelAtPeriodEnd: subscription.cancel_at_period_end, reconciliationPending: true } } })
+        await queueSubscriptionEmail(tx, workspace, subscription.cancel_at_period_end ? 'CANCELLATION' : 'RESUMED', audit.id)
+      }
+    })
+  }
+}
+
+export async function resumeSubscription(confirmed: boolean) {
+  try {
+    const workspace = await ownerWorkspace()
+    const subscription = await resumeSubscriptionRenewal(workspace, z.literal(true).parse(confirmed))
+    await reconcileRenewalChange(workspace.id, subscription)
+    after(() => deliverTransactionalEmails().catch(() => console.error('Subscription email delivery delayed; queued for retry.')))
+    revalidatePath('/billing')
+    revalidatePath('/dashboard')
+    return { ok: true as const, message: 'Automatic billing is restored on your existing billing date. If you are on a trial, its original end date is unchanged. No payment was charged for resuming.' }
+  } catch { return { ok: false as const, message: 'We could not resume renewal. Refresh billing; if your subscription has ended, use Reactivate subscription.' } }
 }

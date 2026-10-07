@@ -1,0 +1,357 @@
+/*----------------------------------------*/
+/*  10. Cta CSS
+/*----------------------------------------*/
+
+.rs-cta{
+    background-image: url(../images/newsletter_bg_home_4.jpg);
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    &__title{
+        @media #{$tablet-device} {
+            text-align: center;
+        } 
+        @media #{$large-mobile} {
+            text-align: center;
+        } 
+        span{
+            font-size: 16px;
+            font-weight: 500;
+            color: $primary;
+            display: block;
+            margin-bottom: 16px;
+        }
+        .title{
+            font-size: 40px;
+            margin-bottom: 10px;
+            @media #{$desktop-device} {
+                font-size: 30px;
+            } 
+            @media #{$small-mobile} {
+                font-size: 26px;
+            } 
+        }
+    }
+    &__form{
+        position: relative;
+        z-index: 10;
+        @media #{$tablet-device} {
+            text-align: center;
+            margin-top: 30px;
+        } 
+        @media #{$large-mobile} {
+            text-align: center;
+            margin-top: 30px;
+        } 
+        & .rs-shape{
+            position: absolute;
+            left: 120px;
+            bottom: -130px;
+            @media #{$tablet-device} {
+                bottom: -40px;
+            } 
+            @media #{$large-mobile} {
+                bottom: -40px;
+            } 
+            img{
+                display: block;
+                animation: x-anim2 2s alternate infinite;
+                -webkit-animation: x-anim2 2s alternate infinite;
+            }
+        }
+        .input-box{
+            width: 510px;
+            float: right;
+            position: relative;
+            @media #{$desktop-device} {
+                width: 445px;
+            } 
+            @media #{$tablet-device} {
+                display: inline-block;
+                float: none;
+            } 
+            @media #{$large-mobile} {
+                display: inline-block;
+                float: none;
+                width: 100%;
+            } 
+            & input{
+                width: 100%;
+                border: 0;
+                padding-left: 20px;
+                height: 60px;
+                font-size: 16px;
+                font-family: $font-family-base;
+                border-radius: 5px;
+                color: $black;
+                &::placeholder{
+                    opacity: 0.6; 
+                }
+            }
+            & button{
+                position: absolute;
+                right: 10px;
+                top: 50%;
+                transform: translateY(-50%);
+                padding: 6px 35px;
+                background: $primary;
+                color: $white;
+                border: 0;
+                border-radius: 5px;
+                font-size: 15px;
+                font-weight: 500;
+                font-family: $font-family-base;
+                transition: $transition;
+                &:hover{
+                    background: $secondary;
+                }
+                @media #{$small-mobile} {
+                    position: static;
+                    margin-top: 40px;
+                } 
+            }
+        }
+    }
+    &.rs-cta-2-footer{
+        background-image: url(../images/newslatter-bg2.jpg);
+        .rs-cta__title {
+            span{
+                color: $theme-color-2;
+            }
+            .title{
+                color: $black;
+            }
+        }
+        .rs-cta__form {
+            position: relative;
+            z-index: 10;
+            .rs-shape{
+                left: -70px;
+                bottom: -70px;
+                z-index: -1;
+                @media #{$extra-minBig-device-2} {
+                    left: 0;
+                    bottom: -140px;
+                }
+                @media #{$tablet-device} {
+                    display: none;
+                }
+                @media #{$large-mobile} {
+                    display: none;
+                }
+            }
+            .input-box{
+                input{
+                    background: #F7FCFF;
+                }
+                button{
+                    background: $theme-color-2;
+                    transition: $transition;
+                    &:hover{
+                        background: $black;
+                    }
+                }
+            }
+        }
+    }
+}
+
+.rs-cta-2{
+    background-image: url(../images/call-action-bg1.jpg);
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center center;
+    &__title{
+        & .title{
+            color: $white;
+            font-size: 40px;
+            font-weight: 600;
+            line-height: 1.2;
+            text-align: right;
+            border-right: 1px solid #99D1FD;
+            padding-right: 50px;
+            padding: 20px 50px 20px 0;
+            @media #{$desktop-device} {
+                font-size: 28px;
+                line-height: 38px;
+            }            
+            @media #{$tablet-device} {
+                text-align: left;
+                border-right: 0;
+                padding-right: 0;
+            }        
+            @media #{$large-mobile} {
+                text-align: left;
+                border-right: 0;
+                padding-right: 0;
+            } 
+
+        }
+    }
+    &__content{
+        padding-left: 25px;
+        p{
+            color: $white;
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+        .rs-about-contact{
+            & a{
+                display: flex;
+                align-items: center;
+                .rs-icon{
+                    height: 55px;
+                    width: 55px;
+                    align-items: center;
+                    display: inline-flex;
+                    justify-content: center;
+                    border: 2px solid #FFFFFF9C;
+                    border-radius: 50%;
+                    margin-right: 18px;
+                    font-size: 22px;
+                    color: $white;
+                    i{
+                      transition: $transition;
+                    }
+                }
+                .rs-content{
+                    span{
+                        color: #FFFFFFEB;
+                        font-size: 15px;
+                        font-weight: 400;
+                    }
+                    .title{
+                        font-size: 18px;
+                        margin-top: 5px;
+                        font-weight: 600;
+                        transition: $transition;
+                        position: relative;
+                        color: $white;
+                        & a{
+                            color: $white;
+                        }
+                        &::before{
+                            position: absolute;
+                            content: '';
+                            left: auto;
+                            right: 0;
+                            bottom: 2px;
+                            height: 2px;
+                            width: 0%;
+                            background: $white;
+                            transition: $transition;
+                        }
+                    }
+                }
+                &:hover{
+                  .rs-icon{
+                    i{
+                      -webkit-animation: vibrate 0.4s infinite;
+                      animation: vibrate 0.4s infinite;
+                    }
+                  }
+                  .rs-content{
+                    & .title{
+                        color: $white;
+                        &::before{
+                            width: 100%;
+                            left: 0;
+                            right: auto;
+                        }
+                    }
+                  }
+                }
+            }
+            @media #{$desktop-device} {
+              display: none;
+            }
+            @media #{$tablet-device} {
+              display: none;
+            }
+            @media #{$large-mobile} {
+              display: none;
+            }
+        }
+    }
+}
+
+
+
+.rs-cta-3{
+    &__box{
+        background-image: url(../images/cta-bg.jpg);
+        background-position: bottom center;
+        background-repeat: no-repeat;
+        background-size: cover;
+        padding: 50px 100px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-radius: 10px;
+        overflow: hidden;
+        position: relative;
+        margin-bottom: -80px;
+        @media #{$tablet-device} {
+            flex-direction: column;
+            align-items: center;
+            gap: 30px;
+            text-align: center;
+        }
+        @media #{$large-mobile} {
+            flex-direction: column;
+            align-items: center;
+            gap: 30px;
+            text-align: center;
+            padding: 50px 30px;
+        }
+        & .rs-arrow{
+            position: absolute;
+            right: 480px;
+            top: 50%;
+            transform: translateY(-50%);
+            @media #{$desktop-device} {
+                right: 370px;
+            }
+            @media #{$tablet-device} {
+                right: 30px;
+                bottom: 30px;
+                top: auto;
+                transform: translateY(0);
+            }
+            @media #{$large-mobile} {
+                right: 30px;
+                bottom: 30px;
+                top: auto;
+                transform: translateY(0);
+            }
+            @media #{$small-mobile} {
+                display: none;
+            }
+        }
+        & .title{
+            color: $white;
+            font-size: 40px;
+            text-transform: capitalize;
+            @media #{$extra-minBig-device-2} {
+                font-size: 30px;
+            }
+            @media #{$small-mobile} {
+                font-size: 26px;
+                line-height: 36px;
+            }
+        }
+        & a{
+            border: 2px solid $white;
+            background: transparent;
+            color: $white;
+            @media #{$small-mobile} {
+                padding: 14px 15px;
+            }  
+            &:hover{
+                background: $dark-2;
+                border-color: $dark-2;
+            }
+        }
+    }
+}

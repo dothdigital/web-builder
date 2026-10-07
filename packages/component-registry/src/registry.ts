@@ -1,4 +1,5 @@
 import { portfolioShowcase, credentialsShowcase } from './components/showcase'
+import { importedLayoutDefinitions } from './imported-layouts'
 import { inlineLinksSchema, applyInlineLinks } from './inline-links'
 import { manualSection } from './components/manual-section'
 import { elementOffsetsSchema, applyElementOffsets } from './element-offsets'
@@ -24,6 +25,7 @@ import { contactSplit, ctaCinematic, faqAccordion } from './components/conversio
 import { footerCompact, footerEditorial } from './components/footers'
 
 const definitions = [
+  ...importedLayoutDefinitions,
   manualSection,
   portfolioShowcase,
   credentialsShowcase,
@@ -124,7 +126,7 @@ export interface CatalogueEntry {
 /// ids, and the prop schema travels with each entry so generated sections
 /// survive registry validation.
 export function registryCatalogue(family?: ComponentFamily): CatalogueEntry[] {
-  return listComponents(family).map((definition) => ({
+  return listComponents(family).filter(definition => !definition.componentId.startsWith('Tpl_')).map((definition) => ({
     componentId: definition.componentId,
     family: definition.family,
     version: definition.version,

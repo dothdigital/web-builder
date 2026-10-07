@@ -18,7 +18,7 @@ export function accountEmailTemplate({ purpose, name, url }: AccountEmailInput) 
     ? 'Confirm your email address below. You’ll then see an “Email verified” page, where you can sign in to continue.'
     : 'Use the button below to choose a new password. Updating it will sign out your previous sessions.'
   const button = verifying ? 'Verify my email' : 'Set a new password'
-  const nextStep = verifying ? 'After signing in, subscribe to the Individual plan for US$29/month to start building. One website. No free trial. Cancel renewal anytime.' : ''
+  const nextStep = verifying ? 'After signing in, eligible new customers can activate a 7-day free trial with full access by adding a card at secure checkout. Your subscription then continues at US$29/month unless you cancel before the trial ends. One website. One trial per customer.' : ''
   const ignored = verifying
     ? 'If you didn’t create a Webtummy account, you can safely ignore this email.'
     : 'If you didn’t request a password change, ignore this email. Your password will stay the same.'

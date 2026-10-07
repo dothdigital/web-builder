@@ -21,11 +21,11 @@ export type Audience = 'PAID' | 'UNPAID' | 'TRIAL' | 'EXPIRED'
 export type WebsiteCondition = 'ANY' | 'HAS_WEBSITE' | 'NO_WEBSITE'
 export function contactState(contact: MarketingContact, now = new Date()) {
   const workspaces = contact.user.memberships.map(m => m.workspace).filter(w => w.status === 'ACTIVE')
-  const paid = workspaces.some(w => w.billingPlanId && w.billingStatus === 'active' && w.billingPeriodEnd && w.billingPeriodEnd > now)
+  const paid = workspaces.some(w => w.billingPlanId && w.billingStatus === 'active' && w.billingPaidThrough && w.billingPaidThrough > now)
   const complimentary = workspaces.some(w => w.billingExempt)
-  const trial = false
+  const trial = workspaces.some(w => w.billingPlanId && w.billingStatus === 'trialing' && w.billingTrialEnd && w.billingTrialEnd > now)
   const website = workspaces.flatMap(w => w.projects)[0]
-  const trialEnd = workspaces.map(w => w.trialEndsAt).sort((a, b) => b.getTime() - a.getTime())[0]
+  const trialEnd = workspaces.flatMap(w => w.billingTrialEnd ? [w.billingTrialEnd] : []).sort((a, b) => b.getTime() - a.getTime())[0]
   const verified = !!contact.user.emailVerified || contact.user.accounts.some(a => ['google', 'microsoft-entra-id'].includes(a.provider))
   return { paid, trial, complimentary, website, trialEnd, eligible: contact.optedIn && verified && !contact.user.suspendedAt && workspaces.length > 0 && !complimentary }
 }

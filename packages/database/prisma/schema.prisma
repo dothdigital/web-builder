@@ -22,6 +22,8 @@ model User {
   passwordHash String?
   suspendedAt DateTime?
   sessionVersion Int @default(0)
+  billingTrialUsedAt DateTime?
+  billingTrialReservedUntil DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -90,6 +92,8 @@ model Workspace {
   billingStatus String @default("none")
   billingPeriodEnd DateTime?
   billingPaidThrough DateTime?
+  billingTrialEnd DateTime?
+  billingTrialUsedAt DateTime?
   billingDelinquentSince DateTime?
   billingNextRetryAt DateTime?
   billingCancellationReason String?
@@ -139,6 +143,7 @@ model Project {
   defaultLocale String        @default("en")
   homepageLength String       @default("compact")
   homepageSections String[]   @default([])
+  templateId String?
   designReference Json?
   designReferenceObservation Json?
   status        ProjectStatus @default(DRAFT)
@@ -1012,6 +1017,23 @@ model EmailDelivery {
   @@index([status, nextAttemptAt])
   @@index([contactId, sentAt])
   @@index([campaignId, status])
+}
+
+model TransactionalEmail {
+  id String @id @default(cuid())
+  dedupeKey String @unique
+  kind String
+  recipient String
+  subject String
+  body String
+  html String?
+  status String @default("PENDING")
+  attempts Int @default(0)
+  nextAttemptAt DateTime @default(now())
+  sentAt DateTime?
+  lastError String?
+  createdAt DateTime @default(now())
+  @@index([status, nextAttemptAt])
 }
 
 model BillingNotice {

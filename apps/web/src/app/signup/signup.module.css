@@ -1,4 +1,4 @@
-.page { height: 100dvh; min-height: 0; }
+.page { min-height: 100dvh; height: auto; }
 .header { max-width: 1140px; width: 100%; margin: 0 auto; padding: 18px 24px; display: flex; justify-content: space-between; align-items: center; gap: 16px; flex: none; }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 22px; letter-spacing: -.03em; color: #14243A; }
 .brand span { width: 34px; height: 34px; border-radius: 9px; background: #6B4EE6; color: #fff; display: grid; place-items: center; font-size: 20px; }
@@ -29,7 +29,11 @@
 .colorBar { display: flex; gap: 4px; height: 5px; margin-bottom: 20px; }
 .colorBar span { flex: 1; border-radius: 999px; background: #6B4EE6; }
 .card h1 { margin: 0; font-size: 28px; line-height: 1.2; font-weight: 800; letter-spacing: -.025em; }
-.cardIntro { margin: 9px 0 0; color: #55607A; font-size: 13px; line-height: 1.6; }
+.cardIntro { margin: 12px 0 0; padding: 12px; border: 1px solid #D9D1FA; border-radius: 10px; background: #F3F0FF; color: #3F2D86; font-size: 13px; font-weight: 600; line-height: 1.6; }
+.card :global(.wt-message), .card :global(.wt-success) { margin: 14px 0 0; padding: 14px 16px; border: 1px solid; border-left-width: 4px; border-radius: 10px; font-size: 15px; font-weight: 600; line-height: 1.6; text-align: left; overflow-wrap: anywhere; grid-column: 1 / -1; }
+.card :global(.wt-message) { color: #991B1B; background: #FEF2F2; border-color: #FCA5A5; border-left-color: #DC2626; }
+.card :global(.wt-success) { color: #166534; background: #F0FDF4; border-color: #86EFAC; border-left-color: #16A34A; }
+.card :global(.wt-form) > :global(.wt-message), .card :global(.wt-form) > :global(.wt-success) { margin: 0; }
 .identity { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
 .card :global(.wt-form) { margin-top: 14px; gap: 12px; }
 .card :global(.wt-form) label { font-size: 12px; font-weight: 700; line-height: 1.5; }
@@ -46,6 +50,10 @@
 .card :global(.wt-or) span { font-size: 11px; }
 .terms { margin: 12px 0 0; font-size: 10px; line-height: 1.6; color: #55607A; }
 .terms a { color: #6B4EE6; text-decoration: underline; }
+.recoveryLinks { margin-top: 16px; font-size: 15px; line-height: 1.6; }
+.recoveryLinks p { margin: 10px 0 0; color: #55607A; }
+.recoveryLinks a { color: #5638D6; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+.recoveryLinks a:hover { color: #3F2D86; }
 .accountLinks { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 16px; border-top: 1px solid #ECEAF3; padding-top: 14px; font-size: 11px; line-height: 1.5; }
 .accountLinks p { margin: 0; color: #55607A; }
 .accountLinks a { color: #6B4EE6; font-weight: 700; white-space: nowrap; }
@@ -80,3 +88,23 @@
   .card :global(.wt-form) :global(.wt-button) { min-height: 32px; padding: 5px 10px; }
   .card :global(.wt-form) :global(.wt-check), .card :global(.wt-form) small { font-size: 10px; line-height: 1.3; }
 }
+
+/* Keep trial and billing terms visible on short screens too. */
+.card .cardIntro { display: block; }
+.trialHeadline { display: block; white-space: nowrap; font-size: clamp(15px, 3.6vw, 23px); line-height: 1.3; letter-spacing: -.035em; }
+.card .completionTitle { white-space: nowrap; font-size: clamp(17px, 3.9vw, 27px); line-height: 1.25; letter-spacing: -.04em; color: #6B4EE6; }
+.cardIntro p { margin: 8px 0 0; }
+.trialCard { width: 100%; max-width: 760px; padding: 40px; }
+.trialEyebrow { margin: 0 0 14px; color: #6B4EE6; font-size: 15px; font-weight: 700; }
+.card .trialTitle { white-space: nowrap; font-size: clamp(18px, 4.7vw, 44px); line-height: 1.2; letter-spacing: -.04em; }
+.trialDescription { margin: 20px 0; color: #55607A; font-size: 18px; line-height: 1.6; }
+.trialSteps { padding-left: 24px; margin: 24px 0; color: #14243A; font-size: 16px; line-height: 1.6; }
+.trialSteps li + li { margin-top: 10px; }
+.trialBilling { padding: 20px; border: 1px solid #D9D1FA; border-radius: 12px; background: #F3F0FF; color: #3F2D86; }
+.trialBilling strong { font-size: 22px; }
+.trialBilling p { margin: 8px 0 0; font-size: 14px; line-height: 1.7; }
+.trialButton { display: flex; align-items: center; justify-content: center; margin-top: 24px; min-height: 52px; border-radius: 10px; background: #6B4EE6; color: #fff; font-size: 17px; font-weight: 700; }
+.trialButton:hover { background: #5638D6; }
+.trialButton:focus-visible { outline: 3px solid #14243A; outline-offset: 3px; }
+.trialPackages { display: block; width: fit-content; margin: 18px auto 0; color: #6B4EE6; font-size: 14px; font-weight: 700; }
+@media (max-width: 480px) { .trialCard { padding: 22px 16px; } .trialDescription { font-size: 15px; } .trialSteps { font-size: 14px; } .trialBilling { padding: 16px; } }

@@ -1,6 +1,6 @@
 import type { AiPatch, DesignDna, DesignTokens, WebsiteModel, WebsiteSection } from '@awb/website-model'
 import { designDirections } from '@awb/website-model'
-import { defaultTokens, listComponents } from '@awb/component-registry'
+import { defaultTokens, listComponents, templateGenerationComponents, templateCopyCatalogue, initialTemplateProps, setTemplateHeading } from '@awb/component-registry'
 import type {
   BriefAnalysis,
   DesignDirections,
@@ -411,6 +411,15 @@ export class StubAiProvider implements AiProvider {
       }
     })
 
+    if(brief.templateId){
+      sections.splice(0,sections.length,...templateGenerationComponents(brief.templateId,page.path,brief.testimonials.length>0).map((componentId,index)=>{
+        const props=initialTemplateProps(componentId)
+        for(const field of templateCopyCatalogue([componentId])[0]!.fields){const key=field.path.slice(1);props[key]=field.headingLevel===1?h1:field.headingLevel?index===0?page.title:brief.services[index%Math.max(1,brief.services.length)]||brief.businessName:field.type==='textarea'?brief.description:''}
+        setTemplateHeading(componentId,props,h1)
+        return {id:`layout-${index}`,componentId,componentVersion:'1.0.0',hidden:false,props}
+      }))
+    }
+
     return this.usage('website_copy', {
       path: page.path,
       h1,
@@ -430,7 +439,7 @@ export class StubAiProvider implements AiProvider {
     brief: GenerationBrief,
     isPrimaryHero: boolean,
   ): string {
-    const candidates = listComponents(family as never).map((definition) => definition.componentId)
+    const candidates = listComponents(family as never).filter(definition=>!definition.componentId.startsWith('Tpl_')).map((definition) => definition.componentId)
 
     if (candidates.length === 0) {
       return 'HeroTypographic'

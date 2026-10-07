@@ -9,11 +9,13 @@ import { createAiProvider } from '@awb/ai'
 import { submitContentJob } from '@/lib/content-jobs'
 import { slugify } from '@awb/shared'
 import { designReferenceSchema } from '@awb/shared/design-reference'
+import { isLayoutId } from '@awb/shared/layout-catalogue'
 import { designTokensSchema, type DesignTokens } from '@awb/website-model'
 import { z } from 'zod'
 import { primaryWorkspace, requireProject, requireUser } from '@/lib/tenancy'
 
 const briefSchema = z.object({
+  templateId: z.string().refine(isLayoutId, 'Choose an available layout').optional(),
   designReference: designReferenceSchema.optional(),
   homepageSections: z.array(z.enum(['About us / Who we are', 'Service areas', 'Our methodology / Approach', 'Why choose us'])).max(4).default([]),
   homepageLength: z.enum(['compact', 'expanded']).default('expanded'),
@@ -52,6 +54,7 @@ export async function createProjectFromBrief(input: BriefInput): Promise<{ proje
     data: {
       workspaceId: workspace.id,
       name: brief.businessName,
+      templateId: brief.templateId,
       homepageLength: brief.homepageLength,
       homepageSections: brief.homepageSections,
       ...(brief.designReference ? { designReference: brief.designReference } : {}),

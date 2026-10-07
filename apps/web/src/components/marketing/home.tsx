@@ -33,7 +33,7 @@ export function MarketingHome() {
               {"Your Entire AI Growth Team."}
             </h1>
             <h2 className={styles.s12}>
-              {"One Simple Plan. $29/Month."}
+              {"7 Days Free. Then US$29/Month."}
             </h2>
             <p className={styles.s13}>
               {"Build your website. Create your content. Get found. Host it. Secure it. Manage it. Grow it."}
@@ -107,10 +107,10 @@ export function MarketingHome() {
               </div>
             </div>
             <Link className={styles.s35} href="/signup">
-              {"Start Building"}
+              {"Start 7-day free trial"}
             </Link>
             <div className={styles.s36}>
-              {"No coding required. Hosting included. Cancel anytime."}
+              {"Full access free for 7 days for eligible new customers. Card required. Automatic US$29/month billing afterward unless you cancel before the trial ends."}
             </div>
           </div>
         </div>
@@ -1599,10 +1599,10 @@ export function MarketingHome() {
               </span>
             </div>
             <div className={styles.s133}>
-              {"Everything you need to build, run and grow one website."}
+              {"7 days free with full access, then automatic US$29/month billing. Card required. Eligible new customers only. Cancel before the trial ends to avoid the first charge."}
             </div>
             <Link className={styles.s134} href="/signup">
-              {"Start Building"}
+              {"Start 7-day free trial"}
             </Link>
           </div>
         </div>
@@ -1982,7 +1982,7 @@ export function MarketingHome() {
               </summary>
               <div className={styles.s185}>
                 <p className={styles.s186}>
-                  {"Yes. Cancel renewal through Plans & billing. Your paid access continues until the end of the paid period."}
+                  {"Yes. Cancel through Plans & billing before your trial ends to avoid the first charge. Full access continues until the original trial end. After paid billing starts, cancellation stops future renewals; access continues until the end of the paid period."}
                 </p>
               </div>
             </details>
@@ -2048,7 +2048,7 @@ export function MarketingHome() {
               </summary>
               <div className={styles.s185}>
                 <p className={styles.s186}>
-                  {"There is no free trial. The Individual plan is US$29 per month, and payment is required before building your website."}
+                  {"Eligible new customers receive a 7-day free trial with full access. Add your card at checkout; your subscription automatically continues at US$29 per month when the trial ends. Cancel before the trial ends to avoid the first subscription charge. One trial per customer."}
                 </p>
               </div>
             </details>
@@ -2107,7 +2107,7 @@ export function MarketingHome() {
             {"1 Website + Your Complete AI Growth Team"}
           </div>
           <Link className={styles.s197} href="/signup">
-            {"Start Building"}
+            {"Start 7-day free trial"}
           </Link>
           <div className={styles.s198}>
             {"From idea to online — and growing — in about 30 minutes."}

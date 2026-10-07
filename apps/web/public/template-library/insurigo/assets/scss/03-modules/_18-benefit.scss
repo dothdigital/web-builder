@@ -1,0 +1,149 @@
+/*----------------------------------------*/
+/*  18. Benefit CSS
+/*----------------------------------------*/
+
+.rs-benefit{
+    .section-title-4{
+        @media #{$tablet-device} {
+            margin-bottom: 10px;
+        } 
+        @media #{$large-mobile} {
+            margin-bottom: 10px;
+        } 
+    }
+    .section-text{
+        @media #{$laptop-device} {
+            margin-bottom: 30px;
+        }
+        @media #{$desktop-device} {
+            margin-bottom: 30px;
+        }
+        @media #{$tablet-device} {
+            padding-left: 0;
+            margin-right: 60px;
+            margin-bottom: 30px;
+            margin-top: 0;
+          } 
+        @media #{$large-mobile} {
+            padding-left: 0;
+            margin-right: 0px;
+            margin-bottom: 30px;
+            margin-top: 0;
+          } 
+    }
+    &__item{
+        padding: 30px 30px 60px;
+        background: #F5F5F5;
+        border-bottom: 3px solid $theme-color-5;
+        position: relative;
+        z-index: 10;
+        transition: $transition-ease;
+        background-image: url(../images/service_shape_icon.png);
+        background-position: 88% 105%;
+        background-repeat: no-repeat;
+        background-size: 45px;
+        &::before{
+            position: absolute;
+            content: '';
+            left: 0;
+            bottom: 0;
+            width: 100%;
+            height: 0%;
+            background: $theme-color-5;
+            z-index: -1;
+            transition: $transition-ease;
+        }
+        span{
+            color: #02010100;
+            -webkit-text-stroke: 2px #F18F20;
+            font-size: 70px;
+            font-weight: 600;
+            line-height: 96px;
+            transition: $transition-ease;
+        }
+        .title{
+            font-size: 26px;
+            font-weight: 700;
+            color: #272121;
+            margin-top: 15px;
+            margin-bottom: 18px;
+            transition: $transition-ease;
+            @media #{$desktop-device} {
+              font-size: 18px;
+            } 
+            @media #{$laptop-device} {
+              font-size: 22px;
+            } 
+            @media #{$small-mobile} {
+              font-size: 18px;
+            } 
+        }
+        p{
+            color: #202020;
+            transition: $transition-ease;
+        }
+        &:hover{
+            border-bottom-color: $theme-color-4;
+            &::before{
+                height: 100%;
+            }
+            span{
+                color: $theme-color-4;
+            }
+            .title{
+                color: $white;
+            }
+            p{
+                color: $white;
+            }
+        }
+    }
+    .rs-benefit__slider{
+        .rs-benefit__item{
+            &.service-slider-active{
+                border-bottom-color: $theme-color-4;
+                &::before{
+                    height: 100%;
+                }
+                span{
+                    color: $theme-color-4;
+                }
+                .title{
+                    color: $white;
+                }
+                p{
+                    color: $white;
+                }
+            }
+
+        }
+    }
+    &__slider{
+        .slick-arrow{
+            height: 45px;
+            width: 45px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: $white;
+            background: $theme-color-5;
+            transition: $transition-ease;
+            border-radius: 4px;
+            cursor: pointer;
+            &:hover{
+                background: $theme-color-4;
+            }
+            &.prev{
+                position: absolute;
+                right: 0;
+                top: -165px;
+            }
+            &.next{
+                position: absolute;
+                right: 0;
+                top: -115px;
+            }
+
+        }
+    }
+}

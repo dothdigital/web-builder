@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { finishAccountToken, requestEmailVerification } from '@/app/actions/account'
 import { ActionForm } from './action-form'
-import { ErrorNotice } from '@/components/error-notice'
 import styles from './account-confirmation.module.css'
 
 export function EmailVerification({ token }: { token?: string }) {
@@ -26,5 +25,5 @@ export function EmailVerification({ token }: { token?: string }) {
   }, [router, token, validToken])
 
   if (!error) return <><span className={`${styles.icon} ${styles.loadingIcon}`} aria-hidden="true">✦</span><h1>Verifying your email…</h1><p role="status">One moment while we confirm your email address.</p></>
-  return <><h1>Verify your email.</h1><ErrorNotice message={error} code="WT-AUTH-001" className="wt-message" /><ActionForm action={requestEmailVerification} label="Send verification email"><label htmlFor="verification-email">Email address<input id="verification-email" name="email" type="email" autoComplete="email" maxLength={254} required /></label></ActionForm><Link href="/signin" className={styles.secondary}>Already verified? Sign in →</Link></>
+  return <><h1>Verify your email.</h1><p role="alert" className="wt-message">{error}</p><ActionForm plainErrors action={requestEmailVerification} label="Send verification email"><label htmlFor="verification-email">Email address<input id="verification-email" name="email" type="email" autoComplete="email" maxLength={254} required /></label></ActionForm><Link href="/signin" className={styles.secondary}>Already verified? Sign in →</Link></>
 }

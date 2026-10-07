@@ -22,7 +22,10 @@ environment was backed up privately in `deploy/.env-before-apex`.
 
 ## Independent services and storage
 
-- `webtummy-web.service`: production Next.js app; restart on failure; enabled at boot.
+- `webtummy-web@trial-copy-20261006.service`: active isolated Next.js release on
+  `127.0.0.1:3002`, enabled at boot. `/home/ubuntu/webtummy-releases/active-release`
+  records the active release; Nginx's proxy snippet records its port. The original
+  `webtummy-web.service` on port 3001 remains running as the initial rollback target.
 - `webtummy-worker.service`: temporary local worker, concurrency one; enabled at boot. The user prefers
   moving it to the existing Senuke worker server if possible. Its SSH destination is still needed;
   an existing administrative worker SSH key is available here. The remote service template is
@@ -55,6 +58,80 @@ Do not reuse Senuke keys, databases, Redis, or asset buckets.
 
 ## Routine operations
 
+### Seven-day subscription trial (2026-10-06)
+
+The Individual plan now offers eligible new customers a seven-day trial, then US$29/month.
+Checkout uses the existing configured monthly Stripe price, requires a card and explicitly sets
+`subscription_data.trial_period_days=7`; the separate Stripe pricing-table trial does not configure
+these API-created sessions. A trial starts only after Stripe confirms `trialing` with a valid
+mapped price and future `billingTrialEnd`. Creation, editing, AI and hosting use the same access
+policy and are fully available during that period. Signup alone grants no trial access.
+The user's prior paid subscriptions are not changed. Workspace/user trial-history timestamps and
+a short checkout reservation prevent repeat trials and simultaneous trial checkouts. Abandoned
+reservations expire with checkout. Reactivation uses paid checkout without another trial.
+
+Trial cancellation stops the first automatic charge and keeps access through the original trial
+end; resuming before that end restores billing without extending the trial. An expired trial
+without a confirmed post-trial payment loses editing and hosting access and enters the existing
+90-day retention policy. Its $0 trial invoice does not count as a paid period, so a failed first
+charge does not receive previously-paid renewal grace. Later failed paid renewals keep the
+7-day/30-day policy. Existing admin/support and explicit payment exemptions are preserved.
+
+Core email flow: welcome after verification; one themed activation email after confirmed trial
+checkout; one combined subscription-active/payment receipt email after the first paid invoice.
+No separate trial reminder is sent by this implementation. Cancellation/resume, payment problems
+and suspension/retention notices still follow their events. Branded previews are in
+`deploy/email-previews/`. The complete Stripe publishable key is stored only in private `.env`.
+Stripe's enabled webhook already includes checkout completion, subscription lifecycle and
+`invoice.paid` events. The billing sweep is the fallback if an event is delayed.
+
+Run `TSX_TSCONFIG_PATH=apps/web/tsconfig.json node --import tsx
+scripts/validate-subscription-trials.cjs` with the worker paused; its synthetic fixtures mock all
+Stripe, AWS and mail delivery. Before the additive trial migration, database/uploads were backed
+up to `/home/ubuntu/backups/webtummy/20261006T021650Z`.
+
+Account verification now queues a separate welcome email after verification succeeds.
+Confirmed paid Stripe invoices queue a payment email for verified workspace owners, including
+zero-dollar invoices (such as a 100% coupon), which receive a subscription confirmation rather
+than a claim that money was received. Messages include the paid invoice and PDF links supplied
+by Stripe. Transactional messages use `ACCOUNT_EMAIL_FROM` (currently
+`Team Webtummy <no_reply@webtummy.com>`) with the SES sender as fallback.
+The `TransactionalEmail` outbox is separate from marketing consent and billing failure notices;
+the verification/webhook response schedules prompt delivery, and the existing authenticated
+billing sweep drains pending messages each minute. Unique welcome/user and invoice/user keys
+prevent duplicate messages. SES throttling is retried with backoff; `FAILED` or `UNKNOWN` records
+need review, and uncertain sends are never automatically repeated.
+Validate with `npx tsx scripts/validate-transactional-emails.mts`; delivery is mocked and test
+records are removed. The 2026-10-06 migration backup is in
+`/home/ubuntu/backups/webtummy/20261006T012807Z` (private database dump and uploads archive).
+
+Never stop production services to build, or build in the active release directory.
+Use the isolated release and checked traffic-switch workflow in `deploy/RELEASES.md`.
+The small server may refuse an on-server build for insufficient free RAM; use a
+separate Linux builder or increase memory instead of stopping the live site.
+Authentication forms show plain validation messages without support error-code banners.
+
+Subscription cancellation stops renewal at the current period end and queues a confirmation
+email containing the access end date and retention policy. Until that period ends, owners can
+select **Resume subscription** in the billing dialog and explicitly confirm automatic renewal.
+Resume removes Stripe's scheduled cancellation while preserving the subscription, billing date,
+discounts and saved card; it queues a resume confirmation and does not create a new checkout.
+Ended subscriptions show **Reactivate subscription**, using the same Stripe customer and existing
+workspace/project through checkout. Confirmed paid invoices (including $0 coupon invoices) restore
+access, clear suspension/retention-review state, retain legal holds and queue receipt/reactivation
+emails. The existing billing sweep removes hosting's suspension gate for published websites.
+Existing unpaid subscriptions use payment recovery instead of starting duplicate subscriptions.
+Cancellation at the period boundary never grants failed-renewal grace while waiting for a webhook.
+No automatic refunds or permanent website deletion are performed by this flow.
+
+Regression checks: `TSX_TSCONFIG_PATH=apps/web/tsconfig.json node --import tsx
+scripts/validate-billing-management.cjs`, `npx tsx scripts/validate-billing-lifecycle.mts`, and
+`TSX_TSCONFIG_PATH=apps/web/tsconfig.json node --import tsx
+scripts/validate-subscription-reactivation.cjs`. The reactivation suite uses synthetic records and
+mocked Stripe/AWS calls, tests the three retention warning intervals and delivered-warning review
+gate, and removes its fixtures. Pause the worker while running database-backed email tests so it
+cannot pick up their synthetic outbox records; start it afterward.
+
 The public contact page is `/contact`, linked in the footer. Its same-origin JSON endpoint
 `/api/contact` validates and bounds input, rate-limits requests using the independent database,
 discards honeypot submissions, and uses AWS SES with the visitor's address as Reply-To.
@@ -79,8 +156,11 @@ journalctl -u webtummy-worker -n 100 --no-pager
 curl https://webtummy.com/api/health
 ```
 
-For application updates: review source changes, run `npm ci`, `npm run db:generate`,
-`npm run db:deploy`, and `npm run build`, then restart only the Webtummy web and worker services.
+For web updates: review source changes, prepare an isolated release with
+`bash deploy/release-web.sh prepare RELEASE_ID`, then activate it after checks with
+`bash deploy/release-web.sh activate RELEASE_ID`. Do not restart the serving release.
+Database migrations and worker updates are separate; only backward-compatible
+additive migrations may overlap web releases.
 Back up the database and uploads before migrations. Do not re-run `prepare-server.py`; it intentionally
 refuses to overwrite existing secrets. No demonstration accounts were seeded.
 

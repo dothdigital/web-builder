@@ -9,7 +9,7 @@ import styles from './signup.module.css'
 export const dynamic = 'force-dynamic'
 export const metadata: Metadata = {
   title: 'Create Your Account | Webtummy',
-  description: 'Get your entire AI Growth Team for US$29 per month. Create your Webtummy account to build, edit and grow one business website. No free trial.',
+  description: 'Full access free for 7 days for eligible new customers, then automatic US$29/month billing. Card required. Cancel before the trial ends to avoid a charge.',
   alternates: { canonical: 'https://webtummy.com/signup' },
 }
 
@@ -36,17 +36,16 @@ export default function SignupPage() {
           <div className={styles.copy}>
             <div className={styles.verbs}>{['Design.', 'Build.', 'Optimize.', 'Deploy.', 'Run.', 'Grow.'].map(verb => <span key={verb}>{verb}</span>)}</div>
             <h2>Your Entire AI Growth Team.</h2>
-            <p className={styles.subtitle}>One Simple Plan. US$29/Month.</p>
+            <p className={styles.subtitle}>7 Days Free. Then US$29/Month.</p>
             <p className={styles.introduction}>Build your website. Create your content. Get found. Host it. Secure it. Manage it. Grow it.</p>
-            <p className={styles.planNote}>1 Website. No free trial. Cancel renewal anytime.</p>
+            <p className={styles.planNote}><strong>7-day free trial with full access.</strong> Eligible new customers only. Card required. Automatic US$29/month billing starts when your trial ends unless you cancel beforehand.</p>
             <ul className={styles.benefits}>{benefits.map(([title]) => <li key={title}><span aria-hidden="true">✓</span>{title}</li>)}</ul>
           </div>
           <section className={styles.card} aria-labelledby="signup-heading">
             <div className={styles.colorBar} aria-hidden="true">{Array.from({ length: 6 }, (_, index) => <span key={index} />)}</div>
             <h1 id="signup-heading">Create your account.</h1>
-            <p className={styles.cardIntro}>Verify your email, then subscribe for US$29/month to start building.</p>
             <SocialButtons />
-            <ActionForm action={registerAccount} label="Create account" captchaSiteKey={available ? siteKey : undefined} disabled={!available}>
+            <ActionForm plainErrors action={registerAccount} label="Create account" captchaSiteKey={available ? siteKey : undefined} disabled={!available}>
               <div className={styles.identity}>
                 <label htmlFor="signup-name">Your name<input id="signup-name" name="name" autoComplete="name" placeholder="Your full name" minLength={2} maxLength={100} required /></label>
                 <label htmlFor="signup-email">Email address<input id="signup-email" name="email" type="email" autoComplete="email" placeholder="you@example.com" maxLength={254} required /></label>

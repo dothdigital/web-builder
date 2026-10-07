@@ -26,6 +26,10 @@ import {
   emptyImagePointers,
   getComponent,
   validateSectionProps,
+  getLayoutTemplate,
+  templatePageComponents,
+  initialTemplateProps,
+  templateChromeProps,
 } from '@awb/component-registry'
 import {
   WEBSITE_MODEL_SCHEMA_VERSION,
@@ -86,6 +90,7 @@ function collectImageSlots(model: WebsiteModel): ImageSlotRequest[] {
 
   for (const page of model.pages) {
     for (const section of page.sections) {
+      if (section.hidden) continue
       const props = section.props as Record<string, unknown>
       const definition = getComponent(section.componentId)
 
@@ -270,6 +275,7 @@ async function loadBrief(projectId: string): Promise<GenerationBrief> {
 
   return {
     businessName: business?.displayName ?? project.name,
+    ...(project.templateId && getLayoutTemplate(project.templateId) ? { templateId: project.templateId } : {}),
     ...(reference.success ? { designReference: reference.data } : {}),
     homepageSections: project.homepageSections,
     homepageLength: project.homepageLength === 'expanded' ? 'expanded' : 'compact',
@@ -396,6 +402,11 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
       GenerationStage.SITE_PLAN,
       toJson(dna),
       async () => {
+        if (brief.templateId) {
+          const servicePages = brief.services.slice(0,8).map((service,index) => ({path:`/services/${service.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'') || `service-${index+1}`}`,title:service,purpose:`Explain the supplied ${service} service and invite enquiries.`,serviceName:service,inMainNav:false,sectionPlan:templatePageComponents(brief.templateId!, '/services/detail').map(id=>({family:getComponent(id)!.family,intent:service}))}))
+          const templatePlan: SitePlan = { pages:[{path:'/',title:'Home',purpose:brief.description,inMainNav:true},{path:'/about',title:'About',purpose:'Introduce the business using supplied facts.',inMainNav:true},{path:'/services',title:'Services',purpose:'Explain the services supplied by the business.',inMainNav:true},{path:'/contact',title:'Contact',purpose:'Contact the business and submit an enquiry.',inMainNav:true}].map(page=>({...page,sectionPlan:templatePageComponents(brief.templateId!,page.path).map(id=>({family:getComponent(id)!.family,intent:page.purpose}))})).concat(servicePages),navigation:[{label:'Home',path:'/',children:[]},{label:'About',path:'/about',children:[]},{label:'Services',path:'/services',children:servicePages.map(page=>({label:page.title,path:page.path}))},{label:'Contact',path:'/contact',children:[]}] }
+          return {output:toJson(templatePlan),result:templatePlan}
+        }
         const { data, usage } = await provider.planSite(brief, analysis, dna)
         return { output: toJson(data), result: data, usage }
       },
@@ -424,7 +435,7 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
               description: data.seo.description.trim() || plannedPage.purpose || brief.description.slice(0, 160),
               canonical: data.seo.canonical ?? data.path,
             },
-            sections: data.sections,
+            sections: brief.templateId ? templatePageComponents(brief.templateId, plannedPage.path).map((componentId,index) => data.sections.find(section=>section.componentId===componentId) ?? {id:`layout-unused-${index}`,componentId,componentVersion:'1.0.0',hidden:true,props:initialTemplateProps(componentId)}) : data.sections,
           })
         }
 
@@ -443,7 +454,7 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
         /// Unknown components and invalid props are rejected here rather than
         /// being rendered: the registry is the only allowed vocabulary.
         const rejected: string[] = []
-        const sanitizedPages = applyTestimonials(pages, brief.testimonials).map((page) => ({
+        const sanitizedPages = (brief.templateId ? pages : applyTestimonials(pages, brief.testimonials)).map((page) => ({
           ...page,
           sections: page.sections.flatMap((section) => {
             const family = getComponent(section.componentId)?.family
@@ -543,6 +554,14 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
           schemaSettings: { organizationType: 'LocalBusiness', enabledTypes: ['LocalBusiness'] },
           analyticsSettings: presence.analytics,
           publishSettings: { wwwPreference: 'non-www', robotsAllowIndexing: true },
+        }
+
+        const selectedTemplate = getLayoutTemplate(brief.templateId)
+        if (selectedTemplate) {
+          const items = navigation.primaryMenu.map(item=>({label:item.label,href:sanitizedPages.find(page=>page.id===item.pageId)?.path || '/',children:item.children.map(child=>({label:child.label,href:sanitizedPages.find(page=>page.id===child.pageId)?.path || '/'}))}))
+          const chromeInput={businessName:brief.businessName,description:brief.description,email:presence.contact.email,phone:presence.contact.phone,address:presence.contact.addressLine1,items}
+          composed.globalComponents.header={componentId:selectedTemplate.header,componentVersion:'1.0.0',props:templateChromeProps(selectedTemplate.header,chromeInput)}
+          composed.globalComponents.footer={componentId:selectedTemplate.footer,componentVersion:'1.0.0',props:templateChromeProps(selectedTemplate.footer,chromeInput)}
         }
 
         // Reject structural problems before spending time generating imagery.
@@ -712,9 +731,10 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
 
         const homepage = modelWithImages.pages.find((page) => page.path === '/')
         const [minSections, maxSections] = brief.homepageLength === 'expanded' ? [5, 6] : [3, 4]
-        if (!homepage || homepage.sections.length < minSections! || homepage.sections.length > maxSections!) {
+        if (!homepage || !brief.templateId && (homepage.sections.length < minSections! || homepage.sections.length > maxSections!)) {
           throw new Error(`Homepage must contain ${minSections}–${maxSections} sections for the selected length`)
         }
+        if(brief.templateId && homepage.sections.map(section=>section.componentId).join(',')!==templatePageComponents(brief.templateId,'/').join(','))throw new Error('Generated sections do not match the selected layout.')
         for (const page of modelWithImages.pages.filter((entry) => entry.pageType === 'SERVICE')) {
           if (!page.sections.some((section) => typeof section.props.imageUrl === 'string' && section.props.imageUrl.trim())) {
             throw new Error(`Service page ${page.path} is missing its required image`)

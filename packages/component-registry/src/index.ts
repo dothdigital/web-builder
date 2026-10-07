@@ -1,6 +1,7 @@
 export * from './types'
 export * from './tokens'
 export * from './registry'
+export { importedTemplates, getLayoutTemplate, importedSection, templatePageComponents, templateGenerationComponents, templateCopyCatalogue, initialTemplateProps, templateChromeProps, setTemplateHeading, layoutTheme } from './imported-layouts'
 export { Container, Cta, Heading, Media, Prose, Section } from './primitives'
 
 export { siteChrome } from './site-chrome'
