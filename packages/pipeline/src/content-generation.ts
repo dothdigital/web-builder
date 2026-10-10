@@ -61,6 +61,40 @@ export async function rewritePageWithAi(projectId: string, input: { model: unkno
   return { page: rewritten, reason: result.data.reason }
 }
 
+export async function enrichServiceDetailPages(projectId: string, source: import('@awb/website-model').WebsiteModel, onPage?: (path:string)=>void) {
+  const model = {...source,pages:source.pages.map(page=>({...page,sections:page.sections.map(section=>section.componentId==='ServiceDetail'?{...section,props:{...section.props,
+    contentBlocks:Array.isArray(section.props.contentBlocks)&&section.props.contentBlocks.length ? section.props.contentBlocks : Array.from({length:3},()=>({heading:'',body:''})),
+    faqs:Array.isArray(section.props.faqs)&&section.props.faqs.length ? section.props.faqs : Array.from({length:3},()=>({question:'',answer:''})),
+  }}:section)}))}
+  const targets = model.pages.filter(page=>page.sections.some(section=>section.componentId==='ServiceDetail' && !(section.props.contentBlocks as Array<{body:string}>).some(block=>block.body.trim())))
+  const pages = new Map<string, import('@awb/website-model').WebsitePage>()
+  // Limit concurrent requests while each page remains an independent rewrite.
+  for (let start=0;start<targets.length;start+=2) {
+    const results = await Promise.allSettled(targets.slice(start,start+2).map(async page=>{
+      onPage?.(page.path)
+      const rewritten = await rewritePageWithAi(projectId,{model,pageId:page.id,instruction:[
+        `Complete the thin service detail page for ${page.title}. Keep its title, H1, breadcrumb text and all paths unchanged.`,
+        'Fill the ServiceDetail intro body with 80–120 useful words, all three contentBlocks with topic-specific headings and 45–80 words each, and all three faqs with distinct questions and 25–50 word answers. Aim for 300–450 words in total. Fill every empty topic and FAQ string; do not return a summary-only page.',
+        'Base every product statement on the saved business description and existing supplied service text. Explain those supplied concepts clearly without inventing coverage limits, eligibility, waiting periods, fees, insurers, exclusions, regulatory rules, investment returns, tax rules or promises. Do not interpret policy terms or give personalized financial advice.',
+        'For combined categories, distinguish the supplied products in the topic blocks. For Visitor Insurance distinguish Super Visa and Visitor to Canada; for Living Benefits distinguish critical illness and disability; for Travel & Student Insurance distinguish Canadian travel and international student cover; for Registered Savings distinguish the stated RESP, TFSA, RRSP and FHSA purposes without adding tax or contribution rules.',
+        'Use plain professional language. Describe relevant needs, the information a reader can include in an enquiry, and questions to discuss with Shreeram. Do not claim a consultation method, claims service, application workflow, response time, or additional qualification that the brief did not supply. Do not repeat the other service pages. Plain paragraphs and optional bullet lists only; no Markdown headings in body strings.',
+        'Update SEO description if needed, preserving the page path and all images, layout, related links and contact URL.',
+      ].join('\n')})
+      const detail = rewritten.page.sections.find(section=>section.componentId==='ServiceDetail')!
+      const blocks = detail.props.contentBlocks as Array<{heading:string;body:string}>
+      const faqs = detail.props.faqs as Array<{question:string;answer:string}>
+      const words = [detail.props.body,...blocks.map(block=>block.body),...faqs.map(faq=>faq.answer)].join(' ').trim().split(/\s+/).length
+      if (words<250 || blocks.some(block=>!block.heading.trim()||!block.body.trim()) || faqs.some(faq=>!faq.question.trim()||!faq.answer.trim())) throw new Error(`Incomplete service content for ${page.path}`)
+      return rewritten.page
+    }))
+    for (const result of results) {
+      if (result.status==='rejected') throw result.reason
+      pages.set(result.value.id,result.value)
+    }
+  }
+  return {...model,pages:model.pages.map(page=>pages.get(page.id)||page)}
+}
+
 export async function createContentWithAi(projectId: string, raw: { model: unknown; request: unknown }) {
   const { contentRequestSchema, contentPath, validateContentRequest, generatedContentPage } = await import('./content-creation')
   const input = contentRequestSchema.parse(raw.request)

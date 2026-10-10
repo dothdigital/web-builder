@@ -116,6 +116,7 @@ function InspectorFields({
       <div className="border-b border-neutral-200 p-4">
         <p className="text-xs uppercase tracking-widest text-neutral-500">{kind}</p>
         <h2 className="text-sm font-semibold">{componentName}</h2>
+        {isHeader && <label className="mt-3 flex items-center gap-2 text-sm"><input type="checkbox" checked={Boolean(displayedProps.sticky)} onChange={event => onChange('/sticky', event.target.checked)} />Sticky header</label>}
         {selectedElement && <div className="mt-2 text-xs"><p>Editing: {colorTargets(currentComponentId, displayedProps).find((target) => target.path === selectedElement)?.label ?? selectedElement.split('/').slice(1).join(' → ')}</p><button type="button" className="mt-1 text-sky-700 underline" onClick={() => onSelectElement?.(undefined)}>Back to section properties</button></div>}
         {currentComponentId.startsWith('Header') && (selectedElement === '/logoImageUrl' || selectedElement === '/logoText') && <label className="mt-3 grid gap-1 text-xs">Logo position in header<select aria-label="Logo position in header" className="rounded border p-2" value={String(displayedProps.logoAlignment ?? 'original')} onChange={(event) => onChange('/logoAlignment', event.target.value)}><option value="original">Original template position</option><option value="left">Left</option><option value="center">Centre</option><option value="right">Right</option></select></label>}
         {removable && <button type="button" className="mt-3 block rounded border border-red-300 px-3 py-2 text-xs text-red-700" onClick={() => onChange('/removedElements', removed.includes(removalPath) ? removed.filter((path) => path !== removalPath) : [...removed, removalPath])}>{removed.includes(removalPath) ? 'Restore this element' : 'Remove this element'}</button>}
@@ -169,7 +170,7 @@ function InspectorFields({
       ))}
       <ElementColorsPanel renderedPathPrefix={renderedPathPrefix} key={selectedElement ?? currentComponentId} componentId={currentComponentId} props={displayedProps} onChange={onChange} selectedPath={selectedElement} onSelect={onSelectElement} />
       <div className="grid gap-4 p-4">
-        {selectedFields.filter((field) => !(currentComponentId === 'ContactSplit' && (field.path.startsWith('/formFields') || field.path === '/submissionUrl')) && (!isHero || !field.path.startsWith('/sectionBackground')) && (!isHeader || !['/customBackground', '/backgroundColor'].includes(field.path))).map((field) => (
+        {selectedFields.filter((field) => !(currentComponentId === 'ContactSplit' && (field.path.startsWith('/formFields') || field.path === '/submissionUrl')) && (!isHero || !field.path.startsWith('/sectionBackground')) && (!isHeader || !['/customBackground', '/backgroundColor', '/sticky'].includes(field.path))).map((field) => (
           <FieldEditor
             key={field.path}
             field={isHeader ? { ...field, label: field.label.replace(/^Section/, 'Header') } : field}

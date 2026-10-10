@@ -1,4 +1,7 @@
 'use client'
+import { ImageDirectionFields } from '@/components/image-direction-fields'
+import { ContentDirectionFields } from '@/components/content-direction-fields'
+import type { ContentDirection, ImageDirection } from '@awb/shared'
 import { ErrorNotice } from '@/components/error-notice'
 import { LayoutGallery } from '@/components/account/layout-gallery'
 import { layoutCatalogue } from '@awb/shared/layout-catalogue'
@@ -31,7 +34,7 @@ interface Step {
 const steps: Step[] = [
   { key: 'brief', title: 'Your business', help: 'Only what we genuinely need. Anything you leave blank is never invented.' },
   { key: 'logo', title: 'Logo and colours', help: 'Upload a logo and we build the starting palette from it. You stay in control of every colour.' },
-  { key: 'images', title: 'Images', help: 'Upload your own photography, or let the image model create artwork for the empty slots.' },
+  { key: 'images', title: 'Images and content', help: 'Choose the imagery and writing direction before we create your website.' },
   {
     key: 'social',
     title: 'Social media',
@@ -105,6 +108,8 @@ export function OnboardingWizard({ templatesEnabled = false }: { templatesEnable
     }
   }, [localLogoPreview])
 
+  const [contentDirection, setContentDirection] = useState<ContentDirection>({ style: 'auto', audience: '', notes: '' })
+  const [imageDirection, setImageDirection] = useState<ImageDirection>({ style: 'auto', notes: '' })
   const [imageMode, setImageMode] = useState<'upload' | 'generate' | 'mixed'>('generate')
   const [uploadedImages, setUploadedImages] = useState<string[]>([])
 
@@ -284,7 +289,7 @@ export function OnboardingWizard({ templatesEnabled = false }: { templatesEnable
         await saveBrandColors(projectId, selectedPalette, logoColors)
       }
 
-      const { correlationId } = await startGeneration(projectId)
+      const { correlationId } = await startGeneration(projectId, { imageDirection, contentDirection })
       router.push(`/projects/${projectId}/progress?correlationId=${correlationId}`)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not start generation')
@@ -576,6 +581,8 @@ export function OnboardingWizard({ templatesEnabled = false }: { templatesEnable
             </Field>
           )}
 
+          {imageMode !== 'upload' && <ImageDirectionFields value={imageDirection} onChange={setImageDirection} disabled={busy} />}
+          <ContentDirectionFields value={contentDirection} onChange={setContentDirection} disabled={busy} />
           {uploadedImages.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {uploadedImages.map((url) => (

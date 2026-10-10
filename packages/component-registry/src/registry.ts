@@ -1,5 +1,6 @@
 import { portfolioShowcase, credentialsShowcase } from './components/showcase'
-import { importedLayoutDefinitions } from './imported-layouts'
+import { serviceDetail } from './components/service-detail'
+import { importedLayoutDefinitions, templateRequiredImagePointers } from './imported-layouts'
 import { inlineLinksSchema, applyInlineLinks } from './inline-links'
 import { manualSection } from './components/manual-section'
 import { elementOffsetsSchema, applyElementOffsets } from './element-offsets'
@@ -29,6 +30,7 @@ import { footerCompact, footerEditorial } from './components/footers'
 declare const process: { env: { NEXT_PUBLIC_ENABLE_LAYOUT_TEMPLATES?: string } }
 
 const definitions = [
+  serviceDetail,
   ...importedLayoutDefinitions,
   manualSection,
   portfolioShowcase,
@@ -159,6 +161,10 @@ export function emptyImagePointers(componentId: string, props: unknown): string[
   }
 
   const record = props as Record<string, unknown>
+  const requiredTemplateImages=templateRequiredImagePointers(componentId)
+  if(requiredTemplateImages) return requiredTemplateImages.filter(pointer=>isEmptyImageValue(record[pointer.slice(1)]))
+  // Contact imagery is optional and must not invent a business location.
+  if (componentId === 'ContactSplit' && isEmptyImageValue(record.imageUrl)) return []
   const pointers: string[] = []
 
   for (const field of definition.editorFields) {
@@ -175,7 +181,7 @@ export function emptyImagePointers(componentId: string, props: unknown): string[
       continue
     }
 
-    if (field.type !== 'list') {
+    if (field.type !== 'list' && !(field.type === 'collection' && definition.family === 'SERVICES')) {
       continue
     }
 
@@ -191,6 +197,10 @@ export function emptyImagePointers(componentId: string, props: unknown): string[
       }
 
       const entry = item as Record<string, unknown>
+
+      if (definition.family === 'SERVICES' && isEmptyImageValue(entry['imageUrl'])) {
+        pointers.push(`${field.path}/${index}/imageUrl`)
+      }
 
       if (('url' in entry || 'alt' in entry) && isEmptyImageValue(entry['url'])) {
         pointers.push(`${field.path}/${index}/url`)

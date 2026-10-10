@@ -19,10 +19,33 @@ export async function retryContentJob(id: string) {
   const job = await prisma.contentJob.findUniqueOrThrow({ where: { id } })
   await requireProject(job.projectId, WorkspaceRole.EDITOR)
   if (job.status !== 'FAILED') throw new Error('Only failed requests can be retried.')
+  if (job.kind === 'WEBSITE') { await resumeWebsiteGeneration(id); return }
   await submitContentJob(job.projectId, job.kind as 'COVER' | 'PATCH' | 'CREATE' | 'REWRITE' | 'SECTION' | 'WEBSITE', job.input)
   await prisma.contentJob.update({ where: { id }, data: { status: 'DISMISSED' } })
 }
 
 export async function createBlogCover(projectId: string, request: unknown) {
   return submitContentJob(projectId, 'COVER', request)
+}
+
+export async function resumeWebsiteGeneration(id: string) {
+  const job = await prisma.contentJob.findUniqueOrThrow({ where: { id } })
+  await requireProject(job.projectId, WorkspaceRole.EDITOR)
+  if (job.kind !== 'WEBSITE' || job.status !== 'FAILED') throw new Error('Only failed website generation can be resumed.')
+  const { generationQueue } = await import('@awb/pipeline')
+  const queued = await generationQueue().getJob(id)
+  if (queued) {
+    const state = await queued.getState()
+    if (state === 'active' || state === 'waiting' || state === 'delayed') throw new Error('This generation is already queued or running.')
+    await queued.remove()
+  }
+  await prisma.$transaction(async tx => {
+    const claimed = await tx.project.updateMany({ where: { id: job.projectId, status: { not: 'GENERATING' } }, data: { status: 'GENERATING' } })
+    if (!claimed.count) throw new Error('This website already has a generation run in progress.')
+    const resumed = await tx.contentJob.updateMany({ where: { id, status: 'FAILED' }, data: { status: 'QUEUED', error: null, runToken: null, finishedAt: null } })
+    if (!resumed.count) throw new Error('This request has already been resumed.')
+  })
+  const { revalidatePath } = await import('next/cache')
+  revalidatePath('/dashboard')
+  return { correlationId: id, projectId: job.projectId }
 }

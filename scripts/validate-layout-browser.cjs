@@ -75,7 +75,7 @@ async function main() {
       assert.equal(await page.locator('article').count(), layouts.filter(layout => layout.category === category).length)
     }
     await page.getByRole('button', { name: 'All layouts', exact: true }).click()
-    await page.getByRole('button', { name: 'Create a custom design' }).click()
+    await page.getByRole('button', { name: 'Let AI choose', exact:true }).click()
     assert.equal(await page.locator('#selected').textContent(), 'custom')
     await page.setViewportSize({ width: 390, height: 844 })
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), 'Mobile gallery overflow')

@@ -5,7 +5,7 @@ import { access, readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import type { ReactElement } from 'react'
 import JSZip from 'jszip'
-import { tokensToCssVars, layoutTheme } from '@awb/component-registry'
+import { tokensToCssVars, layoutTheme, ensureServiceDetailPages, ensureContactPageLayout } from '@awb/component-registry'
 import { buildPageJsonLd, buildBlogJsonLd, buildFaqJsonLd, buildLlmsTxt, buildLocalBusinessJsonLd, buildRobotsTxt, buildSitemapXml } from '@awb/seo'
 import { localUploadRoot, readPublicImage } from '@awb/shared'
 import type { WebsiteModel, WebsitePage } from '@awb/website-model'
@@ -267,7 +267,7 @@ export async function buildStaticExport(
   source: WebsiteModel,
   options: StaticExportOptions,
 ): Promise<Buffer> {
-  const { model, files } = await bundleImages(source)
+  const { model, files } = await bundleImages(ensureContactPageLayout(ensureServiceDetailPages(source)))
   const zip = new JSZip()
 
   const componentIds=[model.globalComponents.header.componentId,model.globalComponents.footer.componentId,...model.pages.flatMap(page=>page.sections.map(section=>section.componentId))]

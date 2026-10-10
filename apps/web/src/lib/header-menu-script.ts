@@ -2,7 +2,15 @@
 export const HEADER_MENU_SCRIPT = `(function(){
   if(window.__awbHeaderMenus)return;
   window.__awbHeaderMenus=true;
-  var selector='header nav[aria-label="Primary"] details,header details.awb-mobile-menu';
+  function followLegacyServiceLink(){
+    if(!location.hash.startsWith('#service-'))return;
+    var card=document.getElementById(location.hash.slice(1));
+    var target=card&&card.getAttribute('data-service-href');
+    if(target&&target.split('#')[0]!==location.pathname)location.replace(target);
+  }
+  window.addEventListener('hashchange',followLegacyServiceLink);
+  followLegacyServiceLink();
+  var selector='header nav[aria-label="Primary"] details,header details.awb-mobile-menu,[data-layout-family="HEADER"] details.wt-layout-dropdown,[data-layout-family="HEADER"] details.wt-layout-mobile-menu';
   document.addEventListener('pointerdown',function(event){
     document.querySelectorAll(selector).forEach(function(menu){
       if(!menu.contains(event.target))menu.open=false;

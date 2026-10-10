@@ -1,4 +1,5 @@
 import type { WebsiteModel } from '@awb/website-model'
+import { templateServiceLinks } from './imported-layouts'
 
 export function siteChrome(model: WebsiteModel) {
   const header = model.globalComponents.header.props
@@ -19,9 +20,17 @@ export function siteChrome(model: WebsiteModel) {
         ...item, children: existingItems.filter((child) => item.href !== '/' && child.href.startsWith(`${item.href}/`)),
       }))
   return {
-    header: { ...header, items: grouped },
+    header: { ...header, email: contact.email || header.email || '', phone: contact.phone || header.phone || '', items: grouped.map(item => {
+      if (item.href !== '/services' || item.children?.length) return item
+      const services = model.pages.find(page => page.path === '/services')
+      const children = services?.sections.filter(section=>!section.hidden).flatMap(section=>templateServiceLinks(section.componentId,section.props)) ?? []
+      return { ...item, children }
+    }) },
     footer: {
       ...footer,
+      tagline: footer.tagline === header.tagline && typeof footer.tagline === 'string' && footer.tagline.length === 160
+        ? model.pages.find(page=>page.path==='/')?.seo.description || footer.tagline
+        : footer.tagline,
       logoImageUrl: footer.logoImageUrl || header.logoImageUrl,
       columns: existingColumns.length === 2 ? existingColumns : [
         { title: 'Main links', items: mainLinks },

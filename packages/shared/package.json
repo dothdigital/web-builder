@@ -11,7 +11,10 @@
     "./email-design": "./src/email-design.ts",
     "./email-render": "./src/email-render.ts",
     "./email-social": "./src/email-social.ts",
-    "./design-reference": "./src/design-reference.ts"
+    "./design-reference": "./src/design-reference.ts",
+    "./image-direction": "./src/image-direction.ts",
+    "./content-direction": "./src/content-direction.ts",
+    "./generation-options": "./src/generation-options.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

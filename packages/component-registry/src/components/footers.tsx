@@ -5,7 +5,7 @@ import { SocialLink, uniqueSocialLinks } from './social-link'
 import { defineComponent } from '../types'
 import { Container } from '../primitives'
 
-const footerPropsSchema = z.object({
+export const footerPropsSchema = z.object({
   businessName: z.string(),
   tagline: z.string().optional(),
   logoImageUrl: z.string().optional(),
@@ -67,14 +67,14 @@ export const footerEditorial = defineComponent({
               </a>
               {props.tagline && <p style={{ margin: '1rem 0 0', maxWidth: '32ch', fontSize: '0.9rem' }}>{<span data-awb-element="/tagline" style={elementColor(props, '/tagline')}>{props.tagline}</span>}</p>}
             </div>
-            {props.columns.slice(0, 2).map((column, columnIndex) => (
+            {props.columns.slice(0, 2).map((column, columnIndex) => column.items.length ? (
               <nav key={column.title} aria-label={`Footer ${column.title}`}>
                 <h2 style={{ margin: '0 0 1rem', fontSize: '1rem', fontWeight: 600 }}><span data-awb-element={`/columns/${columnIndex}/title`} style={elementColor(props, `/columns/${columnIndex}/title`)}>{column.title}</span></h2>
                 <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: '0.55rem', fontSize: '0.9rem' }}>
                   {column.items.map((item, itemIndex) => <li key={item.href + item.label}><a href={href(item.href)} style={{ color: 'inherit', textDecoration: 'none' }}><span data-awb-element={`/columns/${columnIndex}/items/${itemIndex}/label`} style={elementColor(props, `/columns/${columnIndex}/items/${itemIndex}/label`)}>{item.label}</span></a></li>)}
                 </ul>
               </nav>
-            ))}
+            ) : null)}
             <div>
               <h2 style={{ margin: '0 0 1rem', fontSize: '1rem', fontWeight: 600 }}>Get in touch</h2>
               <address style={{ fontStyle: 'normal', display: 'grid', gap: '0.65rem', fontSize: '0.9rem', overflowWrap: 'anywhere' }}>
