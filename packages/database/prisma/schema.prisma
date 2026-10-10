@@ -598,6 +598,8 @@ model Domain {
   wwwPreference String       @default("non-www")
   status        DomainStatus @default(PENDING)
   verificationToken String?
+  cloudflareHostnameId String? @unique
+  cloudflareValidation Json?
   sslStatus     String       @default("pending")
   verifiedAt    DateTime?
   dnsReady      Boolean @default(false)
@@ -615,6 +617,7 @@ model PublishRelease {
   projectId       String
   websiteVersionId String
   releaseNumber   Int
+  isPreview       Boolean       @default(false)
   status          ReleaseStatus @default(PENDING)
   /// Immutable snapshot: model + settings + asset references at publish time
   snapshot        Json
@@ -844,6 +847,14 @@ model WebsiteVisit {
 
 model HostingSite {
   projectId String @id
+  serverId String?
+  storagePrefix String?
+  publicHost String? @unique
+  previewHost String? @unique
+  previewDeployedReleaseId String?
+  previewPendingReleaseId String?
+  previewStatus String @default("NOT_CREATED")
+  previewLastError String?
   distributionId String? @unique
   distributionHost String?
   certificateArn String?
@@ -857,6 +868,7 @@ model HostingSite {
   lockToken String?
   updatedAt DateTime @updatedAt
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  @@index([serverId])
 }
 
 model ContentJob {

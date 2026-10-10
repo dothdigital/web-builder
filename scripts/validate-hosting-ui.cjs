@@ -1,0 +1,68 @@
+require('dotenv').config({ path: '.env', quiet: true })
+const assert = require('node:assert/strict')
+const fs = require('node:fs/promises')
+const { chromium } = require('/tmp/webtummy-layout-preview/node_modules/playwright')
+const { prisma } = require('@awb/database')
+async function main() {
+  const fixture = JSON.parse(await fs.readFile('/home/ubuntu/webtummy-hosting-test-account.json', 'utf8'))
+  const candidate = process.env.HOSTING_UI_BASE || 'http://127.0.0.1:3002'
+  const base = 'https://webtummy.com'
+  const path = `/projects/${fixture.projectId}/publishing`
+  const browser = await chromium.launch({ headless: true, executablePath: '/home/ubuntu/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome', args: ['--no-sandbox'] })
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } })
+  await context.route('https://webtummy.com/**', async route => {
+    const response = await route.fetch({ url: route.request().url().replace(base, candidate), headers: { ...route.request().headers(), host: 'webtummy.com', 'x-forwarded-host': 'webtummy.com', 'x-forwarded-proto': 'https' }, maxRedirects: 0 })
+    await route.fulfill({ response })
+  })
+  const errors = []
+  try {
+    await fs.mkdir('/home/ubuntu/webtummy-hosting-tests', { recursive: true })
+    const anonymous = await context.newPage()
+    await anonymous.goto(base + path)
+    assert.ok(anonymous.url().includes('/signin'))
+    assert.equal((await anonymous.request.post(base + '/api/internal/hosting/sync')).status(), 401)
+    await anonymous.close()
+    const page = await context.newPage()
+    page.on('pageerror', error => errors.push(error.message))
+    await page.goto(base + '/signin')
+    await page.locator('#signin-email').fill(fixture.email)
+    await page.locator('#signin-password').fill(fixture.password)
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click()
+    await page.waitForURL(/\/dashboard/)
+    await page.goto(base + path)
+    await page.getByRole('button', { name: 'Update test URL', exact: true }).waitFor()
+    assert.equal(await page.getByRole('link', { name: /https:\/\/test-/ }).count(), 1)
+    await page.screenshot({ path: '/home/ubuntu/webtummy-hosting-tests/publishing-desktop.png', fullPage: true })
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.screenshot({ path: '/home/ubuntu/webtummy-hosting-tests/publishing-mobile.png', fullPage: true })
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
+    let action
+    page.on('request', request => { if (request.method() === 'POST' && request.headers()['next-action']) action = { headers: request.headers(), body: request.postData() } })
+    await page.getByRole('button', { name: 'Update test URL', exact: true }).click()
+    await page.getByText('Your test URL is ready to share. It shows your latest saved draft.', { exact: true }).waitFor({ timeout: 120000 })
+    assert.ok(action)
+    const cookie = (await context.cookies(base)).map(value => `${value.name}=${value.value}`).join('; ')
+    const replay = () => page.request.post(candidate + path, { headers: { 'content-type': action.headers['content-type'], 'next-action': action.headers['next-action'], origin: base, host: 'webtummy.com', 'x-forwarded-host': 'webtummy.com', 'x-forwarded-proto': 'https', cookie }, data: action.body })
+    const releases = await prisma.publishRelease.count({ where: { projectId: fixture.projectId } })
+    await prisma.workspaceMember.updateMany({ where: { userId: fixture.userId, workspaceId: fixture.workspaceId }, data: { role: 'VIEWER' } })
+    await page.reload()
+    assert.equal(await page.getByRole('button', { name: 'Update test URL', exact: true }).count(), 0)
+    await replay()
+    assert.equal(await prisma.publishRelease.count({ where: { projectId: fixture.projectId } }), releases)
+    await prisma.workspaceMember.updateMany({ where: { userId: fixture.userId, workspaceId: fixture.workspaceId }, data: { role: 'OWNER' } })
+    await prisma.user.update({ where: { id: fixture.userId }, data: { isPlatformSupport: true } })
+    await page.goto(base + path)
+    assert.ok(page.url().endsWith(`/projects/${fixture.projectId}/editor`))
+    await replay()
+    assert.equal(await prisma.publishRelease.count({ where: { projectId: fixture.projectId } }), releases)
+    assert.deepEqual(errors, [])
+    const result = { checkedAt: new Date().toISOString(), base, checks: ['Real password login and owner publishing page', 'Desktop and phone rendering without overflow', 'Update test URL through the real server action', 'Anonymous page and sync endpoint protection', 'Viewer controls hidden and action replay rejected', 'Support publishing page redirected and action replay rejected', 'No browser runtime errors'] }
+    await fs.writeFile('/home/ubuntu/webtummy-hosting-ui-verification.json', JSON.stringify(result, null, 2))
+    console.log(JSON.stringify(result, null, 2))
+  } finally {
+    await prisma.workspaceMember.updateMany({ where: { userId: fixture.userId, workspaceId: fixture.workspaceId }, data: { role: 'OWNER' } })
+    await prisma.user.update({ where: { id: fixture.userId }, data: { isPlatformSupport: false } })
+    await browser.close()
+  }
+}
+main().finally(() => prisma.$disconnect()).catch(error => { console.error(error); process.exitCode = 1 })

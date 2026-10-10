@@ -1,0 +1,26 @@
+# Install as /etc/nginx/sites-available/webtummy-hosting.
+# Use a Cloudflare Origin CA certificate covering the fallback origin hostname.
+# Cloudflare Full (strict); never Flexible. Preserve the customer Host header.
+server {
+    listen 443 ssl default_server;
+    server_name _;
+    ssl_certificate /etc/webtummy/origin.pem;
+    ssl_certificate_key /etc/webtummy/origin.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Webtummy-Peer "";
+        proxy_set_header X-Forwarded-Proto https;
+    }
+}
+# Separate VPC-only pool origin; restrict port 8081 to gateway security groups.
+server {
+    listen 8081;
+    server_name _;
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Webtummy-Peer $http_x_webtummy_peer;
+    }
+}

@@ -73,7 +73,6 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
   const [panel, setPanel] = useState<'section' | 'theme' | 'page' | 'integrations'>('section')
   const [saving, setSaving] = useState(false)
   const [createContentRequest, setCreateContentRequest] = useState(0)
-  const [exporting, setExporting] = useState(false)
   const [saveError, setSaveError] = useState<string>()
   const [savedAt, setSavedAt] = useState<Date>()
   const [dirty, setDirty] = useState(false)
@@ -167,31 +166,6 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
     }
   }, [projectId])
 
-  const exportHtml = async () => {
-    setExporting(true)
-    setSaveError(undefined)
-    try {
-      const response = await fetch(`/api/projects/${projectId}/export?source=draft`)
-      if (!response.ok) {
-        const result = await response.json().catch(() => ({}))
-        throw new Error(result.error ?? `Export failed (${response.status}). Please try again.`)
-      }
-      const blob = await response.blob()
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = response.headers.get('content-disposition')?.match(/filename="([^"]+)"/)?.[1] ?? 'website.zip'
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      setTimeout(() => URL.revokeObjectURL(url), 60000)
-    } catch (error) {
-      setSaveError(error instanceof Error ? error.message : 'Could not export website')
-    } finally {
-      setExporting(false)
-    }
-  }
-
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (!(event.ctrlKey || event.metaKey)) {
@@ -279,9 +253,6 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
             Preview
           </Link>
           <a href={`/projects/${projectId}/publishing`} className={ghostButton}>Domains & Publish</a>
-          <button type="button" onClick={exportHtml} disabled={exporting || saving || dirty} title={dirty ? 'Save your changes before exporting' : 'Download the latest saved website with images'} className={ghostButton}>
-            {exporting ? 'Preparing ZIP…' : dirty ? 'Save to export' : 'Export HTML'}
-          </button>
           <button type="button" onClick={save} disabled={saving || !dirty} className={primaryButton}>
             {saving ? 'Saving…' : dirty ? 'Save' : 'Saved'}
           </button>

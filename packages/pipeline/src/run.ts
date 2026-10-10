@@ -275,7 +275,7 @@ async function loadBrief(projectId: string): Promise<GenerationBrief> {
 
   return {
     businessName: business?.displayName ?? project.name,
-    ...(project.templateId && getLayoutTemplate(project.templateId) ? { templateId: project.templateId } : {}),
+    ...(process.env.NEXT_PUBLIC_ENABLE_LAYOUT_TEMPLATES === 'true' && project.templateId && getLayoutTemplate(project.templateId) ? { templateId: project.templateId } : {}),
     ...(reference.success ? { designReference: reference.data } : {}),
     homepageSections: project.homepageSections,
     homepageLength: project.homepageLength === 'expanded' ? 'expanded' : 'compact',

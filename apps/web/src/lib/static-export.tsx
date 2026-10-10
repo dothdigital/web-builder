@@ -1,4 +1,5 @@
 import { websiteTracker } from './website-tracker'
+import { exportImage } from './export-image'
 import { HEADER_MENU_SCRIPT } from './header-menu-script'
 import { access, readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
@@ -23,6 +24,7 @@ interface ExportFile {
 export interface StaticExportOptions {
   /// Absolute site URL used for canonicals, sitemap and Open Graph tags.
   siteUrl: string
+  preview?: boolean
   forms?: import('@awb/component-registry').RenderContext['forms']
 }
 
@@ -110,10 +112,9 @@ async function bundleImages(model: WebsiteModel): Promise<{ model: WebsiteModel;
   const rewrites = new Map<string, string>()
 
   for (const [index, url] of urls.entries()) {
-    const body = await readAsset(url)
-
-    const name = `${index}-${exportFileName(url, index)}`
-    files.push({ path: `assets/images/${name}`, body })
+    const image = await exportImage(await readAsset(url), `${index}-${exportFileName(url, index)}`)
+    const name = image.name
+    files.push({ path: `assets/images/${name}`, body: image.bytes })
     rewrites.set(url, `${ROOT_TOKEN}assets/images/${name}`)
   }
 
@@ -157,7 +158,7 @@ a { color: inherit; }
 
 function headTags(model: WebsiteModel, page: WebsitePage, options: StaticExportOptions, root: string): string {
   const siteUrl = options.siteUrl.replace(/\/$/, '')
-  const canonical = new URL(page.seo.canonical ?? page.path, `${siteUrl}/`).href
+  const canonical = new URL(options.preview ? page.path : page.seo.canonical ?? page.path, `${siteUrl}/`).href
   const title = page.seo.title?.trim() || `${page.title} | ${model.site.name}`
   const description = page.seo.description ?? ''
   const faq = buildFaqJsonLd(page)
@@ -184,7 +185,7 @@ function headTags(model: WebsiteModel, page: WebsitePage, options: StaticExportO
   )
 
   const ga4 = model.analyticsSettings.ga4MeasurementId
-  const analytics = ga4 && /^G-[A-Z0-9]+$/.test(ga4)
+  const analytics = !options.preview && ga4 && /^G-[A-Z0-9]+$/.test(ga4)
     ? `<script async src="https://www.googletagmanager.com/gtag/js?id=${escapeHtml(ga4)}"></script>
     <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config',${scriptJson(ga4)});</script>`
     : ''
@@ -194,7 +195,7 @@ function headTags(model: WebsiteModel, page: WebsitePage, options: StaticExportO
     <title>${escapeHtml(title)}</title>
     ${description ? `<meta name="description" content="${escapeHtml(description)}" />` : ''}
     <link rel="canonical" href="${escapeHtml(canonical)}" />
-    ${page.seo.index === false ? '<meta name="robots" content="noindex,nofollow" />' : ''}
+    ${options.preview || page.seo.index === false ? '<meta name="robots" content="noindex,nofollow" />' : ''}
     ${model.google.searchConsoleVerification ? `<meta name="google-site-verification" content="${escapeHtml(model.google.searchConsoleVerification)}" />` : ''}
     <meta property="og:type" content="${article ? 'article' : 'website'}" />
     <meta property="og:title" content="${escapeHtml(title)}" />
@@ -251,7 +252,7 @@ async function renderPage(
   <body>
     ${body}
     <script>${HEADER_MENU_SCRIPT}</script>
-    ${options.forms ? `<script>${websiteTracker(options.forms.projectId, new URL('/api/visits', options.forms.action).href)}</script>` : ''}
+    ${options.forms && !options.preview ? `<script>${websiteTracker(options.forms.projectId, new URL('/api/visits', options.forms.action).href)}</script>` : ''}
     ${options.forms?.recaptchaSiteKey ? '<script>window.awbRecaptchaReady=function(){document.querySelectorAll(".g-recaptcha").forEach(function(el){if(!el.childNodes.length)grecaptcha.render(el,{sitekey:el.dataset.sitekey});});};</script><script src="https://www.google.com/recaptcha/api.js?onload=awbRecaptchaReady&amp;render=explicit" async defer></script>' : ''}
     ${model.customScripts?.bodyEnd ?? ''}
     ${page.customScripts?.bodyEnd ?? ''}
@@ -296,7 +297,7 @@ export async function buildStaticExport(
   }
 
   zip.file('sitemap.xml', buildSitemapXml(model, options.siteUrl))
-  zip.file('robots.txt', buildRobotsTxt(model, options.siteUrl))
+  zip.file('robots.txt', options.preview ? 'User-agent: *\nDisallow: /\n' : buildRobotsTxt(model, options.siteUrl))
   zip.file('llms.txt', buildLlmsTxt(model, options.siteUrl))
   zip.file(
     'README.txt',

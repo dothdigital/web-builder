@@ -1,0 +1,21 @@
+[Unit]
+Description=Webtummy static hosting and pool gateway
+After=network-online.target
+Wants=network-online.target
+[Service]
+Type=simple
+User=webtummy-hosting
+Group=webtummy-hosting
+WorkingDirectory=/opt/webtummy-hosting
+EnvironmentFile=/etc/webtummy/hosting.env
+ExecStart=/usr/bin/node /opt/webtummy-hosting/agent.mjs
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/webtummy
+UMask=0027
+[Install]
+WantedBy=multi-user.target

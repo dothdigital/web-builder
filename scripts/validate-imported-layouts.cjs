@@ -1,6 +1,7 @@
 // Full generation uses disposable records, stub AI and local storage only.
 require('dotenv').config({ path: require('node:path').resolve(__dirname, '../.env'), quiet: true })
 process.env.AI_PROVIDER = 'stub'
+process.env.NEXT_PUBLIC_ENABLE_LAYOUT_TEMPLATES = 'true'
 process.env.S3_BUCKET = ''
 process.env.LOCAL_UPLOAD_DIR = '/tmp/webtummy-layout-validation/uploads'
 const assert = require('node:assert/strict')

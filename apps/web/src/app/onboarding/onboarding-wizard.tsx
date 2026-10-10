@@ -68,7 +68,7 @@ const paletteFields: Array<{ key: keyof DesignTokens['palette']; label: string }
   { key: 'border', label: 'Border' },
 ]
 
-export function OnboardingWizard() {
+export function OnboardingWizard({ templatesEnabled = false }: { templatesEnabled?: boolean }) {
   const router = useRouter()
   const [stepIndex, setStepIndex] = useState(0)
   const [busy, setBusy] = useState(false)
@@ -135,7 +135,7 @@ export function OnboardingWizard() {
       const reference = referenceUrl.trim() ? designReferenceSchema.safeParse({ url: referenceUrl, mode: referenceMode, notes: referenceNotes }) : undefined
       if (reference && !reference.success) throw new Error(reference.error.issues[0]?.message || 'Check the reference website address')
       const { projectId: created } = await createProjectFromBrief({
-        templateId,
+        ...(templatesEnabled && templateId ? { templateId } : {}),
         businessName,
         homepageLength,
         homepageSections,
@@ -292,11 +292,11 @@ export function OnboardingWizard() {
     }
   }
 
-  if (!layoutChosen) return <LayoutGallery onSelect={id => { setTemplateId(id); setLayoutChosen(true); setError(undefined) }} />
+  if (templatesEnabled && !layoutChosen) return <LayoutGallery onSelect={id => { setTemplateId(id); setLayoutChosen(true); setError(undefined) }} />
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-5xl">
-      {!projectId && <div className="wt-notice mb-6 flex flex-wrap items-center justify-between gap-3"><span>Selected layout: <strong>{layoutCatalogue.find(layout => layout.id === templateId)?.name || 'Custom design'}</strong></span><button type="button" className="wt-button secondary" disabled={busy} onClick={() => setLayoutChosen(false)}>Change layout</button></div>}
+      {templatesEnabled && !projectId && <div className="wt-notice mb-6 flex flex-wrap items-center justify-between gap-3"><span>Selected layout: <strong>{layoutCatalogue.find(layout => layout.id === templateId)?.name || 'Custom design'}</strong></span><button type="button" className="wt-button secondary" disabled={busy} onClick={() => setLayoutChosen(false)}>Change layout</button></div>}
       <ol aria-label="Website setup steps" className="flex flex-nowrap gap-2 overflow-x-auto pb-2 text-sm text-neutral-500">
         {steps.map((entry, index) => (
           <li key={entry.key} aria-current={index === stepIndex ? 'step' : undefined} className={`shrink-0 whitespace-nowrap ${index === stepIndex ? 'font-semibold text-neutral-900' : ''}`}>

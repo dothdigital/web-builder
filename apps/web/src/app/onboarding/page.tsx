@@ -20,5 +20,5 @@ export default async function OnboardingPage() {
     const plan = workspace.billingPlanId ? await prisma.billingPlan.findUnique({ where: { id: workspace.billingPlanId } }) : null
     if (await prisma.project.count({ where: { workspaceId: workspace.id } }) >= (plan?.websiteLimit ?? 0)) redirect('/billing')
   }
-  return <AppShell title="Create a website" active="/dashboard"><OnboardingWizard /></AppShell>
+  return <AppShell title="Create a website" active="/dashboard"><OnboardingWizard templatesEnabled={process.env.NEXT_PUBLIC_ENABLE_LAYOUT_TEMPLATES === 'true'} /></AppShell>
 }

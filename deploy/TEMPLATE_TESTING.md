@@ -14,7 +14,10 @@ local checkout before requesting deployment.
 ## Local setup
 
 Use a local `.env` with a local PostgreSQL database and the existing application
-settings. To avoid paid AI calls, set `AI_PROVIDER=stub`. Use an empty `S3_BUCKET`
+settings. Templates are disabled by default. Set `NEXT_PUBLIC_ENABLE_LAYOUT_TEMPLATES=true`
+only in the local test environment to enable the gallery and imported component
+choices. Keep this flag false in production until live use is explicitly approved.
+To avoid paid AI calls, set `AI_PROVIDER=stub`. Use an empty `S3_BUCKET`
 and `LOCAL_UPLOAD_DIR=.uploads` for local image storage. Set
 `USE_REDIS_QUEUE=false` to run generation inline during local testing.
 

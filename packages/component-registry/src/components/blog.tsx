@@ -1,3 +1,4 @@
+import { BalancedGrid } from '../balanced-grid'
 import { ArticleBody } from './article-body'
 import { z } from 'zod'
 import { defineComponent } from '../types'
@@ -32,10 +33,10 @@ export const blogListing = defineComponent({
   componentId: 'BlogListing', version: '1.0.0', family: 'HERO', name: 'Blog listing', description: 'Automatically lists this website’s blog posts.', aiGuidance: 'Use once on the blog index. Entries are resolved from website pages.', propsSchema: listingSchema, tokenDeps: ['palette.primary'],
   editorFields: [{ path: '/heading', label: 'Heading', type: 'text', headingLevel: 1 }, { path: '/intro', label: 'Introduction', type: 'textarea' }], fixture: { heading: 'Blog', intro: 'Ideas and insights.', items: [] },
   render: ({ props }) => <Section><Container><Heading level={1} data-awb-element="/heading">{props.heading}</Heading><Prose data-awb-element="/intro">{props.intro}</Prose>
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,280px),1fr))', gap: '1.5rem' }}>{props.items.map((item) => <article key={item.href} style={{ border: '1px solid var(--awb-border)', borderRadius: 'var(--awb-radius)', overflow: 'hidden', background: 'var(--awb-surface)' }}>
+    <BalancedGrid count={props.items.length} minimumWidth={280}>{props.items.map((item) => <article key={item.href} style={{ border: '1px solid var(--awb-border)', borderRadius: 'var(--awb-radius)', overflow: 'hidden', background: 'var(--awb-surface)' }}>
       {item.imageUrl && <Media src={item.imageUrl} alt={item.imageAlt} ratio="16 / 9" />}
       <div style={{ padding: '1.5rem' }}><Heading level={2}><a href={item.href} style={{ color: 'inherit', textDecoration: 'none' }}>{item.title}</a></Heading><Prose>{item.description}</Prose><a href={item.href} style={{ color: 'var(--awb-primary)' }}>Read article →</a></div>
-    </article>)}</div>
+    </article>)}</BalancedGrid>
     {!props.items.length && <p>Your articles will appear here when added to the website.</p>}
   </Container></Section>,
 })

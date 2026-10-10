@@ -15,7 +15,7 @@ import { z } from 'zod'
 import { primaryWorkspace, requireProject, requireUser } from '@/lib/tenancy'
 
 const briefSchema = z.object({
-  templateId: z.string().refine(isLayoutId, 'Choose an available layout').optional(),
+  templateId: z.string().refine(value => process.env.NEXT_PUBLIC_ENABLE_LAYOUT_TEMPLATES === 'true' && isLayoutId(value), 'Template selection is temporarily unavailable. Use the default design option.').optional(),
   designReference: designReferenceSchema.optional(),
   homepageSections: z.array(z.enum(['About us / Who we are', 'Service areas', 'Our methodology / Approach', 'Why choose us'])).max(4).default([]),
   homepageLength: z.enum(['compact', 'expanded']).default('expanded'),

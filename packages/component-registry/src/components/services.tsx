@@ -1,3 +1,4 @@
+import { BalancedGrid } from '../balanced-grid'
 import { imageSizing } from '../image-sizing'
 import { elementColor, cardColor } from '../element-colors'
 import { z } from 'zod'
@@ -56,7 +57,7 @@ export const servicesLargeNumbers = defineComponent({
           <Heading level={2} style={elementColor(props, '/heading')} data-awb-element={'/heading'}>{props.heading}</Heading>
           {props.intro && <Prose style={{ margin: 0 , ...elementColor(props, '/intro')}} data-awb-element={'/intro'}>{props.intro}</Prose>}
         </div>
-        <ol style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: '1.5rem', listStyle: 'none', margin: 0, padding: 0 }}>
+        <BalancedGrid as="ol" count={props.items.length} style={{ listStyle: 'none', margin: 0, padding: 0 }}>
           {props.items.map((item, index) => (
             <li key={item.title} style={{ overflow: 'hidden', borderRadius: '16px', border: '1px solid var(--awb-border)', background: 'var(--awb-bg)', boxShadow: '0 8px 26px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', ...cardColor(props, `/items/${index}`) }} data-awb-element={`/items/${index}`}>
               {item.imageUrl && <Media sizeStyle={imageSizing(props, `/items/${index}/imageUrl`)} data-awb-element={`/items/${index}/imageUrl`} src={item.imageUrl} alt={item.imageAlt || item.title} ratio="16 / 10" style={{ display: 'block' }} />}
@@ -69,7 +70,7 @@ export const servicesLargeNumbers = defineComponent({
               </div>
             </li>
           ))}
-        </ol>
+        </BalancedGrid>
         {props.cta && <div><Cta data-awb-element="/cta" style={elementColor(props, '/cta')} {...props.cta} variant="outline" /></div>}
       </Container>
     </Section>

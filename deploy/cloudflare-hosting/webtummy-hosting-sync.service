@@ -1,0 +1,14 @@
+[Unit]
+Description=Reconcile pending Webtummy hosting deployments
+After=network-online.target
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/webtummy
+ExecStart=/usr/bin/node /home/ubuntu/webtummy/deploy/cloudflare-hosting/sync.mjs
+TimeoutStartSec=330
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only

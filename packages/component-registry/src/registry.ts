@@ -24,6 +24,10 @@ import { aboutSplitOverlap, galleryAsymmetric, reviewsEditorialQuote, reviewsTru
 import { contactSplit, ctaCinematic, faqAccordion } from './components/conversion'
 import { footerCompact, footerEditorial } from './components/footers'
 
+// Next.js substitutes this public flag in browser bundles; workers read it
+// from their environment. Keep this browser package free of Node imports.
+declare const process: { env: { NEXT_PUBLIC_ENABLE_LAYOUT_TEMPLATES?: string } }
+
 const definitions = [
   ...importedLayoutDefinitions,
   manualSection,
@@ -107,7 +111,7 @@ export function componentLayoutNodes(componentId: string, props: Record<string, 
 }
 
 export function listComponents(family?: ComponentFamily): ComponentDefinition[] {
-  const all = [...componentRegistry.values()]
+  const all = [...componentRegistry.values()].filter(definition => process.env.NEXT_PUBLIC_ENABLE_LAYOUT_TEMPLATES === 'true' || !definition.componentId.startsWith('Tpl_'))
   return family ? all.filter((definition) => definition.family === family) : all
 }
 

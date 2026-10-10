@@ -1,0 +1,70 @@
+require('dotenv').config({ path: '.env', quiet: true })
+const assert = require('node:assert/strict')
+const fs = require('node:fs/promises')
+const { chromium } = require('/tmp/webtummy-layout-preview/node_modules/playwright')
+const { prisma } = require('@awb/database')
+const { listComponents } = require('@awb/component-registry')
+const { layoutCatalogue } = require('@awb/shared/layout-catalogue')
+async function main() {
+  const fixture = JSON.parse(await fs.readFile('/home/ubuntu/webtummy-hosting-test-account.json', 'utf8'))
+  const base = 'https://webtummy.com'
+  const candidate = process.env.DEFAULT_UI_BASE || 'http://127.0.0.1:3002'
+  const name = `Default design check ${Date.now()}`
+  const browser = await chromium.launch({ headless: true, executablePath: '/home/ubuntu/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome', args: ['--no-sandbox'] })
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } })
+  await context.route('https://webtummy.com/**', async route => {
+    const response = await route.fetch({ url: route.request().url().replace(base, candidate), headers: { ...route.request().headers(), host: 'webtummy.com', 'x-forwarded-host': 'webtummy.com', 'x-forwarded-proto': 'https' }, maxRedirects: 0 })
+    await route.fulfill({ response })
+  })
+  const errors = []
+  try {
+    assert.equal(process.env.NEXT_PUBLIC_ENABLE_LAYOUT_TEMPLATES, 'false')
+    const components = listComponents()
+    assert.ok(components.length > 0)
+    assert.ok(components.every(component => !component.componentId.startsWith('Tpl_')))
+    const page = await context.newPage()
+    page.on('pageerror', error => errors.push(error.message))
+    await page.goto(base + '/signin')
+    await page.locator('#signin-email').fill(fixture.email)
+    await page.locator('#signin-password').fill(fixture.password)
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click()
+    await page.waitForURL(/\/dashboard/)
+    await page.goto(base + '/onboarding')
+    await page.getByRole('heading', { name: 'Your business', exact: true }).waitFor()
+    assert.equal(await page.getByRole('heading', { name: 'Start with a layout you love.' }).count(), 0)
+    assert.equal(await page.getByRole('button', { name: 'Change layout', exact: true }).count(), 0)
+    assert.ok(await page.locator('input[name="homepageLength"][value="expanded"]').isChecked())
+    assert.equal(await page.locator('input[name="homepageLength"]').count(), 2)
+    await fs.mkdir('/home/ubuntu/webtummy-default-design-tests', { recursive: true })
+    await page.screenshot({ path: '/home/ubuntu/webtummy-default-design-tests/onboarding-desktop.png', fullPage: true })
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.screenshot({ path: '/home/ubuntu/webtummy-default-design-tests/onboarding-mobile.png', fullPage: true })
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
+    let action
+    page.on('request', request => { if (request.method() === 'POST' && request.headers()['next-action']) action = { headers: request.headers(), body: request.postData() } })
+    await page.getByLabel('Business name', { exact: true }).fill(name)
+    await page.getByLabel(/What does the business do\?/).fill('A sample business providing practical advice and planning services for local companies.')
+    await page.getByRole('button', { name: 'Continue', exact: true }).click()
+    await page.getByRole('heading', { name: 'Logo and colours', exact: true }).waitFor()
+    const project = await prisma.project.findFirstOrThrow({ where: { workspaceId: fixture.workspaceId, name } })
+    assert.equal(project.templateId, null)
+    assert.equal(project.homepageLength, 'expanded')
+    assert.deepEqual(project.homepageSections, [])
+    assert.ok(action)
+    const payload = JSON.parse(action.body)
+    assert.equal(payload[0].templateId, undefined)
+    payload[0].templateId = layoutCatalogue[0].id
+    const count = await prisma.project.count({ where: { workspaceId: fixture.workspaceId } })
+    const cookie = (await context.cookies(base)).map(value => `${value.name}=${value.value}`).join('; ')
+    await page.request.post(candidate + '/onboarding', { headers: { 'content-type': action.headers['content-type'], 'next-action': action.headers['next-action'], origin: base, host: 'webtummy.com', 'x-forwarded-host': 'webtummy.com', 'x-forwarded-proto': 'https', cookie }, data: JSON.stringify(payload) })
+    assert.equal(await prisma.project.count({ where: { workspaceId: fixture.workspaceId } }), count)
+    assert.deepEqual(errors, [])
+    const result = { checkedAt: new Date().toISOString(), checks: ['Original business-intake screen opens directly', 'No template gallery or change-layout control', 'Earlier expanded/compact options and expanded default retained', 'Desktop/phone rendering without overflow or browser errors', 'Real intake submission creates a project with templateId null', 'Forged template submission rejected without creating a project', 'Default component list excludes imported templates'], paidAiCalls: 0 }
+    await fs.writeFile('/home/ubuntu/webtummy-default-design-verification.json', JSON.stringify(result, null, 2))
+    console.log(JSON.stringify(result, null, 2))
+  } finally {
+    await prisma.project.deleteMany({ where: { workspaceId: fixture.workspaceId, name } })
+    await browser.close()
+  }
+}
+main().finally(() => prisma.$disconnect()).catch(error => { console.error(error); process.exitCode = 1 })

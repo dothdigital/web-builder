@@ -1,3 +1,4 @@
+import { BalancedGrid } from '../balanced-grid'
 import { imageSizing } from '../image-sizing'
 import { elementColor, cardColor } from '../element-colors'
 import { z } from 'zod'
@@ -56,12 +57,12 @@ export const aboutSplitOverlap = defineComponent({
           )}
           <Heading level={2} style={elementColor(props, '/heading')} data-awb-element={'/heading'}>{props.heading}</Heading>
           <Prose style={elementColor(props, '/body')} data-awb-element={'/body'}>{props.body}</Prose>
-          {props.points.length > 0 && <div style={{ display: 'grid', gridTemplateColumns: props.layout === 'cards' ? 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))' : '1fr', gap: '1rem' }}>
+          {props.points.length > 0 && <BalancedGrid count={props.points.length} minimumWidth={200} maxColumns={props.layout === 'cards' ? 3 : 1} gap="1rem">
             {props.points.map((point, index) => <div key={`${point.title}-${index}`} style={{ padding: '1.25rem', background: 'var(--awb-bg)', border: '1px solid var(--awb-border)', borderRadius: 'max(var(--awb-radius), 16px)', display: 'grid', gap: '0.75rem', ...cardColor(props, `/points/${index}`) }} data-awb-element={`/points/${index}`}>
               {props.layout === 'steps' && <span style={{ color: 'var(--awb-primary)', fontSize: '0.85rem', fontWeight: 700, ...elementColor(props, `/points/${index}/number`) }} data-awb-element={`/points/${index}/number`}>{point.number || String(index + 1).padStart(2, '0')}</span>}
               <Heading level={3} style={elementColor(props, `/points/${index}/title`)} data-awb-element={`/points/${index}/title`}>{point.title}</Heading><Prose style={{ margin: 0 , ...elementColor(props, `/points/${index}/body`)}} data-awb-element={`/points/${index}/body`}>{point.body}</Prose>
             </div>)}
-          </div>}
+          </BalancedGrid>}
           {props.stats.length > 0 && (
             <dl style={{ display: 'flex', gap: '2.5rem', margin: 0, flexWrap: 'wrap' }}>
               {props.stats.map((stat, index) => (
@@ -106,13 +107,13 @@ export const galleryAsymmetric = defineComponent({
       <Section>
         <Container style={{ display: 'grid', gap: '2.5rem' }}>
           {props.heading && <Heading level={2} style={elementColor(props, '/heading')} data-awb-element={'/heading'}>{props.heading}</Heading>}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem', alignItems: 'start' }}>
+          <BalancedGrid count={props.images.length} minimumWidth={220} style={{ alignItems: 'start' }}>
             {props.images.map((image, index) => (
               <div key={`${image.url ?? 'placeholder'}-${index}`} style={{ marginTop: offsets[index % offsets.length] }}>
                 <Media data-awb-element={`/images/${index}/url`} sizeStyle={imageSizing(props, `/images/${index}/url`)} src={image.url} alt={image.alt} ratio={ratios[index % ratios.length]} />
               </div>
             ))}
-          </div>
+          </BalancedGrid>
         </Container>
       </Section>
     )
@@ -203,7 +204,7 @@ export const reviewsTrustStrip = defineComponent({
             <div><p style={{ margin: '0 0 0.75rem', color: 'var(--awb-primary)', fontSize: '0.8rem', letterSpacing: '0.15em', textTransform: 'uppercase' }}>Client experiences</p><Heading level={2} style={elementColor(props, '/heading')} data-awb-element={'/heading'}>{props.heading || 'What our clients say'}</Heading></div>
             {slider && <p style={{ margin: 0, color: 'var(--awb-muted)', fontSize: '0.85rem' }}>Swipe or scroll to read more →</p>}
           </div>
-          <div
+          <BalancedGrid count={props.testimonials.length} minimumWidth={280} enabled={!slider}
             role="region"
             aria-label="Customer testimonials"
             aria-roledescription={slider ? 'carousel' : undefined}
@@ -220,7 +221,7 @@ export const reviewsTrustStrip = defineComponent({
                 </figcaption>
               </figure>
             ))}
-          </div>
+          </BalancedGrid>
         </Container>
       </Section>
     )

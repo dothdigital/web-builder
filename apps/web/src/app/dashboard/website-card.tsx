@@ -1,11 +1,13 @@
 import Link from 'next/link'
 import type { GenerationProgress } from '@awb/pipeline'
 import { RerunAi } from './rerun-ai'
+import { TestLink } from './test-link'
 
-export function WebsiteCard({ project, index, canEdit, built, correlationId, progress }: {
-  project: { id: string; name: string; status: string; updatedAt: Date }
+export function WebsiteCard({ project, index, canEdit, canShare = canEdit, built, correlationId, progress }: {
+  project: { id: string; name: string; status: string; updatedAt: Date; hosting?: { previewHost: string | null; previewDeployedReleaseId: string | null; previewPendingReleaseId: string | null; previewStatus: string } | null }
   index: number
   canEdit: boolean
+  canShare?: boolean
   built: boolean
   correlationId?: string
   progress?: GenerationProgress
@@ -32,6 +34,7 @@ export function WebsiteCard({ project, index, canEdit, built, correlationId, pro
         {available ? <><Link className="wt-button" href={canEdit ? `/projects/${project.id}/editor` : `/preview/${project.id}`}>{canEdit ? 'Open editor' : 'View website'} ↗</Link><Link href={`/preview/${project.id}`} className="wt-button secondary">Preview</Link></> : progressHref && <Link href={progressHref} className="wt-button">View progress →</Link>}
       </div>
       <div className="wt-site-links">
+        {available && canShare && <TestLink projectId={project.id} name={project.name} initialUrl={project.hosting?.previewDeployedReleaseId && project.hosting.previewHost && project.hosting.previewStatus !== 'SUSPENDED' ? `https://${project.hosting.previewHost}` : null} pending={!!project.hosting?.previewPendingReleaseId} />}
         {available && <><Link href={`/projects/${project.id}/analytics`}>Analytics</Link><Link href={`/projects/${project.id}/publishing`}>Domains & publish</Link></>}
         {canEdit && <RerunAi projectId={project.id} generating={generating} />}
       </div>
