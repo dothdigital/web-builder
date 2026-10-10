@@ -12,6 +12,7 @@ import type { AiTask } from './models'
 import type { DesignReference, ReferenceObservation } from '@awb/shared/design-reference'
 
 export interface GenerationBrief {
+  imageDirection?: import('@awb/shared').ImageDirection
   templateId?: string
   designReference?: DesignReference & { observation?: ReferenceObservation }
   homepageLength?: 'compact' | 'expanded'

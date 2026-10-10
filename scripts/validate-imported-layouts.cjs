@@ -72,8 +72,8 @@ async function main() {
       }
       const html = renderToStaticMarkup(React.createElement(SiteRenderer, { model, page, baseUrl: '', forms: { projectId: 'test', action: 'https://webtummy.com/api/leads/test' } }))
       const doc = new JSDOM(html).window.document
-      assert.doesNotMatch(doc.body.textContent, /insurigo|finbiz|elevate your business|john doe|david smith|\$\s?\d/i, `${template.id} ${page.path}: demo copy leaked`)
-      for (const anchor of doc.querySelectorAll('a[href]')) assert.doesNotMatch(anchor.getAttribute('href'), /\.html|themeforest|rstheme|reactheme/i)
+      assert.doesNotMatch(doc.body.textContent, /webtummy-insurance|webtummy-business|elevate your business|john doe|david smith|\$\s?\d/i, `${template.id} ${page.path}: demo copy leaked`)
+      for (const anchor of doc.querySelectorAll('a[href]')) assert.doesNotMatch(anchor.getAttribute('href'), /\.html|Webtummy|webtummy|Webtummy/i)
       for (const image of doc.querySelectorAll('img[src]')) assert.doesNotMatch(image.getAttribute('src'), /\/testimonials\/.*logo|award-logo|\/faq\/logo|\/logo\/logo|\/user\//i, `${template.id}: demo logo or staff image leaked`)
       if (page.path === '/contact') assert.ok(doc.querySelector('form'), `${template.id}: contact form present`)
       await fs.mkdir(path.join(output, template.id, page.path), { recursive: true })

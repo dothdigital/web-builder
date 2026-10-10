@@ -14,6 +14,9 @@ interface StageProgress {
   startedAt?: string
   finishedAt?: string
   note?: string
+  completed?: number
+  total?: number
+  unit?: 'images' | 'pages'
 }
 
 interface Progress {
@@ -47,34 +50,64 @@ export function ProgressView({ projectId, correlationId }: { projectId: string; 
   }, [])
 
   useEffect(() => {
-    const source = new EventSource(`/api/projects/${projectId}/progress?correlationId=${encodeURIComponent(correlationId)}`)
+    const url = `/api/projects/${projectId}/progress?correlationId=${encodeURIComponent(correlationId)}`
+    const source = new EventSource(url)
+    const controller = new AbortController()
+    let disposed = false
+    let finished = false
+    let polling = false
 
-    source.onmessage = (event) => {
-      try {
-        const payload = JSON.parse(event.data) as Progress & { error?: string }
-        if (!Array.isArray(payload.stages)) {
-          setStreamError(payload.error || 'Progress is temporarily unavailable. Reconnecting…')
-          return
-        }
-        setProgress(payload)
-        setLastUpdate(Date.now())
-        setStreamError(undefined)
-        if (payload.status === 'succeeded') {
-          source.close()
-          router.push(`/projects/${projectId}/editor`)
-        } else if (payload.status === 'failed') {
-          source.close()
-        }
-      } catch {
-        setStreamError('Could not read the latest update. Waiting for the next one…')
+    const update = (payload: Progress & { error?: string }) => {
+      if (disposed || finished) return
+      if (!Array.isArray(payload.stages)) {
+        setStreamError(payload.error || 'Progress is temporarily unavailable. Reconnecting…')
+        return
+      }
+      setProgress(payload)
+      setLastUpdate(Date.now())
+      setStreamError(undefined)
+      if (payload.status === 'succeeded') {
+        finished = true
+        source.close()
+        router.push(`/projects/${projectId}/editor`)
+      } else if (payload.status === 'failed') {
+        source.close()
+        // Keep checking: Resume generation reuses this same run ID.
       }
     }
 
-    source.onerror = () => {
-      // EventSource reconnects automatically; keep the last known state visible.
-      setStreamError('Reconnecting to live updates. Your generation continues in the background.')
+    source.onmessage = event => {
+      try { update(JSON.parse(event.data)) }
+      catch { setStreamError('Could not read the latest update. Waiting for the next one…') }
     }
-    return () => source.close()
+    source.onerror = () => {
+      if (!disposed && !finished) setStreamError('Reconnecting to live updates. Your generation continues in the background.')
+    }
+
+    // A short snapshot poll also handles buffered/disconnected streams and a
+    // failed run being resumed while this page is still open.
+    const refresh = async () => {
+      if (disposed || finished || polling) return
+      polling = true
+      try {
+        const response = await fetch(`${url}&format=json`, { cache: 'no-store', signal: controller.signal })
+        if (!response.ok) throw new Error('Progress request failed')
+        update(await response.json())
+      } catch {
+        if (!disposed) setStreamError('Progress is temporarily unavailable. Checking again shortly…')
+      } finally { polling = false }
+    }
+    const timer = setInterval(() => void refresh(), 3000)
+    const onFocus = () => void refresh()
+    window.addEventListener('focus', onFocus)
+    void refresh()
+    return () => {
+      disposed = true
+      controller.abort()
+      clearInterval(timer)
+      window.removeEventListener('focus', onFocus)
+      source.close()
+    }
   }, [projectId, correlationId, router])
 
   const stages = progress?.stages ?? []
@@ -105,7 +138,7 @@ export function ProgressView({ projectId, correlationId }: { projectId: string; 
             {stages.map((stage) => (
               <li key={stage.stage} className={`flex items-start gap-3 rounded-xl border p-4 text-sm ${stage.status === 'RUNNING' ? 'border-blue-200 bg-blue-50' : stage.status === 'FAILED' ? 'border-red-200 bg-red-50' : 'border-neutral-200 bg-white'}`}>
                 <span aria-hidden="true" className={`mt-0.5 ${stage.status === 'SUCCEEDED' ? 'text-emerald-600' : stage.status === 'RUNNING' ? 'text-blue-600' : 'text-neutral-400'}`}>{statusIcon[stage.status]}</span>
-                <div className="min-w-0 flex-1"><span className="block font-medium">{stage.label}</span><span className="mt-1 block text-xs leading-5 text-neutral-500">{stage.activity}</span>{stage.attempts > 1 && <span className="mt-1 block text-xs text-amber-700">Attempt {stage.attempts}</span>}</div>
+                <div className="min-w-0 flex-1"><span className="block font-medium">{stage.label}</span><span className="mt-1 block text-xs leading-5 text-neutral-500">{stage.activity}</span>{typeof stage.total === 'number' && <span className="mt-2 inline-flex rounded-md bg-blue-50 px-3 py-1.5 text-sm font-semibold tabular-nums text-blue-900" aria-live="polite">{stage.completed ?? 0} of {stage.total} {stage.unit}</span>}{stage.attempts > 1 && <span className="mt-1 block text-xs text-amber-700">Attempt {stage.attempts}</span>}</div>
                 {stage.status === 'SUCCEEDED' && <span className="text-xs text-emerald-700">Done</span>}
               </li>
             ))}
@@ -123,6 +156,7 @@ export function ProgressView({ projectId, correlationId }: { projectId: string; 
               <h3 className="mt-3 text-xl font-semibold">{failed?.label ?? current?.label ?? (finished ? 'Website ready' : 'Starting your build')}</h3>
               <div className="mt-2 text-sm leading-6 text-neutral-600">{failed ? <ErrorNotice code="WT-CONTENT-001" message={failed.errorMessage || 'Website generation failed. Please retry.'} /> : current?.activity ?? (finished ? 'Taking you to the editor.' : 'The latest worker activity will appear here automatically.')}</div>
             </div>
+            {current && typeof current.total === 'number' && <p className="mt-4 text-lg font-semibold tabular-nums" aria-live="polite">{current.completed ?? 0} of {current.total} {current.unit} complete</p>}
             {current && !failed && <div className="mt-5 flex justify-between rounded-lg bg-neutral-50 px-4 py-3 text-sm"><span className="text-neutral-500">Time on this step</span><span className="font-medium tabular-nums">{elapsed(current.startedAt, now)}</span></div>}
             <h3 className="mt-8 text-xs font-semibold uppercase tracking-wider text-neutral-500">Recent activity</h3>
             <ol className="mt-4 grid gap-4">

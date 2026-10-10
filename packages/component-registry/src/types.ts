@@ -49,6 +49,8 @@ export interface RenderContext {
   /** Stable instance scope for standalone rendering without React hooks. */
   staticRenderScope?: string
   forms?: { projectId: string; action: string; recaptchaSiteKey?: string }
+  serviceLinks?: Array<{ label:string;href:string }>
+  templateTheme?: string
 
   tokens: DesignTokens
   /// Absolute base URL of the rendered site, used for canonical/OG links

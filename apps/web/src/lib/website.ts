@@ -1,5 +1,6 @@
 import { WebsiteVersionKind, prisma } from '@awb/database'
 import { websiteModelSchema, type WebsiteModel } from '@awb/website-model'
+import { ensureServiceDetailPages, ensureContactPageLayout, normalizeSiteHeadings } from '@awb/component-registry'
 
 export async function loadDraftModel(projectId: string): Promise<WebsiteModel | undefined> {
   const version = await prisma.websiteVersion.findFirst({
@@ -13,7 +14,7 @@ export async function loadDraftModel(projectId: string): Promise<WebsiteModel | 
 
   const parsed = websiteModelSchema.safeParse(version.model)
 
-  return parsed.success ? parsed.data : undefined
+  return parsed.success ? normalizeSiteHeadings(ensureContactPageLayout(ensureServiceDetailPages(parsed.data))) : undefined
 }
 
 export async function saveDraftModel(

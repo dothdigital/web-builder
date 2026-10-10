@@ -17,6 +17,10 @@ async function handleGET(request: Request, { params }: { params: Promise<{ id: s
     return Response.json({ error: 'correlationId is required' }, { status: 400 })
   }
 
+  if (url.searchParams.get('format') === 'json') {
+    return Response.json(await getGenerationProgress(id, correlationId), { headers: { 'cache-control': 'no-store' } })
+  }
+
   const encoder = new TextEncoder()
 
   const stream = new ReadableStream({

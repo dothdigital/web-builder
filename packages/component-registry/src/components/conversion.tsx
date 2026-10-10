@@ -28,6 +28,8 @@ export const contactPropsSchema = z.object({
   imageAlt: z.string().default(''),
   heading: z.string(),
   intro: z.string().optional(),
+  formHeading: z.string().optional(),
+  serviceAreas: z.string().optional(),
   address: z.string().optional(),
   phone: z.string().optional(),
   email: z.string().optional(),
@@ -44,14 +46,16 @@ export const contactSplit = defineComponent({
   version: '1.0.0',
   family: 'CONTACT',
   name: 'Split contact and enquiry form',
-  description: 'Image-led contact panel beside a contained enquiry form, with a branded fallback when no image is supplied.',
-  aiGuidance: 'Use a relevant service or environment image alongside the form. Only render details the business actually supplied.',
+  description: 'Contact details beside a contained enquiry form, with an optional supplied image.',
+  aiGuidance: 'Keep contact details and the enquiry form together. Imagery is optional; use only a relevant supplied image. Only render details the business actually supplied.',
   propsSchema: contactPropsSchema,
   editorFields: [
     { path: '/imageUrl', label: 'Contact image', type: 'image' as const },
     { path: '/imageAlt', label: 'Contact image alt text', type: 'text' as const },
     { path: '/heading', label: 'Heading (H2)', type: 'text' as const, headingLevel: 2 as const },
     { path: '/intro', label: 'Intro copy', type: 'textarea' as const },
+    { path: '/formHeading', label: 'Form heading', type: 'text' as const, headingLevel:2 as const },
+    { path: '/serviceAreas', label: 'Service areas', type: 'textarea' as const },
     { path: '/address', label: 'Address', type: 'text' as const },
     { path: '/phone', label: 'Phone', type: 'text' as const },
     { path: '/email', label: 'Email', type: 'text' as const },
@@ -77,16 +81,19 @@ export const contactSplit = defineComponent({
   },
   render: ({ props, context }) => (
     <Section id="contact">
-      <Container style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))', gap: 'clamp(1.5rem, 4vw, 4rem)', alignItems: 'start' }}>
+      <Container>
+        <style>{`.awb-contact-layout{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(16px,3vw,40px);align-items:stretch}.awb-contact-layout>div{min-width:0}@media(max-width:479px){.awb-contact-layout{grid-template-columns:minmax(0,1fr)}}`}</style>
+        <div className="awb-contact-layout">
         <div style={{ display: 'grid', gap: '1.5rem', alignContent: 'start', minWidth: 0, padding: 'clamp(1.5rem, 3vw, 2.5rem)', borderRadius: 'max(var(--awb-radius), 24px)', background: 'linear-gradient(135deg, color-mix(in srgb, var(--awb-primary) 14%, var(--awb-bg)), color-mix(in srgb, var(--awb-accent) 10%, var(--awb-bg)))', border: '1px solid var(--awb-border)', overflowWrap: 'anywhere', ...cardColor(props, '/contact-panel') }} data-awb-element={'/contact-panel'}>
           {props.imageUrl && <div style={{ overflow: 'hidden', borderRadius: 'max(var(--awb-radius), 16px)' }}><Media sizeStyle={imageSizing(props, '/imageUrl')} data-awb-element="/imageUrl" src={props.imageUrl} alt={props.imageAlt} ratio="16 / 9" /></div>}
           <Heading level={2} style={elementColor(props, '/heading')} data-awb-element={'/heading'}>{props.heading}</Heading>
           {props.intro && <Prose style={elementColor(props, '/intro')} data-awb-element={'/intro'}>{props.intro}</Prose>}
           <address style={{ fontStyle: 'normal', display: 'grid', gap: '0.4rem', color: 'var(--awb-muted)' }}>
-            {props.address && <span>{<span data-awb-element="/address" style={elementColor(props, '/address')}>{props.address}</span>}</span>}
-            {props.phone && <a href={`tel:${props.phone}`} style={{ color: 'inherit' }}>{<span data-awb-element="/phone" style={elementColor(props, '/phone')}>{props.phone}</span>}</a>}
-            {props.email && <a href={`mailto:${props.email}`} style={{ color: 'inherit' }}>{<span data-awb-element="/email" style={elementColor(props, '/email')}>{props.email}</span>}</a>}
+            {props.address && <div><strong style={{display:'block',color:'var(--awb-fg)',marginBottom:6}}>Address</strong><span data-awb-element="/address" style={elementColor(props, '/address')}>{props.address}</span></div>}
+            {props.phone && <div><strong style={{display:'block',color:'var(--awb-fg)',marginBottom:6}}>Phone</strong><a href={`tel:${props.phone}`} style={{ color: 'inherit' }}><span data-awb-element="/phone" style={elementColor(props, '/phone')}>{props.phone}</span></a></div>}
+            {props.email && <div><strong style={{display:'block',color:'var(--awb-fg)',marginBottom:6}}>Email</strong><a href={`mailto:${props.email}`} style={{ color: 'inherit' }}><span data-awb-element="/email" style={elementColor(props, '/email')}>{props.email}</span></a></div>}
           </address>
+          {props.serviceAreas && <div><h3 style={{fontSize:'1rem',margin:'0 0 8px'}}>Service areas</h3><Prose data-awb-element="/serviceAreas" style={elementColor(props,'/serviceAreas')}>{props.serviceAreas}</Prose></div>}
           {props.hours.length > 0 && (
             <dl style={{ display: 'grid', gap: '0.35rem', margin: 0 }}>
               {props.hours.map((entry, index) => (
@@ -101,7 +108,11 @@ export const contactSplit = defineComponent({
             <iframe title="Map" src={props.mapEmbedUrl} loading="lazy" style={{ width: '100%', aspectRatio: '16 / 9', border: '1px solid var(--awb-border)' }} />
           )}
         </div>
-        {renderContactForm(props, context)}
+        <div data-awb-contact-form-panel="true" style={{display:'grid',gap:'1.5rem',alignContent:'start',padding:'clamp(16px,3vw,40px)',borderRadius:'max(var(--awb-radius),24px)',border:'1px solid var(--awb-border)',background:'var(--awb-surface)',overflowWrap:'anywhere'}}>
+          {props.formHeading && <Heading level={2} data-awb-element="/formHeading" style={{fontSize:'clamp(24px,3vw,36px)',...elementColor(props,'/formHeading')}}>{props.formHeading}</Heading>}
+          {renderContactForm(props, context, '', { embedded:true })}
+        </div>
+        </div>
       </Container>
     </Section>
   ),
@@ -186,9 +197,9 @@ export const faqAccordion = defineComponent({
   ),
 })
 
-export function renderContactForm(props: z.infer<typeof contactPropsSchema>, context: RenderContext, prefix = '') {
+export function renderContactForm(props: z.infer<typeof contactPropsSchema>, context: RenderContext, prefix = '', options: {embedded?:boolean;compact?:boolean} = {}) {
   const inputAppearance = (index: number) => elementColor(props, `${prefix}/formFields/${index}/input`)
-  return (<form data-awb-element={`${prefix}/form`} method="post" action={props.submissionUrl || context.forms?.action || "/api/leads"} style={{ display: 'grid', gap: '1.25rem', minWidth: 0, alignContent: 'start', background: 'var(--awb-surface)', padding: 'clamp(1.5rem, 3vw, 2.5rem)', borderRadius: 'max(var(--awb-radius), 24px)', border: '1px solid var(--awb-border)', boxShadow: '0 16px 48px color-mix(in srgb, var(--awb-primary) 8%, transparent)', ...cardColor(props, `${prefix}/form`) }}>
+  return (<form data-awb-element={`${prefix}/form`} method="post" action={props.submissionUrl || context.forms?.action || "/api/leads"} style={{ display: 'grid', gap: '1.25rem', minWidth: 0, alignContent: 'start', background:options.embedded?'transparent':'var(--awb-surface)', padding:options.embedded?0:'clamp(1.5rem, 3vw, 2.5rem)', borderRadius: 'max(var(--awb-radius), 24px)', border:options.embedded?0:'1px solid var(--awb-border)', boxShadow:options.embedded?'none':'0 16px 48px color-mix(in srgb, var(--awb-primary) 8%, transparent)', ...cardColor(props, `${prefix}/form`) }}>
           {context.forms && !props.submissionUrl && <input type="hidden" name="projectId" value={context.forms.projectId} />}
           {props.formFields.map((field, index) => (
             <fieldset key={field.name} style={{ border: 0, padding: 0, margin: 0, minWidth: 0, display: 'grid', gap: '0.4rem', fontSize: '0.85rem', textTransform: field.labelCase ?? 'none', letterSpacing: 'normal', color: 'var(--awb-muted)' }}>
@@ -214,7 +225,7 @@ export function renderContactForm(props: z.infer<typeof contactPropsSchema>, con
           ))}
           {props.consentText && <p style={{ fontSize: '0.75rem', color: 'var(--awb-muted)', margin: 0 }}>{<span data-awb-element={`${prefix}/consentText`} style={elementColor(props, `${prefix}/consentText`)}>{props.consentText}</span>}</p>}
           {!props.submissionUrl && context.forms?.recaptchaSiteKey && <div className="g-recaptcha" data-sitekey={context.forms.recaptchaSiteKey} />}
-          <button data-awb-element={`${prefix}/submitButton`} type="submit" style={{ padding: '0.95rem 1.8rem', background: 'var(--awb-button-bg, var(--awb-primary))', color: 'var(--awb-button-fg, var(--awb-primary-fg))', border: 'none', borderRadius: 'var(--awb-radius)', textTransform: 'uppercase', letterSpacing: '0.08em', cursor: 'pointer', ...elementColor(props, `${prefix}/submitButton`) }}>
+          <button data-awb-element={`${prefix}/submitButton`} type="submit" style={{ padding:options.compact?'0.85rem clamp(8px,1.5vw,24px)':'0.95rem 1.8rem', background: 'var(--awb-button-bg, var(--awb-primary))', color: 'var(--awb-button-fg, var(--awb-primary-fg))', border: 'none', borderRadius: 'var(--awb-radius)', textTransform: 'uppercase', letterSpacing:options.compact?'0.02em':'0.08em', cursor: 'pointer', ...elementColor(props, `${prefix}/submitButton`) }}>
             <span data-awb-element={`${prefix}/submitLabel`} style={elementColor(props, `${prefix}/submitLabel`)}>{props.submitLabel}</span>
           </button>
         </form>)

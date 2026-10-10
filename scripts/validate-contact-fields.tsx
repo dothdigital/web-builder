@@ -25,8 +25,8 @@ const checkbox = form.elements.namedItem('consent') as HTMLInputElement
 const label = checkbox.closest('label')!
 assert.equal(label.firstElementChild, checkbox, 'Checkbox precedes its label')
 assert.equal(label.querySelector('a')?.getAttribute('href'), '/privacy')
-assert.equal((label.querySelector('[data-awb-element]') as HTMLElement).style.fontSize, '18px')
-assert.equal((label.querySelector('[data-awb-element]') as HTMLElement).style.textTransform, 'none')
+assert.equal((label.querySelector('[data-awb-element$="/label"]') as HTMLElement).style.fontSize, '18px')
+assert.equal((label.querySelector('[data-awb-element$="/label"]') as HTMLElement).style.textTransform, 'none')
 assert.equal(definition.propsSchema.safeParse({ heading: 'Contact', formFields: [{ name: 'consent', label: 'Accept', type: 'checkbox', linkText: 'Accept', linkUrl: 'javascript:alert(1)' }] }).success, false)
 const payload = new dom.window.FormData(form)
 assert.equal(payload.get('consent'), 'yes')

@@ -2,7 +2,7 @@ import { assistantPlanSchema, assistantPrompt } from './editor-command'
 import { z } from 'zod'
 import type { AiPatch, DesignDna, DesignTokens, WebsiteModel } from '@awb/website-model'
 import { aiPatchSchema } from '@awb/website-model'
-import { registryCatalogue, validateSectionProps, getComponent, templateGenerationComponents, templateCopyCatalogue, initialTemplateProps, setTemplateHeading } from '@awb/component-registry'
+import { registryCatalogue, validateSectionProps, getComponent, templateGenerationComponents, templateCopyCatalogue, templateServiceCards, initialTemplateProps, setTemplateHeading } from '@awb/component-registry'
 import type { CatalogueEntry } from '@awb/component-registry'
 import {
   plannedNavigationSchema,
@@ -314,14 +314,15 @@ export class OpenAiProvider implements AiProvider {
         'Return path, h1, seo and sections with id, componentId, componentVersion:"1.0.0", hidden:false, props. Only fill the documented text properties. The application supplies images, navigation and links.',
         'The sample wording explains each field’s visual role only. It is not factual evidence about this business. Rewrite all text fields. Use empty strings for unsupported statistics, years, addresses, pricing, awards, certifications, guarantees, staff, partner names, telephone numbers, email addresses, or opening hours. Never copy demo claims. Do not invent service areas or process details.',
         'One H1: the hero heading property must equal the returned h1. Other headline properties must fit the business and the page intent. Keep short headings short enough to fit the original design. For service pages, explain the supplied service specifically.',
+        'Every service card must have a meaningful description. A service detail page must include substantial service-specific explanation in its paragraph fields, not just a title or one-line summary. Explain the supplied service purpose, relevant audience and questions to discuss using only the provided facts; preserve the selected layout.',
         'For review sections use only exact supplied reviews and their real authors. Leave excess review fields empty.',
         `Ordered layout fields and sample copy:\n${JSON.stringify(templateCopyCatalogue(ids))}`].join('\n\n'),
         `${this.briefText(brief)}\nPage: ${JSON.stringify(page)}\nAnalysis: ${JSON.stringify(analysis)}`,
         content=>[...(content.sections.map(section=>section.componentId).join(',')!==ids.join(',')?['Keep all prescribed componentIds in their original order']:[]),...content.sections.flatMap(section=>{
           const expected=templateCopyCatalogue([section.componentId])[0]
           if(!expected)return ['Unknown layout section']
-          return expected.fields.filter(field=>typeof section.props[field.path.slice(1)]!=='string').map(field=>`Provide ${section.componentId} ${field.path}, using an empty string when facts are missing`)
-        })])
+          return [...expected.fields.filter(field=>typeof section.props[field.path.slice(1)]!=='string').map(field=>`Provide ${section.componentId} ${field.path}, using an empty string when facts are missing`),...templateServiceCards(section.componentId,section.props).filter(card=>!card.description.trim()).map(card=>`Provide a useful description for ${card.label}`)]
+        }),...(page.serviceName&&content.sections.flatMap(section=>templateCopyCatalogue([section.componentId]).flatMap(entry=>entry.fields.filter(field=>field.type==='textarea').map(field=>String(section.props[field.path.slice(1)]||'')))).join(' ').trim().length<800?['Service detail pages need substantial relevant copy in their paragraph fields, using the supplied business facts']:[])])
       result.data.sections=result.data.sections.map((section,index)=>({...section,id:`layout-${index}`,props:{...initialTemplateProps(section.componentId),...Object.fromEntries(templateCopyCatalogue([section.componentId])[0]!.fields.map(field=>[field.path.slice(1),section.props[field.path.slice(1)]]))}}))
       const hero=result.data.sections.find(section=>getComponent(section.componentId)?.family==='HERO')
       if(hero)setTemplateHeading(hero.componentId,hero.props,result.data.h1)
@@ -378,8 +379,8 @@ export class OpenAiProvider implements AiProvider {
       [
         'Write one concept-led image prompt and descriptive alt text for every image slot listed by the user. Choose editorial photography, an object-based still life, or a tasteful conceptual illustration to explain the exact service or section subject, not simply the industry.',
         'Return each slot string exactly as given — never invent, merge or omit a slot.',
-        'Use subjectContext, especially imageOwner for individual cards, to identify the specific concept. Make sibling cards visibly distinct. For education savings show learning or education-related objects; for travel protection show travel essentials; for methodology show relevant tools or a process setting. Adapt these examples to the actual business.',
-        'People are optional, never the default: use them only when the subject needs human interaction, such as care or consultation. Avoid repetitive smiling families, portraits, handshakes and office meetings. Generated people must not be presented as actual staff or customers.',
+        'Use subjectContext.exactImageSubject as the primary subject when present; it identifies the exact service for this image slot. Otherwise use subjectContext, especially imageOwner for individual cards, to identify the specific concept. Make sibling cards visibly distinct. For education savings show learning or education-related objects; for travel protection show travel essentials; for methodology show relevant tools or a process setting. Adapt these examples to the actual business.',
+        'Follow brief.imageDirection for image style and visual notes. Combine all selected styles in brief.imageDirection.styles coherently across the site, including people, local context, combination, industry-specific or illustration choices. This explicit preference takes priority over the default image approach. For local imagery use the supplied location without inventing a real business premises. Without a people preference, people are optional: use them when the subject benefits from human interaction. Avoid repetitive scenes. Generated people must not be presented as actual staff or customers.',
         'Coordinate imagery with the brand palette and art direction, with clear focal subjects and composition suited to the slot. Alt text describes the planned image, not generic brand marketing. Never imply unsupported outcomes or guarantees.',
         'Never request text, words, watermarks or logos inside generated images.',
       ].join(' '),
@@ -415,29 +416,33 @@ export class OpenAiProvider implements AiProvider {
     let lastError: unknown
 
     for (const model of [routing.model, ...routing.fallbacks]) {
-      const response = await fetch(`${OPENAI_BASE_URL}/images/generations`, {
-        method: 'POST',
-            signal: AbortSignal.timeout(180000),
-        headers: { 'content-type': 'application/json', authorization: `Bearer ${this.apiKey}` },
-        body: JSON.stringify({ model, prompt, size: sizes[aspectRatio] ?? '1024x1024', n: 1 }),
-      })
+      try {
+        const response = await fetch(`${OPENAI_BASE_URL}/images/generations`, {
+          method: 'POST',
+          signal: AbortSignal.timeout(180000),
+          headers: { 'content-type': 'application/json', authorization: `Bearer ${this.apiKey}` },
+          body: JSON.stringify({ model, prompt, size: sizes[aspectRatio] ?? '1024x1024', n: 1 }),
+        })
 
-      if (!response.ok) {
-        lastError = new Error(`${model}: ${response.status} ${await response.text()}`)
-        continue
-      }
+        if (!response.ok) {
+          lastError = new Error(`${model}: ${response.status} ${await response.text()}`)
+          continue
+        }
 
-      const payload = (await response.json()) as { data?: Array<{ b64_json?: string }> }
-      const b64 = payload.data?.[0]?.b64_json
+        const payload = (await response.json()) as { data?: Array<{ b64_json?: string }> }
+        const b64 = payload.data?.[0]?.b64_json
 
-      if (!b64) {
-        lastError = new Error(`${model}: no image payload`)
-        continue
-      }
+        if (!b64) {
+          lastError = new Error(`${model}: no image payload`)
+          continue
+        }
 
-      return {
-        data: { slot, alt, prompt, data: Buffer.from(b64, 'base64'), contentType: 'image/png' },
-        usage: { task: 'image_generate', model, inputTokens: 0, outputTokens: 0, costCents: 0 },
+        return {
+          data: { slot, alt, prompt, data: Buffer.from(b64, 'base64'), contentType: 'image/png' },
+          usage: { task: 'image_generate', model, inputTokens: 0, outputTokens: 0, costCents: 0 },
+        }
+      } catch (error) {
+        lastError = error
       }
     }
 

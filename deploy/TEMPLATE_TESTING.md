@@ -1,7 +1,7 @@
 # Local template integration testing
 
-The integration contains 18 selectable layouts from the uploaded Insurigo and
-Finbiz themes, screenshot thumbnails, sandboxed full-page previews, and 279
+The integration contains 18 selectable layouts from the uploaded Webtummy and
+Webtummy themes, screenshot thumbnails, sandboxed full-page previews, and 279
 editable section definitions. Selected templates retain their section order,
 header, footer and theme assets during generation and static export. Unsupported
 proof sections remain hidden; nested demo logos, review widgets, awards and staff

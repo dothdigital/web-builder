@@ -1,146 +1,146 @@
 [
   {
-    "id": "insurigo-1",
-    "theme": "insurigo",
+    "id": "webtummy-insurance-1",
+    "theme": "webtummy-insurance",
     "name": "Insurance Classic",
     "category": "Insurance",
-    "preview": "/template-library/insurigo/index.html",
-    "thumbnail": "/template-library/thumbnails/insurigo-1.webp"
+    "preview": "/template-library/previews/webtummy-insurance-1.html",
+    "thumbnail": "/template-library/thumbnails/webtummy-insurance-1.webp"
   },
   {
-    "id": "insurigo-2",
-    "theme": "insurigo",
+    "id": "webtummy-insurance-2",
+    "theme": "webtummy-insurance",
     "name": "Insurance Modern",
     "category": "Insurance",
-    "preview": "/template-library/insurigo/index-2.html",
-    "thumbnail": "/template-library/thumbnails/insurigo-2.webp"
+    "preview": "/template-library/previews/webtummy-insurance-2.html",
+    "thumbnail": "/template-library/thumbnails/webtummy-insurance-2.webp"
   },
   {
-    "id": "insurigo-3",
-    "theme": "insurigo",
+    "id": "webtummy-insurance-3",
+    "theme": "webtummy-insurance",
     "name": "Insurance Editorial",
     "category": "Insurance",
-    "preview": "/template-library/insurigo/index-3.html",
-    "thumbnail": "/template-library/thumbnails/insurigo-3.webp"
+    "preview": "/template-library/previews/webtummy-insurance-3.html",
+    "thumbnail": "/template-library/thumbnails/webtummy-insurance-3.webp"
   },
   {
-    "id": "insurigo-4",
-    "theme": "insurigo",
+    "id": "webtummy-insurance-4",
+    "theme": "webtummy-insurance",
     "name": "Insurance Bold",
     "category": "Insurance",
-    "preview": "/template-library/insurigo/index-4.html",
-    "thumbnail": "/template-library/thumbnails/insurigo-4.webp"
+    "preview": "/template-library/previews/webtummy-insurance-4.html",
+    "thumbnail": "/template-library/thumbnails/webtummy-insurance-4.webp"
   },
   {
-    "id": "finbiz-1",
-    "theme": "finbiz",
+    "id": "webtummy-business-1",
+    "theme": "webtummy-business",
     "name": "Business Classic",
     "category": "Business",
-    "preview": "/template-library/finbiz/index.html",
-    "thumbnail": "/template-library/thumbnails/finbiz-1.webp"
+    "preview": "/template-library/previews/webtummy-business-1.html",
+    "thumbnail": "/template-library/thumbnails/webtummy-business-1.webp"
   },
   {
-    "id": "finbiz-2",
-    "theme": "finbiz",
+    "id": "webtummy-business-2",
+    "theme": "webtummy-business",
     "name": "Consulting Modern",
     "category": "Business",
-    "preview": "/template-library/finbiz/index-two.html",
-    "thumbnail": "/template-library/thumbnails/finbiz-2.webp"
+    "preview": "/template-library/previews/webtummy-business-2.html",
+    "thumbnail": "/template-library/thumbnails/webtummy-business-2.webp"
   },
   {
-    "id": "finbiz-3",
-    "theme": "finbiz",
+    "id": "webtummy-business-3",
+    "theme": "webtummy-business",
     "name": "Business Strategy",
     "category": "Business",
-    "preview": "/template-library/finbiz/index-three.html",
-    "thumbnail": "/template-library/thumbnails/finbiz-3.webp"
+    "preview": "/template-library/previews/webtummy-business-3.html",
+    "thumbnail": "/template-library/thumbnails/webtummy-business-3.webp"
   },
   {
-    "id": "finbiz-4",
-    "theme": "finbiz",
+    "id": "webtummy-business-4",
+    "theme": "webtummy-business",
     "name": "Insurance Professional",
     "category": "Insurance",
-    "preview": "/template-library/finbiz/index-four.html",
-    "thumbnail": "/template-library/thumbnails/finbiz-4.webp"
+    "preview": "/template-library/previews/webtummy-business-4.html",
+    "thumbnail": "/template-library/thumbnails/webtummy-business-4.webp"
   },
   {
-    "id": "finbiz-5",
-    "theme": "finbiz",
+    "id": "webtummy-business-5",
+    "theme": "webtummy-business",
     "name": "Marketing Studio",
     "category": "Marketing",
-    "preview": "/template-library/finbiz/index-five.html",
-    "thumbnail": "/template-library/thumbnails/finbiz-5.webp"
+    "preview": "/template-library/previews/webtummy-business-5.html",
+    "thumbnail": "/template-library/thumbnails/webtummy-business-5.webp"
   },
   {
-    "id": "finbiz-6",
-    "theme": "finbiz",
+    "id": "webtummy-business-6",
+    "theme": "webtummy-business",
     "name": "Financial Advisory",
     "category": "Finance",
-    "preview": "/template-library/finbiz/index-six.html",
-    "thumbnail": "/template-library/thumbnails/finbiz-6.webp"
+    "preview": "/template-library/previews/webtummy-business-6.html",
+    "thumbnail": "/template-library/thumbnails/webtummy-business-6.webp"
   },
   {
-    "id": "finbiz-7",
-    "theme": "finbiz",
+    "id": "webtummy-business-7",
+    "theme": "webtummy-business",
     "name": "Business Partnership",
     "category": "Business",
-    "preview": "/template-library/finbiz/index-seven.html",
-    "thumbnail": "/template-library/thumbnails/finbiz-7.webp"
+    "preview": "/template-library/previews/webtummy-business-7.html",
+    "thumbnail": "/template-library/thumbnails/webtummy-business-7.webp"
   },
   {
-    "id": "finbiz-8",
-    "theme": "finbiz",
+    "id": "webtummy-business-8",
+    "theme": "webtummy-business",
     "name": "IT & Staffing",
     "category": "Technology",
-    "preview": "/template-library/finbiz/index-eight.html",
-    "thumbnail": "/template-library/thumbnails/finbiz-8.webp"
+    "preview": "/template-library/previews/webtummy-business-8.html",
+    "thumbnail": "/template-library/thumbnails/webtummy-business-8.webp"
   },
   {
-    "id": "finbiz-9",
-    "theme": "finbiz",
+    "id": "webtummy-business-9",
+    "theme": "webtummy-business",
     "name": "Digital Agency",
     "category": "Agency",
-    "preview": "/template-library/finbiz/index-nine.html",
-    "thumbnail": "/template-library/thumbnails/finbiz-9.webp"
+    "preview": "/template-library/previews/webtummy-business-9.html",
+    "thumbnail": "/template-library/thumbnails/webtummy-business-9.webp"
   },
   {
-    "id": "finbiz-10",
-    "theme": "finbiz",
+    "id": "webtummy-business-10",
+    "theme": "webtummy-business",
     "name": "Startup Studio",
     "category": "Business",
-    "preview": "/template-library/finbiz/index-ten.html",
-    "thumbnail": "/template-library/thumbnails/finbiz-10.webp"
+    "preview": "/template-library/previews/webtummy-business-10.html",
+    "thumbnail": "/template-library/thumbnails/webtummy-business-10.webp"
   },
   {
-    "id": "finbiz-11",
-    "theme": "finbiz",
+    "id": "webtummy-business-11",
+    "theme": "webtummy-business",
     "name": "Branding Agency",
     "category": "Agency",
-    "preview": "/template-library/finbiz/index-eleven.html",
-    "thumbnail": "/template-library/thumbnails/finbiz-11.webp"
+    "preview": "/template-library/previews/webtummy-business-11.html",
+    "thumbnail": "/template-library/thumbnails/webtummy-business-11.webp"
   },
   {
-    "id": "finbiz-12",
-    "theme": "finbiz",
+    "id": "webtummy-business-12",
+    "theme": "webtummy-business",
     "name": "Growth Consulting",
     "category": "Business",
-    "preview": "/template-library/finbiz/index-twelve.html",
-    "thumbnail": "/template-library/thumbnails/finbiz-12.webp"
+    "preview": "/template-library/previews/webtummy-business-12.html",
+    "thumbnail": "/template-library/thumbnails/webtummy-business-12.webp"
   },
   {
-    "id": "finbiz-13",
-    "theme": "finbiz",
+    "id": "webtummy-business-13",
+    "theme": "webtummy-business",
     "name": "Business Management",
     "category": "Business",
-    "preview": "/template-library/finbiz/index-thirteen.html",
-    "thumbnail": "/template-library/thumbnails/finbiz-13.webp"
+    "preview": "/template-library/previews/webtummy-business-13.html",
+    "thumbnail": "/template-library/thumbnails/webtummy-business-13.webp"
   },
   {
-    "id": "finbiz-14",
-    "theme": "finbiz",
+    "id": "webtummy-business-14",
+    "theme": "webtummy-business",
     "name": "Business Growth",
     "category": "Business",
-    "preview": "/template-library/finbiz/index-fourteen.html",
-    "thumbnail": "/template-library/thumbnails/finbiz-14.webp"
+    "preview": "/template-library/previews/webtummy-business-14.html",
+    "thumbnail": "/template-library/thumbnails/webtummy-business-14.webp"
   }
 ]

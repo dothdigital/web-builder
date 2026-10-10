@@ -21,8 +21,8 @@ export default async function DashboardPage() {
     const content = project.contentJobs[0]
     const stage = project.generationJobs[0]
     const correlationId = content && (!stage || content.createdAt >= stage.createdAt) ? content.id : stage?.correlationId
-    const progress = correlationId && (project.status === 'GENERATING' || !project.websiteVersions.length) ? await getGenerationProgress(project.id, correlationId) : undefined
-    return { correlationId, progress }
+    const progress = correlationId && (project.status === 'GENERATING' || content?.status === 'FAILED' || !project.websiteVersions.length) ? await getGenerationProgress(project.id, correlationId) : undefined
+    return { correlationId, progress, resumeJobId: content?.status === 'FAILED' ? content.id : undefined }
   }))
   const canEdit = membership.role !== 'VIEWER' && editingAccess(workspace)
   const canCreate = canEdit && (workspace.billingExempt || projects.length < (workspace.billingPlan?.websiteLimit ?? 0))

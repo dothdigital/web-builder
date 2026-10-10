@@ -7,7 +7,7 @@ import { revalidatePath } from 'next/cache'
 import { CollectionType, ProjectStatus, WorkspaceRole, prisma } from '@awb/database'
 import { createAiProvider } from '@awb/ai'
 import { submitContentJob } from '@/lib/content-jobs'
-import { slugify } from '@awb/shared'
+import { generationOptionsSchema, type GenerationOptions, slugify } from '@awb/shared'
 import { designReferenceSchema } from '@awb/shared/design-reference'
 import { isLayoutId } from '@awb/shared/layout-catalogue'
 import { designTokensSchema, type DesignTokens } from '@awb/website-model'
@@ -209,8 +209,10 @@ export async function saveBrandColors(projectId: string, tokens: DesignTokens, l
   })
 }
 
-export async function startGeneration(projectId: string): Promise<{ correlationId: string; mode: string }> {
+export async function startGeneration(projectId: string, options?: Partial<GenerationOptions>): Promise<{ correlationId: string; mode: string }> {
   const { project } = await requireProject(projectId, WorkspaceRole.EDITOR)
+  const generationOptions = generationOptionsSchema.parse(options ?? {})
+  if (generationOptions.mode !== 'full' && !await prisma.websiteVersion.findFirst({ where: { projectId, kind: 'DRAFT' }, select: { id: true } })) throw new Error('Create a website draft before using a partial rerun.')
   // Validate configuration before reserving the project for a background run.
   createAiProvider()
   const claimed = await prisma.project.updateMany({
@@ -222,7 +224,7 @@ export async function startGeneration(projectId: string): Promise<{ correlationI
   }
 
   try {
-    const job = await submitContentJob(projectId, 'WEBSITE', {})
+    const job = await submitContentJob(projectId, 'WEBSITE', generationOptions)
     const result = { correlationId: job.jobId, mode: 'queue' }
     revalidatePath('/dashboard')
     revalidatePath(`/projects/${projectId}`)

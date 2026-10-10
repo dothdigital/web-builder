@@ -1,6 +1,6 @@
 import { resolveContactLinks } from '../lib/contact-links'
 import { resolveSectionMedia } from '../lib/section-media'
-import { getComponent, tokensToCssVars, siteChrome } from '@awb/component-registry'
+import { getComponent, tokensToCssVars, siteChrome, layoutTheme } from '@awb/component-registry'
 import type { RenderContext } from '@awb/component-registry'
 import type { WebsiteModel, WebsitePage } from '@awb/website-model'
 
@@ -67,7 +67,7 @@ export function SiteRenderer({
     }
     return rewriteLinks(props) as Record<string, unknown>
   }
-  const context: RenderContext = { tokens: model.tokens, baseUrl, editing, forms }
+  const context: RenderContext = { tokens: model.tokens, baseUrl, editing, forms, templateTheme:layoutTheme(model.globalComponents.header.componentId), serviceLinks:model.pages.filter(entry=>entry.path.startsWith('/services/')).map(entry=>({label:entry.navLabel || entry.title,href:entry.path})) }
 
   return (
     <div style={{ ...tokensToCssVars(model.tokens), background: 'var(--awb-bg)', color: 'var(--awb-fg)' }}>

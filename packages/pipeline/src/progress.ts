@@ -1,5 +1,7 @@
+import { generationOptionsSchema } from '@awb/shared'
+import { stageWorkCounter } from './stage-work-counter'
 import { JobStatus, prisma } from '@awb/database'
-import { generationStages, stageDescriptor, totalStageWeight } from './stages'
+import { generationStages, stageDescriptor } from './stages'
 
 export interface StageProgress {
   stage: string
@@ -11,6 +13,9 @@ export interface StageProgress {
   startedAt?: string
   finishedAt?: string
   note?: string
+  completed?: number
+  total?: number
+  unit?: 'images' | 'pages'
 }
 
 export interface GenerationProgress {
@@ -33,9 +38,14 @@ export async function getGenerationProgress(
     orderBy: { createdAt: 'asc' },
   })
 
+  const contentJob = await prisma.contentJob.findFirst({where:{id:correlationId,projectId},select:{input:true}})
+  const options = generationOptionsSchema.safeParse(contentJob?.input ?? {})
+  const mode = options.success ? options.data.mode : 'full'
+  const activeStages = generationStages.filter(descriptor => mode === 'full' || descriptor.stage === 'VALIDATE' || (descriptor.stage === 'CONTENT' && !['images','fill-images'].includes(mode)) || (descriptor.stage === 'IMAGES' && mode !== 'content'))
+  const totalStageWeight = activeStages.reduce((sum,descriptor)=>sum+descriptor.weight,0)
   const byStage = new Map(jobs.map((job) => [job.stage, job]))
 
-  const stages: StageProgress[] = generationStages.map((descriptor) => {
+  const stages: StageProgress[] = activeStages.map((descriptor) => {
     const job = byStage.get(descriptor.stage)
     const output = job?.output as { referenceMessage?: unknown } | null | undefined
 
@@ -45,6 +55,7 @@ export async function getGenerationProgress(
       activity: descriptor.activity,
       status: job?.status ?? 'PENDING',
       attempts: job?.attempts ?? 0,
+      ...stageWorkCounter(descriptor.stage,job?.output,job?.input,job?.status),
       ...(typeof output?.referenceMessage === 'string' ? { note: output.referenceMessage } : {}),
       ...(job?.errorMessage ? { errorMessage: job.errorMessage } : {}),
       ...(job?.startedAt ? { startedAt: job.startedAt.toISOString() } : {}),
