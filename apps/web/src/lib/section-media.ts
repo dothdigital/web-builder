@@ -6,11 +6,16 @@ const imageFor = (page: WebsitePage | undefined) => page?.sections.find((section
 
 function resolveBaseMedia(model: WebsiteModel, page: WebsitePage, section: WebsiteSection): Record<string, unknown> {
   const definition = getComponent(section.componentId)
+  const pageImage = imageFor(page)
   const props = { ...section.props }
   if (section.componentId === 'BlogListing') return { ...props, items: model.pages.filter((entry) => entry.pageType === 'BLOG_POST').map((entry) => {
     const cover = imageFor(entry)
     return { title: entry.title, description: entry.seo.description, href: entry.path, imageUrl: cover?.imageUrl, imageAlt: cover?.imageAlt || entry.title }
   }).reverse() }
+  if (definition?.editorFields.some((field) => field.path === '/imageUrl' && field.type === 'image') && !props.imageUrl && pageImage) {
+    props.imageUrl = pageImage.imageUrl
+    props.imageAlt = pageImage.imageAlt || page.title
+  }
   if (definition?.family !== 'SERVICES' || !Array.isArray(props.items)) return props
 
   props.items = props.items.map((item: Record<string, unknown>) => {
@@ -27,6 +32,8 @@ function resolveBaseMedia(model: WebsiteModel, page: WebsitePage, section: Websi
     // Combined topics link to their shared overview when one exists.
     const parent = related.length > 1 ? candidates.find((candidate) => related.every((child) => child.path.startsWith(`${candidate.path}/`))) : undefined
     const target = exact ?? parent ?? related.sort((a, b) => normalize(b.title).length - normalize(a.title).length)[0]
+    // Only a real destination page identifies the same product/service. An
+    // option without a matching page needs its own artwork, not the hero.
     const image = imageFor(target)
     return {
       ...item,

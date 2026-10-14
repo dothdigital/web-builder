@@ -1,0 +1,47 @@
+require('dotenv').config({ path: '.env', quiet: true })
+const assert = require('node:assert/strict')
+const fs = require('node:fs/promises')
+const { chromium } = require('/tmp/webtummy-layout-preview/node_modules/playwright')
+async function main() {
+  const fixture = JSON.parse(await fs.readFile('/home/ubuntu/webtummy-hosting-test-account.json', 'utf8'))
+  const base = 'https://webtummy.com'
+  const candidate = process.env.CONTENT_UI_BASE || 'http://127.0.0.1:3003'
+  const browser = await chromium.launch({ headless: true, executablePath: '/home/ubuntu/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome', args: ['--no-sandbox'] })
+  try {
+    const context = await browser.newContext({ viewport: { width: 1440, height: 900 } })
+    await context.route(base + '/**', async route => {
+      const response = await route.fetch({ url: route.request().url().replace(base, candidate), headers: { ...route.request().headers(), host: 'webtummy.com', 'x-forwarded-host': 'webtummy.com', 'x-forwarded-proto': 'https' }, maxRedirects: 0 })
+      await route.fulfill({ response })
+    })
+    const page = await context.newPage()
+    const errors = []
+    page.on('pageerror', error => errors.push(error.message))
+    await page.goto(base + '/signin')
+    await page.locator('#signin-email').fill(fixture.email)
+    await page.locator('#signin-password').fill(fixture.password)
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click()
+    await page.waitForURL(/\/dashboard/)
+    await page.goto(base + `/projects/${fixture.projectId}/editor`)
+    await page.getByRole('button', { name: '+ Blog / Page', exact: true }).click()
+    const dialog = page.getByRole('dialog', { name: 'Create a blog or website page' })
+    await dialog.waitFor()
+    const checkbox = dialog.getByRole('checkbox', { name: 'Add an AI-generated blog cover', exact: true })
+    assert.equal(await checkbox.isChecked(), false)
+    assert.equal(await dialog.getByLabel('What should the cover image show? (required)').count(), 0)
+    assert.equal(await dialog.getByRole('button', { name: 'Generate cover with AI', exact: true }).count(), 0)
+    await checkbox.check()
+    assert.equal(await dialog.getByLabel('What should the cover image show? (required)').getAttribute('required'), '')
+    await dialog.getByRole('button', { name: 'Generate content and cover', exact: true }).waitFor()
+    await checkbox.uncheck()
+    await dialog.getByRole('button', { name: 'Generate content', exact: true }).waitFor()
+    await page.setViewportSize({ width: 390, height: 844 })
+    await checkbox.check()
+    const bounds = await dialog.boundingBox()
+    assert.ok(bounds.x >= 0 && bounds.width <= 390)
+    assert.deepEqual(errors, [])
+    await fs.mkdir('/home/ubuntu/webtummy-cover-tests', { recursive: true })
+    await page.screenshot({ path: '/home/ubuntu/webtummy-cover-tests/optional-cover-mobile.png' })
+    console.log('PASS: cover opt-in, conditional required fields, single combined submission, mobile dialog; no generation submitted.')
+  } finally { await browser.close() }
+}
+main().catch(error => { console.error(error); process.exitCode = 1 })

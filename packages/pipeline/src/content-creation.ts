@@ -2,12 +2,19 @@ import { z } from 'zod'
 import { pageSchema, websiteModelSchema, type WebsiteModel, type WebsitePage, type AiPatch } from '@awb/website-model'
 import { getComponent } from '@awb/component-registry'
 export const contentRequestSchema = z.object({
+  includeCoverImage: z.boolean().default(false),
+  imageSubject: z.string().trim().max(1000).default(''),
+  imageStyle: z.string().trim().max(500).default(''),
   coverImageUrl: z.string().max(4000).default(''),
   coverImageAlt: z.string().max(300).default(''),
   includeFaq: z.boolean().default(true),
   kind: z.enum(['blog', 'page']), topic: z.string().trim().min(3).max(200), slug: z.string().trim().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).max(100),
   keyword: z.string().trim().min(2).max(200), secondaryKeywords: z.string().max(500).default(''), audience: z.string().trim().min(2).max(500),
   goal: z.string().trim().min(2).max(500), location: z.string().max(200).default(''), details: z.string().trim().min(20).max(8000), internalPaths: z.array(z.string()).max(20).default([]),
+}).superRefine((input, context) => {
+  if (!input.includeCoverImage) return
+  if (input.imageSubject.length < 10) context.addIssue({ code: 'custom', path: ['imageSubject'], message: 'Describe what the cover should show (at least 10 characters).' })
+  if (input.imageStyle.length < 3) context.addIssue({ code: 'custom', path: ['imageStyle'], message: 'Choose a visual style or describe one (at least 3 characters).' })
 })
 export type ContentRequest = z.infer<typeof contentRequestSchema>
 export function contentPath(input: ContentRequest) { return input.kind === 'blog' ? `/blog/${input.slug}` : `/${input.slug}` }
@@ -54,7 +61,9 @@ export function generatedContentPage(model: WebsiteModel, input: ContentRequest,
     const definition = getComponent(section.componentId)
     if (!definition || ['HEADER', 'FOOTER'].includes(definition.family) || section.componentId === 'BlogListing') throw new Error('AI selected an unsupported layout.')
     if (definition.family === 'HERO') heroes++
-    const props = definition.propsSchema.parse(section.componentId === 'BlogArticle' && input.coverImageUrl ? { ...section.props, imageUrl: input.coverImageUrl, imageAlt: input.coverImageAlt.trim() || page.title } : section.props) as Record<string, unknown>
+    const coverSection = section.componentId === 'BlogArticle' || (input.kind === 'page' && definition.family === 'HERO')
+    const props = definition.propsSchema.parse(coverSection && input.coverImageUrl ? { ...section.props, imageUrl: input.coverImageUrl, imageAlt: input.coverImageAlt.trim() || page.title } : section.props) as Record<string, unknown>
+    if (coverSection && input.coverImageUrl && props.imageUrl !== input.coverImageUrl) throw new Error('The chosen hero layout does not support a cover image. Please generate again.')
     checkLinks(props)
     return { ...section, id: `${id}-section-${index}`, hidden: false, componentVersion: definition.version, props }
   })

@@ -11,6 +11,12 @@ Object.assign(globalThis, { React })
 const chrome = (id: string) => ({ componentId: id, componentVersion: '1.0.0', props: getComponent(id)!.fixture })
 const model = websiteModelSchema.parse({ schemaVersion: '1.0.0', site: { name: 'Example', previewHost: 'example.test' }, businessProfileRef: 'test', tokens: defaultTokens, designDna: { direction: 'corporate', composition: { symmetry: 'symmetric', density: 'balanced', width: 'wide', rhythm: 'modular' }, typography: { headingStyle: 'geometric-sans', bodyStyle: 'clean-sans', scale: 'standard' }, imagery: { style: 'documentary', dominance: 'medium', treatment: 'natural' }, navigation: 'split-nav', motion: 'none', corners: 'soft', ctaStyle: 'solid', colorBehavior: 'tonal' }, navigation: { primaryMenu: [] }, globalComponents: { header: chrome('HeaderSplitUtility'), footer: chrome('FooterCompact') }, pages: [{ id: 'home', path: '/', title: 'Home', h1: 'Home', seo: { title: 'Home', description: 'Useful advice from our business.' }, sections: [{ id: 'hero', componentId: 'HeroTypographic', props: getComponent('HeroTypographic')!.fixture }] }] })
 const input = contentRequestSchema.parse({ includeFaq: false, kind: 'blog', topic: 'Planning guide', slug: 'planning-guide', keyword: 'planning', audience: 'New customers', goal: 'Help people plan', details: 'Explain how to plan thoughtfully using only verified business facts.', internalPaths: ['/'] })
+assert.equal(contentRequestSchema.safeParse({ ...input, includeCoverImage: true }).success, false)
+assert.equal(contentRequestSchema.safeParse({ ...input, includeCoverImage: true, imageSubject: 'A family planning their future', imageStyle: '' }).success, false)
+assert.equal(contentRequestSchema.safeParse({ ...input, includeCoverImage: true, imageSubject: '  ', imageStyle: 'Natural photography' }).success, false)
+const coverBrief = contentRequestSchema.parse({ ...input, includeCoverImage: true, imageSubject: 'A family planning their future', imageStyle: 'Natural photography' })
+assert.equal(coverBrief.includeCoverImage, true)
+assert.equal(contentRequestSchema.safeParse({ ...input, includeCoverImage: false, imageSubject: '', imageStyle: '' }).success, true)
 const article = { title: 'Planning guide', h1: 'Planning guide', seo: { title: 'Planning guide', description: 'Learn how to plan your next steps with clear, practical guidance.' }, sections: [{ id: 'ai', componentId: 'BlogArticle', props: { heading: 'Planning guide', intro: 'Start your planning here.', blocks: [{ heading: 'Start here', body: 'Consider what matters to you.', links: [{ label: 'Explore our business', href: '/' }] }, { heading: 'Next steps', body: 'Talk to our team.', links: [] }] } }] }
 const operations = [{ op: 'add' as const, path: '/page', value: article }]
 const faqSection = { id: 'faq', componentId: 'FaqAccordion', props: { heading: 'Planning questions', items: [{ question: 'How do I start?', answer: 'Start with your goals.' }, { question: 'Who can help?', answer: 'Contact our team.' }] } }
@@ -31,6 +37,15 @@ assert.ok(addContentPage(model, custom).navigation.primaryMenu.some((link) => li
 const illustrated = generatedContentPage(model, { ...input, coverImageUrl: 'https://example.com/cover.jpg', coverImageAlt: 'A planning notebook' }, operations, 'illustrated')
 assert.equal(illustrated.sections[0]!.props.imageUrl, 'https://example.com/cover.jpg')
 assert.equal(illustrated.sections[0]!.props.imageAlt, 'A planning notebook')
+assert.equal(illustrated.contentBrief?.includeCoverImage, false)
+const heroInput = { ...coverBrief, kind: 'page' as const, slug: 'covered-page', coverImageUrl: 'https://example.com/cover.jpg', coverImageAlt: 'A family planning' }
+const heroArticle = { ...article, sections: [{ id: 'hero', componentId: 'HeroEditorial', props: { ...(getComponent('HeroEditorial')!.fixture as object), heading: article.h1, primaryCta: { label: 'Home', href: '/' }, secondaryCta: { label: 'Home', href: '/' } } }] }
+const coveredPage = generatedContentPage(model, heroInput, [{ op: 'add', path: '/page', value: heroArticle }], 'covered-page')
+assert.equal(coveredPage.sections[0]!.props.imageUrl, heroInput.coverImageUrl)
+assert.equal(coveredPage.sections[0]!.props.imageAlt, heroInput.coverImageAlt)
+assert.equal(coveredPage.contentBrief?.imageSubject, coverBrief.imageSubject)
+const typographicCover = generatedContentPage(model, heroInput, [{ op: 'add', path: '/page', value: { ...heroArticle, sections: [{ id: 'hero', componentId: 'HeroTypographic', props: { ...customProps, heading: heroArticle.h1 } }] } }], 'typographic-cover')
+assert.equal(typographicCover.sections[0]!.props.imageUrl, heroInput.coverImageUrl)
 const illustratedModel = addContentPage(model, illustrated)
 const illustratedIndex = illustratedModel.pages.find((entry) => entry.pageType === 'BLOG_INDEX')!
 assert.equal((resolveSectionMedia(illustratedModel, illustratedIndex, illustratedIndex.sections[0]!).items as { imageUrl: string }[])[0]!.imageUrl, 'https://example.com/cover.jpg')

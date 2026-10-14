@@ -53,7 +53,7 @@ async function handlePOST(request: Request) {
   })
 
   if (kind !== AssetKind.LOGO) {
-    return Response.json({ asset })
+    return Response.json({ asset, previewUrl: await assetReadUrl(asset) })
   }
 
   // A logo added after intake should preserve the client's chosen theme.

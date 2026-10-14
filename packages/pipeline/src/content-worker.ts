@@ -5,6 +5,7 @@ import { prisma, Prisma } from '@awb/database'
 import { patchContentSection, generateAiSection, rewritePageWithAi, createContentWithAi } from './content-generation'
 import { generateBlogCover } from './blog-cover'
 import { runGeneration } from './run'
+import { rerunRequestSchema } from '@awb/shared/rerun-request'
 const json = (value: unknown) => JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue
 export async function runContentJob(id: string, finalAttempt: boolean) {
   const job = await prisma.contentJob.findUniqueOrThrow({ where: { id } })
@@ -20,6 +21,13 @@ export async function runContentJob(id: string, finalAttempt: boolean) {
   try {
     const input = job.input as unknown as Parameters<typeof patchContentSection>[1] & Parameters<typeof generateAiSection>[1] & Parameters<typeof rewritePageWithAi>[1] & Parameters<typeof createContentWithAi>[1]
     const assistantInput = job.input as Record<string, unknown>
+    const websiteRequest = {
+      projectId: job.projectId, correlationId: job.id, contentJobId: job.id,
+      ...(job.kind === 'WEBSITE' && assistantInput.rerun ? {
+        rerun: rerunRequestSchema.parse(assistantInput.rerun),
+        baseVersionId: typeof assistantInput.baseVersionId === 'string' ? assistantInput.baseVersionId : undefined,
+      } : {}),
+    }
     const assistant = job.kind === 'PATCH' && assistantInput.mode === 'PAGE_ASSISTANT'
     const planAssistant = async () => {
       const provider = createAiProvider()
@@ -27,7 +35,7 @@ export async function runContentJob(id: string, finalAttempt: boolean) {
       const result = await provider.planEditorCommand(assistantInput.context)
       return { assistant: true, plan: result.data }
     }
-    const result = assistant ? await planAssistant() : job.kind === 'COVER' ? await generateBlogCover(job.projectId, job.input, job.id) : job.kind === 'WEBSITE' ? await runGeneration({ projectId: job.projectId, correlationId: job.id, contentJobId: job.id }) : job.kind === 'PATCH' ? await patchContentSection(job.projectId, input) : job.kind === 'CREATE' ? await createContentWithAi(job.projectId, input) : job.kind === 'REWRITE' ? await rewritePageWithAi(job.projectId, input) : await generateAiSection(job.projectId, input)
+    const result = assistant ? await planAssistant() : job.kind === 'COVER' ? await generateBlogCover(job.projectId, job.input, job.id) : job.kind === 'WEBSITE' ? await runGeneration(websiteRequest) : job.kind === 'PATCH' ? await patchContentSection(job.projectId, input) : job.kind === 'CREATE' ? await createContentWithAi(job.projectId, input, job.id) : job.kind === 'REWRITE' ? await rewritePageWithAi(job.projectId, input) : await generateAiSection(job.projectId, input)
     await prisma.contentJob.updateMany({ where: { id, runToken: token, status: 'RUNNING' }, data: { status: 'READY', ...(job.kind === 'WEBSITE' ? { dedupeKey: null } : {}), result: json(result), finishedAt: new Date(), error: null } })
     return result
   } catch {

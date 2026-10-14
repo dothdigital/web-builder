@@ -21,10 +21,10 @@ export async function POST(request: Request) {
     await rateLimit(`visit-ip:${request.headers.get('x-forwarded-for')?.split(',')[0] ?? 'unknown'}`, 120, 1)
     await rateLimit(`visit-project:${input.projectId}`, 1200, 1)
   } catch { return new Response(null, { status: 429 }) }
-  const project = await prisma.project.findUnique({ where: { id: input.projectId }, include: { workspace: true, hosting: { select: { distributionHost: true } }, integration: { select: { analyticsTrackingHost: true } }, domains: { where: { verifiedAt: { not: null } }, select: { hostname: true } } } })
+  const project = await prisma.project.findUnique({ where: { id: input.projectId }, include: { workspace: true, hosting: { select: { distributionHost: true, publicHost: true } }, integration: { select: { analyticsTrackingHost: true } }, domains: { where: { verifiedAt: { not: null } }, select: { hostname: true } } } })
   if (!project) return new Response(null, { status: 404 })
   if (!hostingAccess(project.workspace)) return new Response(null, { status: 503 })
-  const allowed = [project.previewHost, ...(project.hosting?.distributionHost ? [project.hosting.distributionHost] : []), ...(project.integration?.analyticsTrackingHost ? [project.integration.analyticsTrackingHost] : []), ...project.domains.map((domain) => domain.hostname)].map((value) => value.toLowerCase())
+  const allowed = [project.previewHost, ...(project.hosting?.distributionHost ? [project.hosting.distributionHost] : []), ...(project.hosting?.publicHost ? [project.hosting.publicHost] : []), ...(project.integration?.analyticsTrackingHost ? [project.integration.analyticsTrackingHost] : []), ...project.domains.map((domain) => domain.hostname)].map((value) => value.toLowerCase())
   if (!allowed.includes(host)) return new Response(null, { status: 403 })
   const secret = process.env.AUTH_SECRET
   if (!secret) return new Response(null, { status: 503 })

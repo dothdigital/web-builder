@@ -1,0 +1,1 @@
+{"name":"webtummy-hosting-agent","private":true,"type":"module","scripts":{"start":"node agent.mjs","test":"node --test agent.test.mjs"},"engines":{"node":">=22"},"dependencies":{"jszip":"3.10.1"}}

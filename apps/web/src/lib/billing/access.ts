@@ -5,6 +5,9 @@ export function paidAccess(workspace: BillingAccess) { return billingLifecycle(w
 export function editingAccess(workspace: BillingAccess) { return billingLifecycle(workspace).editing }
 export function hostingAccess(workspace: BillingAccess) { return billingLifecycle(workspace).hosting }
 export class BillingAccessError extends Error { readonly status = 402 }
+export function websiteCapacity(workspace: { billingPlanId: string | null; billingWebsiteQuantity: number }) {
+  return workspace.billingPlanId ? workspace.billingWebsiteQuantity : 0
+}
 export async function requirePaidWorkspace(workspaceId: string) {
   const workspace = await prisma.workspace.findUniqueOrThrow({ where: { id: workspaceId } })
   if (!editingAccess(workspace)) throw new BillingAccessError('An active trial or confirmed subscription is required to create, edit or generate content. Open Plans & billing to activate your trial, subscribe or resolve your payment. Your saved work is preserved.')
@@ -14,6 +17,6 @@ export async function assertWebsiteCapacity(tx: Prisma.TransactionClient, worksp
   await tx.$queryRaw`SELECT "id" FROM "Workspace" WHERE "id" = ${workspaceId} FOR UPDATE`
   const workspace = await tx.workspace.findUniqueOrThrow({ where: { id: workspaceId }, include: { billingPlan: true, _count: { select: { projects: true } } } })
   if (!editingAccess(workspace)) throw new BillingAccessError('Activate your trial or subscription in Plans & billing before creating a website.')
-  if (!workspace.billingExempt && workspace._count.projects >= (workspace.billingPlan?.websiteLimit ?? 0)) throw new Error('Your Individual plan includes one website. Contact support if you need help with your existing website.')
+  if (!workspace.billingExempt && workspace._count.projects >= websiteCapacity(workspace)) throw new Error('All your website slots are in use. Add another website for US$29/month in Plans & billing.')
 }
 export function money(amount: number, currency: string) { return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency.toUpperCase(), maximumFractionDigits: 2 }).format(amount / 100) }

@@ -37,8 +37,8 @@ export async function POST(request: Request) {
   if (integration?.recaptchaEnabled) {
     const token = String(form.get('g-recaptcha-response') ?? '')
     const domains = await prisma.domain.findMany({ where: { projectId, verifiedAt: { not: null } }, select: { hostname: true } })
-    const hosting = await prisma.hostingSite.findUnique({ where: { projectId }, select: { distributionHost: true } })
-    const hostnames = [project.previewHost, ...(hosting?.distributionHost ? [hosting.distributionHost] : []), ...domains.map((domain) => domain.hostname)]
+    const hosting = await prisma.hostingSite.findUnique({ where: { projectId }, select: { distributionHost: true, publicHost: true, previewHost: true } })
+    const hostnames = [project.previewHost, ...[hosting?.distributionHost, hosting?.publicHost, hosting?.previewHost].filter((host): host is string => !!host), ...domains.map((domain) => domain.hostname)]
     const requestHost = new URL(request.url).hostname
     // Local preview is allowed only when this server is itself local.
     if (['localhost', '127.0.0.1'].includes(requestHost)) hostnames.push(requestHost)

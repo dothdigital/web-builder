@@ -5,6 +5,7 @@ import { getComponent, registryCatalogue } from '@awb/component-registry'
 import { websiteModelSchema } from '@awb/website-model'
 import { applyPageRewrite } from './page-rewrite'
 import { validateGeneratedSection } from './generated-section'
+import { generateBlogCover } from './blog-cover'
 export async function generateAiSection(
   projectId: string,
   input: { model: unknown; pageId: string; componentId: string; instruction: string },
@@ -61,58 +62,31 @@ export async function rewritePageWithAi(projectId: string, input: { model: unkno
   return { page: rewritten, reason: result.data.reason }
 }
 
-export async function enrichServiceDetailPages(projectId: string, source: import('@awb/website-model').WebsiteModel, onPage?: (path:string)=>void) {
-  const model = {...source,pages:source.pages.map(page=>({...page,sections:page.sections.map(section=>section.componentId==='ServiceDetail'?{...section,props:{...section.props,
-    contentBlocks:Array.isArray(section.props.contentBlocks)&&section.props.contentBlocks.length ? section.props.contentBlocks : Array.from({length:3},()=>({heading:'',body:''})),
-    faqs:Array.isArray(section.props.faqs)&&section.props.faqs.length ? section.props.faqs : Array.from({length:3},()=>({question:'',answer:''})),
-  }}:section)}))}
-  const targets = model.pages.filter(page=>page.sections.some(section=>section.componentId==='ServiceDetail' && !(section.props.contentBlocks as Array<{body:string}>).some(block=>block.body.trim())))
-  const pages = new Map<string, import('@awb/website-model').WebsitePage>()
-  // Limit concurrent requests while each page remains an independent rewrite.
-  for (let start=0;start<targets.length;start+=2) {
-    const results = await Promise.allSettled(targets.slice(start,start+2).map(async page=>{
-      onPage?.(page.path)
-      const rewritten = await rewritePageWithAi(projectId,{model,pageId:page.id,instruction:[
-        `Complete the thin service detail page for ${page.title}. Keep its title, H1, breadcrumb text and all paths unchanged.`,
-        'Fill the ServiceDetail intro body with 80–120 useful words, all three contentBlocks with topic-specific headings and 45–80 words each, and all three faqs with distinct questions and 25–50 word answers. Aim for 300–450 words in total. Fill every empty topic and FAQ string; do not return a summary-only page.',
-        'Base every product statement on the saved business description and existing supplied service text. Explain those supplied concepts clearly without inventing coverage limits, eligibility, waiting periods, fees, insurers, exclusions, regulatory rules, investment returns, tax rules or promises. Do not interpret policy terms or give personalized financial advice.',
-        'For combined categories, distinguish the supplied products in the topic blocks. For Visitor Insurance distinguish Super Visa and Visitor to Canada; for Living Benefits distinguish critical illness and disability; for Travel & Student Insurance distinguish Canadian travel and international student cover; for Registered Savings distinguish the stated RESP, TFSA, RRSP and FHSA purposes without adding tax or contribution rules.',
-        'Use plain professional language. Describe relevant needs, the information a reader can include in an enquiry, and questions to discuss with Shreeram. Do not claim a consultation method, claims service, application workflow, response time, or additional qualification that the brief did not supply. Do not repeat the other service pages. Plain paragraphs and optional bullet lists only; no Markdown headings in body strings.',
-        'Update SEO description if needed, preserving the page path and all images, layout, related links and contact URL.',
-      ].join('\n')})
-      const detail = rewritten.page.sections.find(section=>section.componentId==='ServiceDetail')!
-      const blocks = detail.props.contentBlocks as Array<{heading:string;body:string}>
-      const faqs = detail.props.faqs as Array<{question:string;answer:string}>
-      const words = [detail.props.body,...blocks.map(block=>block.body),...faqs.map(faq=>faq.answer)].join(' ').trim().split(/\s+/).length
-      if (words<250 || blocks.some(block=>!block.heading.trim()||!block.body.trim()) || faqs.some(faq=>!faq.question.trim()||!faq.answer.trim())) throw new Error(`Incomplete service content for ${page.path}`)
-      return rewritten.page
-    }))
-    for (const result of results) {
-      if (result.status==='rejected') throw result.reason
-      pages.set(result.value.id,result.value)
-    }
-  }
-  return {...model,pages:model.pages.map(page=>pages.get(page.id)||page)}
-}
-
-export async function createContentWithAi(projectId: string, raw: { model: unknown; request: unknown }) {
+export async function createContentWithAi(projectId: string, raw: { model: unknown; request: unknown }, jobId: string = randomUUID()) {
   const { contentRequestSchema, contentPath, validateContentRequest, generatedContentPage } = await import('./content-creation')
-  const input = contentRequestSchema.parse(raw.request)
-  if (input.kind === 'blog' && !input.coverImageUrl) throw new Error('Choose or upload a cover image for this blog post before generating.')
+  let input = contentRequestSchema.parse(raw.request)
   const model = websiteModelSchema.parse(raw.model)
   validateContentRequest(model, input)
   const provider = createAiProvider()
   if (provider.name !== 'openai') throw new Error('Configure OpenAI before creating content. No placeholder page was added.')
+  if (input.includeCoverImage) {
+    const cover = await generateBlogCover(projectId, {
+      topic: input.topic, keyword: input.keyword, details: input.details,
+      direction: `Subject: ${input.imageSubject}\nVisual style: ${input.imageStyle}`, requestId: jobId,
+    }, jobId)
+    input = { ...input, coverImageUrl: cover.url, coverImageAlt: cover.alt }
+  }
   const project = await prisma.project.findUniqueOrThrow({ where: { id: projectId }, include: { businessProfile: true } })
   const id = `page-${randomUUID()}`
   const sectionId = `content-${randomUUID()}`
   const target = { id, path: contentPath(input), title: input.topic, h1: input.topic, pageType: 'CUSTOM', seo: { title: input.topic, description: '', index: false }, sections: [{ id: sectionId, componentId: 'ContentDraft', componentVersion: '1.0.0', hidden: true, props: {} }] }
   const context = { ...model, pages: [...model.pages, target] }
-  const catalogue = registryCatalogue().filter((entry) => input.kind === 'blog' ? (entry.componentId === 'BlogArticle' || (input.includeFaq && entry.componentId === 'FaqAccordion')) : !['HEADER', 'FOOTER'].includes(entry.family) && !['BlogArticle', 'BlogListing'].includes(entry.componentId))
+  const catalogue = registryCatalogue().filter((entry) => input.kind === 'blog' ? (entry.componentId === 'BlogArticle' || (input.includeFaq && entry.componentId === 'FaqAccordion')) : !['HEADER', 'FOOTER'].includes(entry.family) && !['BlogArticle', 'BlogListing'].includes(entry.componentId) && (!input.coverImageUrl || entry.family !== 'HERO' || entry.componentId === 'HeroEditorial'))
   const instruction = [
     'Create original website content. Return exactly ONE add operation at /page whose value is a complete page object: title, h1, seo:{title,description,index:true}, sections:[{id,componentId,componentVersion:"1.0.0",hidden:false,props}]. Do not return other operations.',
     input.kind === 'blog' ? 'Create one BlogArticle section with 4–8 useful H2 blocks, original detailed prose and a clear introduction. Each block has heading, body and links. Use plain text paragraphs, with - prefixed lines for bullet lists and 1. prefixed lines for numbered steps where helpful. Each list item must be on its own line. Do not use HTML or other Markdown formatting.' : 'Create a complete modern page with 4–6 complementary sections. Exactly one HERO section with heading matching h1. Choose the most appropriate registry layouts for the topic and conversion goal.',
     input.includeFaq ? 'Include a FaqAccordion section with 4–6 questions and answers specifically addressing this page topic, keyword, audience and goal. Answers must use supplied facts only. Place it after the main explanation.' : 'Do not include a FAQ section unless explicitly requested in the brief.',
+    input.coverImageUrl ? `Use this cover in the ${input.kind === 'blog' ? 'BlogArticle' : 'HeroEditorial'} imageUrl: ${input.coverImageUrl}. Image alt text: ${input.coverImageAlt}. The cover is already generated for this content. Do not add other images.` : 'The user has not requested a cover. Leave all image fields empty; do not add a cover or reuse unrelated website images.',
     'SEO title maximum 60 characters; unique meta description 30–160 characters. Use the main keyword naturally in title, H1, introduction and relevant subheadings. Address audience, intent and location without stuffing keywords. No ranking promises.',
     'Use only supplied business facts. Do not invent credentials, statistics, quotations, testimonials, pricing or contact details. Do not invent authors or image URLs; omit image fields if no supplied image is relevant. Do not include scripts, layout overrides or freeElements.',
     input.internalPaths.length ? 'Include each selected internal path once or more, in relevant contextual links or CTAs with descriptive anchor text. Never link to unselected paths or external URLs. Use absolute site paths, not preview URLs.' : 'Choose 1–3 relevant pages from the existing pages and link to them contextually using descriptive anchor text. At least one internal link is required. Only use existing absolute site paths; never invent links or use external URLs.',

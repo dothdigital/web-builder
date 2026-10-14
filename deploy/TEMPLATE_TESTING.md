@@ -1,7 +1,7 @@
 # Local template integration testing
 
-The integration contains 18 selectable layouts from the uploaded Webtummy and
-Webtummy themes, screenshot thumbnails, sandboxed full-page previews, and 279
+The integration contains 18 selectable layouts from the uploaded Insurigo and
+Finbiz themes, screenshot thumbnails, sandboxed full-page previews, and 279
 editable section definitions. Selected templates retain their section order,
 header, footer and theme assets during generation and static export. Unsupported
 proof sections remain hidden; nested demo logos, review widgets, awards and staff
@@ -14,7 +14,10 @@ local checkout before requesting deployment.
 ## Local setup
 
 Use a local `.env` with a local PostgreSQL database and the existing application
-settings. To avoid paid AI calls, set `AI_PROVIDER=stub`. Use an empty `S3_BUCKET`
+settings. Templates are disabled by default. Set `NEXT_PUBLIC_ENABLE_LAYOUT_TEMPLATES=true`
+only in the local test environment to enable the gallery and imported component
+choices. Keep this flag false in production until live use is explicitly approved.
+To avoid paid AI calls, set `AI_PROVIDER=stub`. Use an empty `S3_BUCKET`
 and `LOCAL_UPLOAD_DIR=.uploads` for local image storage. Set
 `USE_REDIS_QUEUE=false` to run generation inline during local testing.
 

@@ -1,6 +1,6 @@
+import { intakeVideos } from './components/intake-videos'
 import { portfolioShowcase, credentialsShowcase } from './components/showcase'
-import { serviceDetail } from './components/service-detail'
-import { importedLayoutDefinitions, templateRequiredImagePointers } from './imported-layouts'
+import { importedLayoutDefinitions } from './imported-layouts'
 import { inlineLinksSchema, applyInlineLinks } from './inline-links'
 import { manualSection } from './components/manual-section'
 import { elementOffsetsSchema, applyElementOffsets } from './element-offsets'
@@ -25,8 +25,12 @@ import { aboutSplitOverlap, galleryAsymmetric, reviewsEditorialQuote, reviewsTru
 import { contactSplit, ctaCinematic, faqAccordion } from './components/conversion'
 import { footerCompact, footerEditorial } from './components/footers'
 
+// Next.js substitutes this public flag in browser bundles; workers read it
+// from their environment. Keep this browser package free of Node imports.
+declare const process: { env: { NEXT_PUBLIC_ENABLE_LAYOUT_TEMPLATES?: string } }
+
 const definitions = [
-  serviceDetail,
+  intakeVideos,
   ...importedLayoutDefinitions,
   manualSection,
   portfolioShowcase,
@@ -109,7 +113,7 @@ export function componentLayoutNodes(componentId: string, props: Record<string, 
 }
 
 export function listComponents(family?: ComponentFamily): ComponentDefinition[] {
-  const all = [...componentRegistry.values()]
+  const all = [...componentRegistry.values()].filter(definition => process.env.NEXT_PUBLIC_ENABLE_LAYOUT_TEMPLATES === 'true' || !definition.componentId.startsWith('Tpl_'))
   return family ? all.filter((definition) => definition.family === family) : all
 }
 
@@ -157,10 +161,6 @@ export function emptyImagePointers(componentId: string, props: unknown): string[
   }
 
   const record = props as Record<string, unknown>
-  const requiredTemplateImages=templateRequiredImagePointers(componentId)
-  if(requiredTemplateImages) return requiredTemplateImages.filter(pointer=>isEmptyImageValue(record[pointer.slice(1)]))
-  // Contact imagery is optional and must not invent a business location.
-  if (componentId === 'ContactSplit' && isEmptyImageValue(record.imageUrl)) return []
   const pointers: string[] = []
 
   for (const field of definition.editorFields) {
@@ -177,7 +177,7 @@ export function emptyImagePointers(componentId: string, props: unknown): string[
       continue
     }
 
-    if (field.type !== 'list' && !(field.type === 'collection' && definition.family === 'SERVICES')) {
+    if (field.type !== 'list' && field.type !== 'collection') {
       continue
     }
 
@@ -194,7 +194,7 @@ export function emptyImagePointers(componentId: string, props: unknown): string[
 
       const entry = item as Record<string, unknown>
 
-      if (definition.family === 'SERVICES' && isEmptyImageValue(entry['imageUrl'])) {
+      if (definition.family === 'SERVICES' && field.path === '/items' && isEmptyImageValue(entry['imageUrl'])) {
         pointers.push(`${field.path}/${index}/imageUrl`)
       }
 

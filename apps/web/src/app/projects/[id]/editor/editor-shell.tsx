@@ -34,6 +34,7 @@ import { PageRewritePanel } from './page-rewrite-panel'
 import { ContentJobNotifications } from '@/components/content-job-notifications'
 import { PageSelector } from './page-selector'
 import { ContentCreatePanel } from './content-create-panel'
+import { BlogCoverPanel } from './blog-cover-panel'
 import { addContentPage } from '@/lib/content-creation'
 import { sectionElementTree } from '@/lib/element-tree'
 import { ElementTree } from './element-tree'
@@ -73,8 +74,8 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
   const [panel, setPanel] = useState<'section' | 'theme' | 'page' | 'integrations'>('section')
   const [saving, setSaving] = useState(false)
   const [createContentRequest, setCreateContentRequest] = useState(0)
-  const [exporting, setExporting] = useState(false)
   const [saveError, setSaveError] = useState<string>()
+  const [testLinkQueued, setTestLinkQueued] = useState(false)
   const [savedAt, setSavedAt] = useState<Date>()
   const [dirty, setDirty] = useState(false)
   const [addingObject, setAddingObject] = useState(false)
@@ -157,7 +158,8 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
     setSaveError(undefined)
 
     try {
-      await saveModel(projectId, snapshot)
+      const result = await saveModel(projectId, snapshot)
+      setTestLinkQueued(result.testLinkQueued)
       setSavedAt(new Date())
       if (latestModel.current === snapshot && !hasActiveInlineEdit()) setDirty(false)
     } catch (error) {
@@ -166,31 +168,6 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
       setSaving(false)
     }
   }, [projectId])
-
-  const exportHtml = async () => {
-    setExporting(true)
-    setSaveError(undefined)
-    try {
-      const response = await fetch(`/api/projects/${projectId}/export?source=draft`)
-      if (!response.ok) {
-        const result = await response.json().catch(() => ({}))
-        throw new Error(result.error ?? `Export failed (${response.status}). Please try again.`)
-      }
-      const blob = await response.blob()
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = response.headers.get('content-disposition')?.match(/filename="([^"]+)"/)?.[1] ?? 'website.zip'
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      setTimeout(() => URL.revokeObjectURL(url), 60000)
-    } catch (error) {
-      setSaveError(error instanceof Error ? error.message : 'Could not export website')
-    } finally {
-      setExporting(false)
-    }
-  }
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -252,7 +229,7 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
           <span className="max-w-28 truncate text-sm font-semibold" title={model.site.name}>{model.site.name}</span>
           <PageSelector pages={model.pages} page={page} onChange={(id) => { setPageId(id); setSelection(undefined) }} />
           <button type="button" aria-expanded={assistantOpen} className="whitespace-nowrap rounded-md bg-violet-700 px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-violet-800" onClick={() => setAssistantOpen(!assistantOpen)}>✦ AI Assistant</button>
-          <button type="button" className="whitespace-nowrap rounded-md bg-violet-700 px-3 py-1.5 text-sm font-medium text-white" onClick={() => { setRightPanelOpen(true); setPanel('page'); setCreateContentRequest((value) => value + 1) }}>+ Blog / Page</button>
+          <button type="button" className="whitespace-nowrap rounded-md bg-violet-700 px-3 py-1.5 text-sm font-medium text-white" onClick={() => { setCreateContentRequest((value) => value + 1) }}>+ Blog / Page</button>
         </div>
 
         <div className="flex shrink-0 items-center gap-1 rounded-md border border-neutral-200 p-0.5 text-xs">
@@ -279,9 +256,6 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
             Preview
           </Link>
           <a href={`/projects/${projectId}/publishing`} className={ghostButton}>Domains & Publish</a>
-          <button type="button" onClick={exportHtml} disabled={exporting || saving || dirty} title={dirty ? 'Save your changes before exporting' : 'Download the latest saved website with images'} className={ghostButton}>
-            {exporting ? 'Preparing ZIP…' : dirty ? 'Save to export' : 'Export HTML'}
-          </button>
           <button type="button" onClick={save} disabled={saving || !dirty} className={primaryButton}>
             {saving ? 'Saving…' : dirty ? 'Save' : 'Saved'}
           </button>
@@ -293,6 +267,7 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
         flushSync(() => flushInlineTextEdits())
         commit(mergeAssistantChanges(baseline, next, latestModel.current))
       }} onSelect={target => { setSelection(target.scope === 'page' ? { kind: 'section', id: target.sectionId, ...(target.path ? { element: target.path } : {}) } : { kind: target.scope, ...(target.path ? { element: target.path } : {}) }); revealEditorElement(target.path || undefined) }} />
+      <ContentCreatePanel dialogOnly imageUrls={imageUrls} openRequest={createContentRequest} projectId={projectId} model={model} onSelect={(id) => { setPageId(id); setSelection(undefined) }} />
       <ContentJobNotifications projectId={projectId} onApply={(detail) => {
         if (detail.kind === 'CREATE') {
           const created = (detail.result as unknown as { page: typeof page }).page
@@ -332,7 +307,7 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
       {saveError && <ErrorNotice code="WT-EDITOR-001" message={saveError} className="bg-red-50 px-4 py-2 text-sm text-red-700" />}
       {savedAt && !dirty && (
         <p className="bg-emerald-50 px-4 py-1 text-xs text-emerald-800">
-          Saved as a new version at {savedAt.toLocaleTimeString()} — earlier versions stay restorable.
+          Saved as a new version at {savedAt.toLocaleTimeString()} — earlier versions stay restorable. {testLinkQueued && 'Your test link will update automatically shortly. Publish when you are ready to update the live site.'}
         </p>
       )}
 
@@ -771,7 +746,12 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
 
           {panel === 'page' && (
             <div className="grid gap-3 overflow-y-auto p-4">
-              <ContentCreatePanel imageUrls={imageUrls} openRequest={createContentRequest} projectId={projectId} model={model} onSelect={(id) => { setPageId(id); setSelection(undefined) }} />
+              <button type="button" className="rounded bg-violet-700 p-2 text-sm text-white" onClick={() => setCreateContentRequest(value => value + 1)}>+ Create blog or page with AI</button>
+              {page.pageType === 'BLOG_POST' && <BlogCoverPanel key={page.id} projectId={projectId} page={page} imageUrls={imageUrls} onChange={(url, alt) => {
+                const index = page.sections.findIndex(section => section.componentId === 'BlogArticle')
+                if (index < 0) return
+                commit(setAtPointer(model, `/pages/${pageIndex}/sections/${index}/props`, { ...page.sections[index]!.props, imageUrl: url, imageAlt: alt }))
+              }} />}
               <PageRewritePanel key={page.id} projectId={projectId} model={model} page={page} onApply={(rewritten) => commit(setAtPointer(model, `/pages/${pageIndex}`, rewritten))} />
               <Text
                 label="Page title"

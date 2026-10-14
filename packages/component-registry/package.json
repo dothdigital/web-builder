@@ -15,7 +15,8 @@
   },
   "dependencies": {
     "@awb/website-model": "*",
-    "zod": "^4.6.5"
+    "zod": "^4.6.5",
+    "@awb/shared": "*"
   },
   "peerDependencies": {
     "react": "^19",

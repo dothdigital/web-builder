@@ -1,0 +1,509 @@
+/*----------------------------------------*/
+/*  13. Team CSS
+/*----------------------------------------*/
+
+.rs-team-3{
+    position: relative;
+    z-index: 10;
+    & .rs-shape{
+        position: absolute;
+        left: 100px;
+        bottom: 50px;
+        transform: translate3d(9.2px, -12.1px, 0px);
+        transform-style: preserve-3d;
+        backface-visibility: hidden;
+        width: 94px;
+        opacity: 0.2;
+        animation: veritcal2 3s alternate infinite;
+        -webkit-animation: veritcal2 3s alternate infinite;
+        & img{
+            transform: rotate(45deg);
+        }
+    }
+    &__btn{
+        position: relative;
+        z-index: 10;
+        text-align: right;
+        @media #{$tablet-device} {
+            text-align: left;
+        }
+        @media #{$large-mobile} {
+            text-align: left;
+        }
+        & .title{
+            position: absolute;
+            left: 40px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: $white;
+            font-size: 128px;
+            font-weight: 900;
+            text-shadow: -4px -30px 40px rgba(25.99999999999997, 0, 27, 0.06);
+            @media #{$desktop-device} {
+                display: none;
+            }
+            @media #{$tablet-device} {
+                display: none;
+            }
+            @media #{$large-mobile} {
+                display: none;
+            }
+        }
+        a{
+            border: 2px solid #E8E5E8;
+            background: transparent;
+            color: $dark-2;
+            font-weight: 700;
+            padding: 14px 22px;
+            & i{
+                font-weight: 600;
+            }
+            &:hover{
+                background: $dark-2;
+                border-color: $dark-2;
+                color: $white;
+            }
+        }
+    }
+    &__item{
+        margin: 20px -5px 0;
+        position: relative;
+        z-index: 10;
+        @media #{$large-mobile} {
+            margin: 40px 0 0;
+        }
+        .rs-thumb{
+            background-color: #f6f5f6;
+            padding-top: 30px;
+            border-radius: 6px;
+            overflow: hidden;
+            &:hover{
+                background-color: #F6F5F6;
+                background-image: url("../images/team-image-shape.png");
+                background-position: top center;
+                background-repeat: no-repeat;
+                background-size: 100% auto;
+            }
+        }
+        & .rs-content{
+            position: absolute;
+            left: 50%;
+            bottom: -60px;
+            transform: translateX(-50%);
+            background: $white;
+            background-image: url("../images/team-content-shape.png");
+            background-position: top right;
+            background-repeat: no-repeat;
+            background-size: auto;
+            padding: 10px 20px 10px 20px;
+            border-radius: 6px;
+            overflow: hidden;
+            width: 270px;
+            box-shadow: 0 6px 34px rgba(26,0,27,6%);
+            transition: $transition-ease;
+            opacity: 0;
+            visibility: hidden;
+            @media #{$extra-minBig-device-2} {
+                width: 230px;
+            }
+            @media #{$desktop-device} {
+                width: 190px;
+            }
+            span{
+                font-size: 14px;
+                color: $body-color;
+            }
+            .title{
+                font-size: 22px;
+                margin-top: 4px;
+                margin-bottom: 10px;
+                color: $dark-2;
+                @media #{$desktop-device} {
+                    font-size: 18px;
+                }
+                & a{
+                    transition: $transition-ease;
+                    &:hover{
+                        color: $theme-color-3;
+                    }
+                }
+            }
+            ul{
+                padding-top: 10px;
+                border-top: 1px solid #EDEBED;
+                li{
+                    font-size: 14px;
+                    line-height: 1.75;
+                    a{
+                        transition: $transition-ease;
+                        &:hover{
+                            color: $theme-color-3;
+                        }
+                    }
+                }
+            }
+        }
+        &:hover{
+            & .rs-content{
+                opacity: 1;
+                visibility: visible;
+                bottom: -30px;
+            }
+        }
+    }
+}
+
+
+
+.rs-marquee{
+    background: $dark-2;
+    padding: 22px 0;
+    display: flex;
+    .rs-marquee-text{
+        display: inline-block;
+        & .title{
+            color: $white;
+            font-size: 24px;
+            font-weight: 500;
+            line-height: 48px;
+        }
+    }
+}
+
+
+
+.rs-team-page{
+    .section-title{
+        text-align: left;
+    }
+    .section-btn{
+        text-align: right;
+        @media #{$tablet-device} {
+            text-align: left;
+        }
+        @media #{$large-mobile} {
+            text-align: left;
+        }
+    }
+    &__item{
+        background: #EDF5F7;
+        border-radius: 6px;
+        overflow: hidden;
+        .rs-thumb{
+            overflow: hidden;
+            img{
+                transition: $transition;
+            }
+        }
+        .rs-content{
+            background: $primary;
+            padding: 14px 20px 14px 20px;
+            position: relative;
+            z-index: 10;
+            @media #{$desktop-device} {
+                padding: 14px 10px;
+            }
+            a{
+                display: block;
+                color: $white;
+                font-size: 20px;
+                line-height: 30px;
+                font-weight: 600;
+                @media #{$desktop-device} {
+                    font-size: 17px;
+                }
+            }
+            span{
+                color: #FFFFFFC7;
+                font-size: 14px;
+            }
+            .rs-team-social{
+                position: absolute;
+                top: 50%;
+                right: 20px;
+                transform: translateY(-50%);
+                height: 40px;
+                width: 40px;
+                border-radius: 50%;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                background: $heading-color;
+                color: $white;
+                cursor: pointer;
+                ul{
+                    position: absolute;
+                    left: 224%;
+                    bottom: 62px;
+                    transition: $transition-ease;
+                    background: $primary;
+                    padding: 10px 0;
+                    li{
+                        width: 50px;
+                        height: 30px;
+                        display: inline-flex;
+                        align-items: center;
+                        justify-content: center;
+                        a{
+                            font-size: 14px;
+                            font-weight: 400;
+                        }
+                    }
+                }
+                &:hover{
+                    ul{
+                        left: 24%;
+                    }
+                }
+            }
+        }
+        &:hover{
+            .rs-thumb{
+                img{
+                    transform: scale(1.1);
+                }
+            }
+        }
+    }
+}
+
+
+
+.rs-team-details{
+    .section-title-3{
+        span{
+            color: $primary;
+            font-weight: 600;
+            font-size: 18px;
+            &::before{
+                background: #25826A6E;
+            }
+        }
+        .title{
+            color: $heading-color;
+            font-size: 50px;
+            line-height: 60px;
+            @media #{$desktop-device} {
+                font-size: 36px;
+                line-height: 46px;
+            }
+            @media #{$tablet-device} {
+                font-size: 36px;
+                line-height: 46px;
+            }
+            @media #{$large-mobile} {
+                font-size: 30px;
+                line-height: 40px;
+            }
+        }
+        p{
+            padding-right: 85px;
+            @media #{$laptop-device} {
+                padding-right: 0;
+            }
+            @media #{$desktop-device} {
+                padding-right: 0;
+            }
+            @media #{$tablet-device} {
+                padding-right: 0;
+            }
+            @media #{$large-mobile} {
+                padding-right: 0;
+            }
+        }
+    }
+    &__education{
+        background: #EEF5F5;
+        padding: 35px 40px 40px 40px;
+        margin-top: 75px;
+        margin-right: 70px;
+        @media #{$laptop-device} {
+            margin-right: 0;
+        }
+        @media #{$desktop-device} {
+            margin-right: 0;
+        }
+        @media #{$tablet-device} {
+            margin-right: 0;
+        }
+        @media #{$large-mobile} {
+            margin-right: 0;
+        }
+        @media #{$small-mobile} {
+            padding: 35px 20px 40px 20px;
+        }
+        .title{
+            font-size: 20px;
+            color: $heading-color;
+            margin-bottom: 15px;
+        }
+    }
+    &__skill{
+        background: #EEF5F5;
+        padding: 35px 40px 40px 40px;
+        margin-top: 45px;
+        margin-right: 70px;
+        @media #{$laptop-device} {
+            margin-right: 0;
+        }
+        @media #{$desktop-device} {
+            margin-right: 0;
+        }
+        @media #{$tablet-device} {
+            margin-right: 0;
+        }
+        @media #{$large-mobile} {
+            margin-right: 0;
+        }
+        @media #{$small-mobile} {
+            padding: 35px 20px 40px 20px;
+        }
+        .title{
+            font-size: 20px;
+            color: $heading-color;
+            margin-bottom: 15px;
+        }
+    }
+    &__table{
+        @media #{$small-mobile} {
+            overflow-x: scroll;
+        }
+        .table{
+            border: 1px solid #dee2e6;
+            width: 100%;
+            border-spacing: 0px;
+            border-collapse: collapse;
+            @media #{$small-mobile} {
+                width: 500px;
+            }
+            tbody{
+                vertical-align: middle;
+            }
+            tr,
+            td{
+                color: $body-color;
+                border: 1px solid #25826a1c;
+                padding: 10px 30px;
+                color: $body-color;
+                background: $white;
+                margin: 0;
+            }
+        }
+    }
+    &__thumb{
+        position: relative;
+        z-index: 10;
+        @media #{$tablet-device} {
+            margin-top: 50px;
+        }
+        @media #{$large-mobile} {
+            margin-top: 50px;
+        }
+        img{
+            width: 100%;
+        }
+        .rs-social{
+            position: absolute;
+            left: 50%;
+            bottom: -27px;
+            transform: translateX(-50%);
+            background: $primary;
+            padding: 13px 40px;
+            border-radius: 6px;
+            ul{
+                display: flex;
+                li{
+                    margin: 0 6px;
+                    a{
+                        color: $white;
+                        transition: $transition;
+                        &:hover{
+                            color: $heading-color;
+                        }
+                    }
+                    &:nth-child(3){
+                        a{
+                            font-size: 15px;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+
+
+
+.rs-progress-skill {
+    position: relative; 
+    margin-top: 35px;
+    @media #{$tablet-device} {
+        margin-bottom: 50px;
+    }
+    @media #{$large-mobile} {
+        margin-bottom: 50px;
+    }
+  }
+  .rs-progress__title {
+    font-size: 18px;
+    line-height: 1;
+    font-weight: 500;
+    margin-bottom: 12px;
+    font-family: $headings-font-family;
+    @media #{$small-mobile} {
+        font-size: 14px;
+    }
+  }
+  .rs-progress__bar {
+    position: relative;
+    width: 100%;
+    height: 6px;
+    border-radius: 0px;
+    display: block;
+    background-color: #E2E3E5;
+  }
+  .rs-progress__inner {
+    position: relative;
+    display: block;
+    width: 0px;
+    height: 6px;
+    border-radius: 0px;
+    background-color: $primary;
+    -webkit-transition: all 1500ms ease;
+    -ms-transition: all 1500ms ease;
+    -o-transition: all 1500ms ease;
+    -moz-transition: all 1500ms ease;
+    transition: all 1500ms ease;
+    margin-bottom: 50px;
+    top: 0px;
+  }
+  .rs-progress__number {
+    position: absolute;
+    right: 0px;
+    bottom: 10px;
+    text-align: center;
+    opacity: 0;
+    margin-bottom: 0;
+    line-height: 1;
+    -webkit-transition: all 500ms ease;
+    -ms-transition: all 500ms ease;
+    -o-transition: all 500ms ease;
+    -moz-transition: all 500ms ease;
+    transition: all 500ms ease;
+    font-size: 15px;
+    font-weight: 500;
+    color: $heading-color;
+    background-image: url(../images/skill-number-bg.svg);
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    width: 45px;
+    text-align: center;
+    display: inline-block;
+    padding: 8px 0 12px;
+  }
+  .rs-progress-skill .counted .count-text {
+      opacity: 1;
+    }

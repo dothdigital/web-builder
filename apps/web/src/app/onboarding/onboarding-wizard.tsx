@@ -1,7 +1,4 @@
 'use client'
-import { ImageDirectionFields } from '@/components/image-direction-fields'
-import { ContentDirectionFields } from '@/components/content-direction-fields'
-import type { ContentDirection, ImageDirection } from '@awb/shared'
 import { ErrorNotice } from '@/components/error-notice'
 import { LayoutGallery } from '@/components/account/layout-gallery'
 import { layoutCatalogue } from '@awb/shared/layout-catalogue'
@@ -9,10 +6,14 @@ import { layoutCatalogue } from '@awb/shared/layout-catalogue'
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { DesignTokens } from '@awb/website-model'
+import { videoLinkSchema, type IntakeMedia } from '@awb/shared/intake-media'
 import { designReferenceSchema } from '@awb/shared/design-reference'
+import { startingPalettes } from '@/lib/starting-palettes'
+import { IntakeVoice } from './intake-voice'
 import {
   createProjectFromBrief,
   saveBrandColors,
+  saveIntakeMedia,
   saveBusinessPresence,
   saveTestimonials,
   startGeneration,
@@ -34,7 +35,7 @@ interface Step {
 const steps: Step[] = [
   { key: 'brief', title: 'Your business', help: 'Only what we genuinely need. Anything you leave blank is never invented.' },
   { key: 'logo', title: 'Logo and colours', help: 'Upload a logo and we build the starting palette from it. You stay in control of every colour.' },
-  { key: 'images', title: 'Images and content', help: 'Choose the imagery and writing direction before we create your website.' },
+  { key: 'images', title: 'Photos & videos', help: 'Add personal photos, your team, products or work. Use them alongside AI images, and optionally include videos.' },
   {
     key: 'social',
     title: 'Social media',
@@ -71,7 +72,7 @@ const paletteFields: Array<{ key: keyof DesignTokens['palette']; label: string }
   { key: 'border', label: 'Border' },
 ]
 
-export function OnboardingWizard() {
+export function OnboardingWizard({ templatesEnabled = false }: { templatesEnabled?: boolean }) {
   const router = useRouter()
   const [stepIndex, setStepIndex] = useState(0)
   const [busy, setBusy] = useState(false)
@@ -96,7 +97,7 @@ export function OnboardingWizard() {
   const [services, setServices] = useState<string[]>([''])
 
   const [logoColors, setLogoColors] = useState<string[]>([])
-  const [suggestions, setSuggestions] = useState<PaletteSuggestion[]>([])
+  const [suggestions, setSuggestions] = useState<PaletteSuggestion[]>(startingPalettes)
   const [selectedPalette, setSelectedPalette] = useState<DesignTokens>()
   const [logoPreview, setLogoPreview] = useState<string>()
   const [localLogoPreview, setLocalLogoPreview] = useState<string>()
@@ -108,10 +109,11 @@ export function OnboardingWizard() {
     }
   }, [localLogoPreview])
 
-  const [contentDirection, setContentDirection] = useState<ContentDirection>({ style: 'auto', audience: '', notes: '' })
-  const [imageDirection, setImageDirection] = useState<ImageDirection>({ style: 'auto', notes: '' })
-  const [imageMode, setImageMode] = useState<'upload' | 'generate' | 'mixed'>('generate')
-  const [uploadedImages, setUploadedImages] = useState<string[]>([])
+  const [imageMode, setImageMode] = useState<'upload' | 'generate' | 'mixed'>('mixed')
+  const [uploadedImages, setUploadedImages] = useState<Array<IntakeMedia['photos'][number] & { url: string; name: string }>>([])
+  const [videos, setVideos] = useState<IntakeMedia['videos']>([])
+  const [videoUrl, setVideoUrl] = useState('')
+  const [videoTitle, setVideoTitle] = useState('')
 
   const [socials, setSocials] = useState<Record<string, string>>({})
   const [googleBusinessUrl, setGoogleBusinessUrl] = useState('')
@@ -140,7 +142,7 @@ export function OnboardingWizard() {
       const reference = referenceUrl.trim() ? designReferenceSchema.safeParse({ url: referenceUrl, mode: referenceMode, notes: referenceNotes }) : undefined
       if (reference && !reference.success) throw new Error(reference.error.issues[0]?.message || 'Check the reference website address')
       const { projectId: created } = await createProjectFromBrief({
-        templateId,
+        ...(templatesEnabled && templateId ? { templateId } : {}),
         businessName,
         homepageLength,
         homepageSections,
@@ -167,6 +169,10 @@ export function OnboardingWizard() {
 
   async function handleLogoUpload(file: File) {
     if (!projectId) return
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Choose a logo of 5 MB or smaller.')
+      return
+    }
     setLocalLogoPreview(URL.createObjectURL(file))
     setBusy(true)
     setError(undefined)
@@ -205,18 +211,23 @@ export function OnboardingWizard() {
   async function handleImageUpload(fileList: FileList) {
     if (!projectId) return
     setBusy(true)
+    setError(undefined)
 
     try {
+      if (uploadedImages.length + fileList.length > 30) throw new Error('You can upload up to 30 photos.')
       for (const file of Array.from(fileList)) {
+        if (file.size > 5 * 1024 * 1024) throw new Error(`${file.name}: choose an image of 5 MB or smaller.`)
         const body = new FormData()
         body.set('projectId', projectId)
         body.set('kind', 'IMAGE')
         body.set('file', file)
         const response = await fetch('/api/assets', { method: 'POST', body })
-        const payload = (await response.json()) as { asset?: { url: string } }
+        const payload = (await response.json()) as { asset?: { id: string; url: string }; previewUrl?: string; error?: string }
+        if (!response.ok || !payload.asset) throw new Error(payload.error || `Could not upload ${file.name}`)
 
         if (payload.asset) {
-          setUploadedImages((current) => [...current, payload.asset!.url])
+          setUploadedImages((current) => [...current, { assetId: payload.asset!.id, url: payload.previewUrl ?? payload.asset!.url, name: file.name, purpose: 'other', description: '' }])
+          setImageMode(current => current === 'generate' ? 'mixed' : current)
         }
       }
     } catch (caught) {
@@ -224,6 +235,28 @@ export function OnboardingWizard() {
     } finally {
       setBusy(false)
     }
+  }
+
+  async function handleSaveMedia() {
+    if (!projectId) return
+    setBusy(true)
+    setError(undefined)
+    try {
+      let savedVideos = videos
+      if (videoUrl.trim() || videoTitle.trim()) {
+        const result = videoLinkSchema.safeParse(videoUrl)
+        if (!result.success) throw new Error(result.error.issues[0]?.message)
+        if (!videoTitle.trim()) throw new Error('Add a title for your video.')
+        savedVideos = [...videos, { url: result.data, title: videoTitle.trim() }]
+      }
+      await saveIntakeMedia(projectId, { imageMode, photos: uploadedImages.map(({ assetId, purpose, description }) => ({ assetId, purpose, description })), videos: savedVideos })
+      setVideos(savedVideos)
+      setVideoUrl('')
+      setVideoTitle('')
+      setStepIndex(3)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not save your photos and videos')
+    } finally { setBusy(false) }
   }
 
   async function handleSaveSocials(skip = false) {
@@ -289,7 +322,7 @@ export function OnboardingWizard() {
         await saveBrandColors(projectId, selectedPalette, logoColors)
       }
 
-      const { correlationId } = await startGeneration(projectId, { imageDirection, contentDirection })
+      const { correlationId } = await startGeneration(projectId)
       router.push(`/projects/${projectId}/progress?correlationId=${correlationId}`)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not start generation')
@@ -297,11 +330,11 @@ export function OnboardingWizard() {
     }
   }
 
-  if (!layoutChosen) return <LayoutGallery onSelect={id => { setTemplateId(id); setLayoutChosen(true); setError(undefined) }} />
+  if (templatesEnabled && !layoutChosen) return <LayoutGallery onSelect={id => { setTemplateId(id); setLayoutChosen(true); setError(undefined) }} />
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-5xl">
-      {!projectId && <div className="wt-notice mb-6 flex flex-wrap items-center justify-between gap-3"><span>Selected layout: <strong>{layoutCatalogue.find(layout => layout.id === templateId)?.name || 'Let AI choose · Original design'}</strong></span><button type="button" className="wt-button secondary" disabled={busy} onClick={() => setLayoutChosen(false)}>Change layout</button></div>}
+      {templatesEnabled && !projectId && <div className="wt-notice mb-6 flex flex-wrap items-center justify-between gap-3"><span>Selected layout: <strong>{layoutCatalogue.find(layout => layout.id === templateId)?.name || 'Custom design'}</strong></span><button type="button" className="wt-button secondary" disabled={busy} onClick={() => setLayoutChosen(false)}>Change layout</button></div>}
       <ol aria-label="Website setup steps" className="flex flex-nowrap gap-2 overflow-x-auto pb-2 text-sm text-neutral-500">
         {steps.map((entry, index) => (
           <li key={entry.key} aria-current={index === stepIndex ? 'step' : undefined} className={`shrink-0 whitespace-nowrap ${index === stepIndex ? 'font-semibold text-neutral-900' : ''}`}>
@@ -318,10 +351,10 @@ export function OnboardingWizard() {
 
       {step.key === 'brief' && (
         <div className="mt-8 grid gap-4 rounded-lg border border-neutral-200 bg-white p-6">
-          <Field label="Business name">
+          <Field label="Business name" onVoiceText={setBusinessName}>
             <input className={inputClass} value={businessName} onChange={(event) => setBusinessName(event.target.value)} />
           </Field>
-          <Field label="What does the business do?" hint="A few sentences. This drives the whole site.">
+          <Field label="What does the business do?" hint="A few sentences. This drives the whole site." onVoiceText={text => setDescription(current => [current, text].filter(Boolean).join('\n\n'))}>
             <textarea
               className={inputClass}
               rows={5}
@@ -330,10 +363,10 @@ export function OnboardingWizard() {
             />
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Industry">
+            <Field label="Industry" onVoiceText={setIndustry}>
               <input className={inputClass} value={industry} onChange={(event) => setIndustry(event.target.value)} />
             </Field>
-            <Field label="City or service area">
+            <Field label="City or service area" onVoiceText={setCity}>
               <input className={inputClass} value={city} onChange={(event) => setCity(event.target.value)} />
             </Field>
             <Field label="Phone">
@@ -342,7 +375,7 @@ export function OnboardingWizard() {
             <Field label="Email">
               <input className={inputClass} value={email} onChange={(event) => setEmail(event.target.value)} />
             </Field>
-            <Field label="Tone">
+            <Field label="Tone" onVoiceText={setTone}>
               <input
                 className={inputClass}
                 placeholder="warm, premium, direct"
@@ -393,11 +426,12 @@ export function OnboardingWizard() {
             {referenceUrl.trim() && <>
               <label className="grid gap-1 text-sm">What should inspire your design?<select className={inputClass} value={referenceMode} onChange={event => setReferenceMode(event.target.value as typeof referenceMode)}><option value="both">Layout and visual style</option><option value="layout">Layout and section arrangement</option><option value="style">Visual style, colours and typography</option></select></label>
               <label className="grid gap-1 text-sm">What do you like—or want changed?<textarea className={inputClass} rows={3} maxLength={1500} value={referenceNotes} onChange={event => setReferenceNotes(event.target.value)} placeholder="For example: large project images and a badge wall, but use my brand colours and a simpler menu." /></label>
+              <IntakeVoice label="Design inspiration notes" onUseText={text => setReferenceNotes(current => [current, text].filter(Boolean).join('\n').slice(0, 1500))} />
               <p className="text-xs text-neutral-500">We use the readable page structure as inspiration, with original text and images for your business. Your uploaded branding takes priority. Some sites block access; if that happens, we continue with your brief and these notes.</p>
               <button type="button" className="text-left text-xs underline" onClick={() => setReferenceUrl('')}>Skip reference—let AI choose</button>
             </>}
           </fieldset>
-          <Field label="Services">
+          <Field label="Services" onVoiceText={text => setServices(current => [...current.filter(value => value.trim()), text])}>
             <div className="grid gap-2">
               {services.map((service, index) => (
                 <input
@@ -472,7 +506,8 @@ export function OnboardingWizard() {
 
           {suggestions.length > 0 && (
             <div className="grid gap-3">
-              <p className="text-sm font-medium">Suggested palettes</p>
+              <p className="text-sm font-medium">{logoPreview ? 'Suggested palettes from your logo' : 'Choose your website colours'}</p>
+              {!logoPreview && <p className="text-sm text-neutral-600">No logo yet? Choose a combination below or let AI choose. You can add your logo and change colours later.</p>}
               {suggestions.map((suggestion) => (
                 <button
                   type="button"
@@ -496,6 +531,9 @@ export function OnboardingWizard() {
                   </span>
                 </button>
               ))}
+              {!logoPreview && <button type="button" aria-pressed={!selectedPalette} onClick={() => setSelectedPalette(undefined)} className={`rounded-md border p-3 text-left text-sm ${!selectedPalette ? 'border-neutral-900' : 'border-neutral-200'}`}>
+                Let AI choose my colours
+              </button>}
             </div>
           )}
 
@@ -539,7 +577,7 @@ export function OnboardingWizard() {
           <StepNav
             onBack={() => setStepIndex(0)}
             onNext={() => setStepIndex(2)}
-            nextLabel={logoPreview ? 'Continue' : 'Skip — no logo yet'}
+            nextLabel={logoPreview || selectedPalette ? 'Continue' : 'Continue — let AI choose'}
             busy={busy}
           />
         </div>
@@ -550,8 +588,8 @@ export function OnboardingWizard() {
           <div className="grid gap-2">
             {(
               [
-                ['upload', 'I will upload my own photos'],
-                ['generate', 'Generate images for me'],
+                ['upload', 'Use only my photos (reuse them where needed)'],
+                ['generate', 'Use AI-generated images only'],
                 ['mixed', 'Mix: use my photos, generate the rest'],
               ] as const
             ).map(([value, label]) => (
@@ -559,6 +597,7 @@ export function OnboardingWizard() {
                 <input
                   type="radio"
                   name="imageMode"
+                  disabled={busy}
                   checked={imageMode === value}
                   onChange={() => setImageMode(value)}
                 />
@@ -567,32 +606,40 @@ export function OnboardingWizard() {
             ))}
           </div>
 
-          {imageMode !== 'generate' && (
-            <Field label="Upload images" hint="JPG, PNG or WebP. You can add more later in the editor.">
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                className="text-sm"
-                onChange={(event) => {
-                  if (event.target.files) void handleImageUpload(event.target.files)
-                }}
-              />
-            </Field>
-          )}
-
-          {imageMode !== 'upload' && <ImageDirectionFields value={imageDirection} onChange={setImageDirection} disabled={busy} />}
-          <ContentDirectionFields value={contentDirection} onChange={setContentDirection} disabled={busy} />
-          {uploadedImages.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {uploadedImages.map((url) => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img key={url} src={url} alt="Uploaded" className="h-20 w-20 rounded object-cover" />
-              ))}
-            </div>
-          )}
-
-          <StepNav onBack={() => setStepIndex(1)} onNext={() => setStepIndex(3)} nextLabel="Continue" busy={busy} />
+          <Field label="Upload your photos" hint="Personal or team photos, products, premises and examples of your work. Up to 30 images, 5 MB each. You can add photos alongside AI images.">
+            <input type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif,image/svg+xml" multiple disabled={busy} className="text-sm" onChange={event => { if (event.target.files) void handleImageUpload(event.target.files); event.target.value = '' }} />
+          </Field>
+          {uploadedImages.length > 0 && <div className="grid gap-4 sm:grid-cols-2">
+            {uploadedImages.map((photo, index) => <div key={photo.assetId} className="grid gap-2 rounded border p-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={photo.url} alt={photo.description || photo.name} className="h-32 w-full rounded object-contain" />
+              <span className="truncate text-xs">{photo.name}</span>
+              <label className="grid gap-1 text-sm">What is this photo of?
+                <select className={inputClass} value={photo.purpose} disabled={busy} onChange={event => setUploadedImages(current => current.map((entry, i) => i === index ? { ...entry, purpose: event.target.value as typeof photo.purpose } : entry))}>
+                  <option value="personal">Me or my team</option><option value="product">Products or services</option><option value="work">Projects or examples of our work</option><option value="other">Premises or other images</option>
+                </select>
+              </label>
+              <label className="grid gap-1 text-sm">Description (optional)<input className={inputClass} maxLength={300} value={photo.description} placeholder="For example: Sarah, owner of the business" disabled={busy} onChange={event => setUploadedImages(current => current.map((entry, i) => i === index ? { ...entry, description: event.target.value } : entry))} /></label>
+              <IntakeVoice label={`Description for ${photo.name}`} onUseText={text => setUploadedImages(current => current.map((entry, i) => i === index ? { ...entry, description: text.slice(0, 300) } : entry))} />
+              <button type="button" disabled={busy} className="text-left text-sm underline" onClick={() => setUploadedImages(current => current.filter(entry => entry.assetId !== photo.assetId))}>Remove from this website</button>
+            </div>)}
+          </div>}
+          <div className="grid gap-3 border-t pt-4">
+            <p className="text-sm font-medium">Videos (optional)</p>
+            <p className="text-sm text-neutral-600">Paste a YouTube, Vimeo, or direct MP4/WebM HTTPS link. The video will appear on your homepage with playback controls. Video files can be hosted elsewhere and linked here.</p>
+            {videos.map((video, index) => <div key={`${video.url}-${index}`} className="flex items-center justify-between gap-2 text-sm"><span className="truncate">{video.title}</span><button type="button" disabled={busy} className="underline" onClick={() => setVideos(current => current.filter((_, i) => i !== index))}>Remove</button></div>)}
+            {videos.length < 5 && <>
+              <Field label="Video title"><input className={inputClass} value={videoTitle} maxLength={120} disabled={busy} onChange={event => setVideoTitle(event.target.value)} placeholder="Meet our team" /></Field>
+              <Field label="Video link"><input type="url" className={inputClass} value={videoUrl} maxLength={2048} disabled={busy} onChange={event => setVideoUrl(event.target.value)} placeholder="https://www.youtube.com/watch?v=..." /></Field>
+              <button type="button" disabled={busy} className="text-left text-sm underline" onClick={() => {
+                const result = videoLinkSchema.safeParse(videoUrl)
+                if (!result.success) { setError(result.error.issues[0]?.message); return }
+                if (!videoTitle.trim()) { setError('Add a title for your video.'); return }
+                setVideos(current => [...current, { url: result.data, title: videoTitle.trim() }]); setVideoUrl(''); setVideoTitle(''); setError(undefined)
+              }}>Add video</button>
+            </>}
+          </div>
+          <StepNav onBack={() => setStepIndex(1)} onNext={() => void handleSaveMedia()} nextLabel="Continue" busy={busy} />
         </div>
       )}
 
@@ -656,13 +703,13 @@ export function OnboardingWizard() {
           <div className="grid gap-3">
             <p className="text-sm font-medium">Address and opening hours</p>
             <div className="grid gap-3 sm:grid-cols-3">
-              <Field label="Street address">
+              <Field label="Street address" onVoiceText={setAddressLine1}>
                 <input className={inputClass} value={addressLine1} onChange={(event) => setAddressLine1(event.target.value)} />
               </Field>
               <Field label="Postcode">
                 <input className={inputClass} value={postalCode} onChange={(event) => setPostalCode(event.target.value)} />
               </Field>
-              <Field label="Country">
+              <Field label="Country" onVoiceText={setCountry}>
                 <input className={inputClass} value={country} onChange={(event) => setCountry(event.target.value)} />
               </Field>
             </div>
@@ -723,7 +770,7 @@ export function OnboardingWizard() {
       {step.key === 'proof' && (
         <div className="mt-8 grid gap-6 rounded-lg border border-neutral-200 bg-white p-6">
           <div className="grid gap-3">
-            <Field label="Review text">
+            <Field label="Review text" onVoiceText={text => setTestimonialDraft(current => ({ ...current, quote: [current.quote, text].filter(Boolean).join('\n') }))}>
               <textarea
                 className={inputClass}
                 rows={3}
@@ -732,7 +779,7 @@ export function OnboardingWizard() {
               />
             </Field>
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Customer name">
+              <Field label="Customer name" onVoiceText={text => setTestimonialDraft(current => ({ ...current, author: text }))}>
                 <input
                   className={inputClass}
                   value={testimonialDraft.author}
@@ -790,13 +837,13 @@ const inputClass = 'mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 t
 const primaryButton = 'rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-40'
 const secondaryButton = 'rounded-md border border-neutral-300 px-3 py-2 text-sm disabled:opacity-40'
 
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+function Field({ label, hint, children, onVoiceText }: { label: string; hint?: string; children: React.ReactNode; onVoiceText?: (text: string) => void }) {
   return (
-    <label className="block text-sm font-medium">
+    <div className="text-sm font-medium"><label className="block">
       {label}
       {hint && <span className="ml-2 text-xs font-normal text-neutral-500">{hint}</span>}
       {children}
-    </label>
+    </label>{onVoiceText && <IntakeVoice label={label} onUseText={onVoiceText} />}</div>
   )
 }
 

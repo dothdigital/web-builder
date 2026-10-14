@@ -1,0 +1,189 @@
+/*----------------------------------------*/
+/*  20. Contact CSS
+/*----------------------------------------*/
+
+
+.rs-contact-page{
+    .section-title-3{
+        @media #{$tablet-device} {
+          margin-bottom: 30px;
+        }
+        @media #{$large-mobile} {
+          margin-bottom: 30px;
+        }
+        span{
+            color: $primary;
+            &::before{
+                background: #25826A6E;
+            }
+        }
+        .title{
+            color: $heading-color;
+        }
+        p{
+            padding-right: 30px;
+        }
+    }
+    &__info{
+        padding: 30px 80px 50px 30px;
+        background: #eef5f5;
+        @media #{$desktop-device} {
+          padding: 30px 30px 50px 30px;
+        } 
+        @media #{$tablet-device} {
+          padding: 30px 30px 50px 30px;
+        } 
+        @media #{$large-mobile} {
+          padding: 30px 30px 50px 30px;
+        } 
+        .title{
+            font-size: 24px;
+            font-weight: 600;
+            line-height: 34px;
+            border-bottom: 1px solid #1A001B12;
+            padding-bottom: 24px;
+            margin-bottom: 25px;
+        }
+        .rs-text{
+            padding-right: 50px;
+            @media #{$desktop-device} {
+                padding-right: 0;
+            }
+            @media #{$tablet-device} {
+              margin-top: 40px;
+              padding-right: 0;
+            } 
+            @media #{$large-mobile} {
+              margin-top: 40px;
+              padding-right: 0;
+            } 
+            span{
+                text-transform: uppercase;
+                display: inline-block;
+            }
+            p{
+                display: block;
+                font-size: 16px;
+                font-weight: 400;
+                line-height: 26px;
+                margin-bottom: 15px;
+                @media #{$desktop-device} {
+                    font-size: 15px;
+                }
+                @media #{$small-mobile} {
+                    font-size: 15px;
+                }
+                a{
+                    color: $heading-color;
+                    &:hover{
+                        color: $primary;
+                    }
+                }
+                &.info-close{
+                    margin-bottom: 0;
+                    color: $heading-color;
+                }
+            }
+        }
+    }
+}
+
+
+.rs-contact-form-area{
+    position: relative;
+    z-index: 10;
+    .rs-map{
+        position: absolute;
+        left: 0;
+        top: 0;
+        height: 100%;
+        width: 100%;
+        z-index: -1;
+        iframe{
+            width: 100%;
+            height: 100%;
+        }
+    }
+    &__box{
+        padding: 35px 50px 35px 50px;
+        border-radius: 6px;
+        background: $heading-color;
+        @media #{$desktop-device} {
+            padding: 20px 30px 30px 30px;
+        }
+        @media #{$tablet-device} {
+            padding: 20px 30px 30px 30px;
+        }
+        @media #{$large-mobile} {
+            padding: 20px 30px 30px 30px;
+        }
+        .title{
+            text-align: center;
+            color: $white;
+            font-size: 30px;
+            line-height: 40px;
+            @media #{$desktop-device} {
+                font-size: 24px;
+            }
+        }
+        .input-box{
+            input{
+                width: 100%;
+                height: 56px;
+                border-radius: 6px;
+                padding-left: 20px;
+                background: #275F51FA;
+                border: 0;
+                font-size: 16px;
+                color: $white;
+                font-family: $font-family-base;
+                &::placeholder{
+                    opacity: 0.7;
+                    color: $white;
+                }
+            }
+            textarea{
+                width: 100%;
+                height: 100px;
+                border-radius: 6px;
+                padding-left: 20px;
+                padding-top: 15px;
+                background: #275F51FA;
+                border: 0;
+                font-size: 16px;
+                color: $white;
+                font-family: $font-family-base;
+                &::placeholder{
+                    opacity: 0.7;
+                    color: $white;
+                }
+            }
+            button{
+                border: 2px solid $primary;
+                font-size: 18px;
+                font-weight: 700;
+                font-family: $font-family-base;
+                width: 100%;
+                text-align: center;
+                border-radius: 2px;
+                display: block;
+                &:hover{
+                    background: #25826AD1;
+                    border-color: #25826AD1;
+                }
+                &:active,
+                &:focus{
+                    outline: 0;
+                    box-shadow: none;
+                    color: $white;
+                    &:hover{
+                        color: $white;
+                    }
+                }
+            }
+        }
+    }
+    .form-message{
+        color: #ffffffc7;
+    }
+}

@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { prisma } from '@awb/database'
-import { editingAccess } from '@/lib/billing/access'
+import { editingAccess, websiteCapacity } from '@/lib/billing/access'
 import { currentUser, primaryWorkspace } from '@/lib/tenancy'
 import { OnboardingWizard } from './onboarding-wizard'
 import { AppShell } from '@/components/account/app-shell'
@@ -17,8 +17,7 @@ export default async function OnboardingPage() {
   const membership = await prisma.workspaceMember.findUnique({ where: { workspaceId_userId: { workspaceId: workspace.id, userId: user.id } } })
   if (membership?.role === 'VIEWER') redirect('/dashboard')
   if (!workspace.billingExempt) {
-    const plan = workspace.billingPlanId ? await prisma.billingPlan.findUnique({ where: { id: workspace.billingPlanId } }) : null
-    if (await prisma.project.count({ where: { workspaceId: workspace.id } }) >= (plan?.websiteLimit ?? 0)) redirect('/billing')
+    if (await prisma.project.count({ where: { workspaceId: workspace.id } }) >= websiteCapacity(workspace)) redirect('/billing#website-slots')
   }
-  return <AppShell title="Create a website" active="/dashboard"><OnboardingWizard /></AppShell>
+  return <AppShell title="Create a website" active="/dashboard"><OnboardingWizard templatesEnabled={process.env.NEXT_PUBLIC_ENABLE_LAYOUT_TEMPLATES === 'true'} /></AppShell>
 }

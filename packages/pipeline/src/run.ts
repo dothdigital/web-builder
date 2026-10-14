@@ -1,8 +1,6 @@
-import { savedStageResult } from './saved-stage-result'
-import { generationOptionsSchema, contentDirectionPrompt, imageDirectionPrompt } from '@awb/shared'
+import { intakeMediaSchema } from '@awb/shared/intake-media'
 import { canGenerate } from './billing-access'
-import { enrichServiceDetailPages, rewritePageWithAi } from './content-generation'
-import { createHash, randomUUID } from 'node:crypto'
+import { randomUUID } from 'node:crypto'
 import {
   AssetKind,
   AssetSource,
@@ -26,9 +24,6 @@ import {
 } from '@awb/ai'
 import {
   defaultTokens,
-  templateImageSubject,
-  alignTemplateServiceCards,
-  normalizeSiteHeadings,
   emptyImagePointers,
   getComponent,
   validateSectionProps,
@@ -36,11 +31,8 @@ import {
   templatePageComponents,
   initialTemplateProps,
   templateChromeProps,
-  ensureServiceDetailPages,
-  ensureContactPageLayout,
 } from '@awb/component-registry'
 import {
-  websiteModelSchema,
   WEBSITE_MODEL_SCHEMA_VERSION,
   buildFingerprint,
   validateWebsiteModel,
@@ -55,9 +47,14 @@ import {
 } from '@awb/website-model'
 import { auditHeadings } from '@awb/seo'
 import { assetKey, getStorage } from '@awb/shared'
+import { generationStages } from './stages'
 import { applyTestimonials } from './testimonials'
 import { designReferenceSchema } from '@awb/shared/design-reference'
 import { inspectDesignReference } from './design-reference'
+import { prioritizeImageSlots } from './image-plan'
+import { rerunRequestSchema, type RerunRequest } from '@awb/shared/rerun-request'
+import { websiteModelSchema } from '@awb/website-model'
+import { replacementImageSlots, replaceScopedImage } from './scoped-rerun'
 
 /// Writes a value addressed by a JSON pointer, creating intermediate objects
 /// so nested image slots (e.g. `/images/2/url`) can be filled.
@@ -93,7 +90,7 @@ function sectionHeading(props: Record<string, unknown>): string | undefined {
   return undefined
 }
 
-export function collectImageSlots(model: WebsiteModel): ImageSlotRequest[] {
+function collectImageSlots(model: WebsiteModel): ImageSlotRequest[] {
   const slots: ImageSlotRequest[] = []
 
   for (const page of model.pages) {
@@ -113,7 +110,6 @@ export function collectImageSlots(model: WebsiteModel): ImageSlotRequest[] {
           componentId: section.componentId,
           family: definition.family,
           subjectContext: JSON.stringify({
-            exactImageSubject: templateImageSubject(section.componentId,pointer,props),
             section: props,
             imageOwner: pointer.split('/').slice(1, -1).reduce<unknown>((value, key) =>
               value && typeof value === 'object' ? (value as Record<string, unknown>)[key.replace(/~1/g, '/').replace(/~0/g, '~')] : undefined, props),
@@ -127,7 +123,7 @@ export function collectImageSlots(model: WebsiteModel): ImageSlotRequest[] {
   return slots
 }
 
-const IMAGE_PLAN_BATCH_SIZE = 6
+const MAX_GENERATED_IMAGES = Number(process.env['MAX_AI_IMAGES'] ?? '10')
 
 export interface GenerationRequest {
   contentJobId?: string
@@ -135,6 +131,8 @@ export interface GenerationRequest {
   correlationId?: string
   /// Set when the user picked one of the proposed art directions up front.
   selectedDirectionId?: string
+  rerun?: RerunRequest
+  baseVersionId?: string
 }
 
 class StageError extends Error {
@@ -158,20 +156,6 @@ async function runStage<T>(
   handler: () => Promise<{ output: Prisma.InputJsonValue; result: T; usage?: { model: string; inputTokens: number; outputTokens: number; costCents: number } }>,
 ): Promise<T> {
   const existing = await prisma.generationJob.findFirst({ where: { projectId, correlationId, stage } })
-  if (existing?.status === JobStatus.SUCCEEDED) {
-    const cached = savedStageResult(stage,existing.output)
-    if (cached.found) return cached.value as T
-  }
-  // Older automatic retries could mark copy failed after composition had
-  // already succeeded. Recover the copy from that completed model.
-  if (stage === GenerationStage.CONTENT && existing?.status !== JobStatus.SUCCEEDED) {
-    const composed = await prisma.generationJob.findFirst({where:{projectId,correlationId,stage:GenerationStage.COMPOSE,status:JobStatus.SUCCEEDED},select:{output:true}})
-    const pages = (composed?.output as {model?:WebsiteModel} | null)?.model?.pages
-    if (pages?.length && existing) {
-      await prisma.generationJob.update({where:{id:existing.id},data:{status:JobStatus.SUCCEEDED,errorMessage:null,finishedAt:new Date(),output:toJson({pages,completed:pages.length,total:pages.length,unit:'pages',stageResult:pages})}})
-      return pages as T
-    }
-  }
   const job = existing
     ? await prisma.generationJob.update({
         where: { id: existing.id },
@@ -196,7 +180,7 @@ async function runStage<T>(
       where: { id: job.id },
       data: {
         status: JobStatus.SUCCEEDED,
-        output: toJson({ ...(output as Record<string,unknown>), stageResult:result }),
+        output,
         finishedAt: new Date(),
         ...(usage
           ? {
@@ -295,10 +279,16 @@ async function loadBrief(projectId: string): Promise<GenerationBrief> {
   const business = project.businessProfile
   const testimonialCollection = project.collections.find((collection) => collection.type === 'TESTIMONIALS')
   const reference = designReferenceSchema.safeParse(project.designReference)
+  const parsedMedia = intakeMediaSchema.safeParse(project.intakeMedia)
+  const media = parsedMedia.success ? parsedMedia.data : undefined
+  const selectedPhotos = media ? media.photos.flatMap(photo => {
+    const asset = project.assets.find(asset => asset.id === photo.assetId)
+    return asset ? [{ url: asset.url, purpose: photo.purpose, description: photo.description }] : []
+  }) : project.assets.map(asset => ({ url: asset.url, purpose: 'other', description: asset.altText ?? '' }))
 
   return {
     businessName: business?.displayName ?? project.name,
-    ...(project.templateId && getLayoutTemplate(project.templateId) ? { templateId: project.templateId } : {}),
+    ...(process.env.NEXT_PUBLIC_ENABLE_LAYOUT_TEMPLATES === 'true' && project.templateId && getLayoutTemplate(project.templateId) ? { templateId: project.templateId } : {}),
     ...(reference.success ? { designReference: reference.data } : {}),
     homepageSections: project.homepageSections,
     homepageLength: project.homepageLength === 'expanded' ? 'expanded' : 'compact',
@@ -308,10 +298,12 @@ async function loadBrief(projectId: string): Promise<GenerationBrief> {
     services: project.collections.find((collection) => collection.type === 'SERVICES')?.items.map((item) => String((item.data as { title?: string }).title ?? '')) ?? [],
     goals: business?.primaryConversion ? [business.primaryConversion] : [],
     tonePreferences: business?.tone ? [business.tone] : [],
-    answers: {},
+    answers: { suppliedPhotos: JSON.stringify(selectedPhotos) },
     hasLogo: Boolean(project.brandProfile?.logoAssetId),
     logoColors: (project.brandProfile?.tokens as { logoColors?: string[] } | null)?.logoColors ?? [],
-    uploadedImageUrls: project.assets.map((asset) => asset.url),
+    uploadedImageUrls: media?.imageMode === 'generate' ? [] : selectedPhotos.map(photo => photo.url),
+    uploadedPhotos: media?.imageMode === 'generate' ? [] : selectedPhotos,
+    ...(media ? { intakeMedia: media } : {}),
     testimonials:
       testimonialCollection?.items.map((item) => {
         const data = item.data as { quote?: string; author?: string; source?: string }
@@ -343,302 +335,351 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
 
   try {
     const brief = await loadBrief(projectId)
-    const imageJob = request.contentJobId ? await prisma.contentJob.findUnique({ where: { id: request.contentJobId } }) : null
-    const options = generationOptionsSchema.parse(imageJob?.input ?? {})
-    const {imageDirection, contentDirection, mode} = options
-    brief.imageDirection = imageDirection
-    if (contentDirection.style !== 'auto' || contentDirection.styles?.length || contentDirection.audience || contentDirection.notes) brief.tonePreferences.push(contentDirectionPrompt(contentDirection))
+    const rerun = request.rerun ? rerunRequestSchema.parse(request.rerun) : undefined
+    if (rerun?.instruction) {
+      brief.answers.rerunInstructions = rerun.instruction
+      brief.description += `\n\nRequested changes for this run: ${rerun.instruction}\nUse supplied business facts only.`
+    }
+    if (rerun?.imageAssetIds.length) {
+      const uploads = await prisma.asset.findMany({ where: { projectId, id: { in: rerun.imageAssetIds }, kind: AssetKind.IMAGE, source: AssetSource.UPLOAD } })
+      if (uploads.length !== new Set(rerun.imageAssetIds).size) throw new Error('An uploaded photo is unavailable.')
+      brief.uploadedPhotos = rerun.imageAssetIds.map(id => { const asset = uploads.find(asset => asset.id === id)!; return { url: asset.url, purpose: 'other', description: asset.altText ?? '' } })
+      brief.uploadedImageUrls = brief.uploadedPhotos.map(photo => photo.url)
+      // Explicit new uploads take precedence over the old intake media mode.
+      brief.intakeMedia = { imageMode: 'mixed', photos: [], videos: brief.intakeMedia?.videos ?? [] }
+    }
+    if (rerun && rerun.scope !== 'FULL') {
+      if (!request.baseVersionId) throw new Error('The source draft for this update is missing. Please start a new rerun.')
+      const version = await prisma.websiteVersion.findFirstOrThrow({ where: { id: request.baseVersionId, projectId, kind: WebsiteVersionKind.DRAFT }, orderBy: { version: 'desc' } })
+      let next = websiteModelSchema.parse(version.model)
+      if (rerun.scope === 'CONTENT') {
+        next = await runStage(projectId, correlationId, GenerationStage.CONTENT, toJson(rerun), async () => {
+          const { rewritePageWithAi } = await import('./content-generation')
+          const pages: WebsitePage[] = []
+          for (const page of next.pages) {
+            const result = await rewritePageWithAi(projectId, { model: next, pageId: page.id, instruction: rerun.instruction })
+            pages.push(result.page)
+          }
+          const rewritten = { ...next, pages }
+          return { output: toJson({ scope: rerun.scope, pageCount: pages.length }), result: rewritten }
+        })
+      } else {
+        next = await runStage(projectId, correlationId, GenerationStage.IMAGES, toJson(rerun), async () => {
+          let updated = structuredClone(next)
+          if (rerun.logoAssetId) {
+            const logo = await prisma.asset.findFirstOrThrow({ where: { id: rerun.logoAssetId, projectId, kind: AssetKind.LOGO, source: AssetSource.UPLOAD } })
+            for (const slot of ['header', 'footer'] as const) {
+              const props = updated.globalComponents[slot].props
+              props.logoImageUrl = logo.url
+              if (Array.isArray(props.removedElements)) props.removedElements = props.removedElements.filter(path => path !== '/logoImageUrl')
+            }
+          }
+          const slots = replacementImageSlots(updated)
+          const uploads = rerun.imageAssetIds.length ? brief.uploadedPhotos ?? [] : []
+          if (uploads.length > slots.length) throw new Error('There are more uploaded photos than available image positions. Use the editor to place the extra photos.')
+          for (const [index, photo] of uploads.entries()) updated = replaceScopedImage(updated, slots[index]!.slot, photo.url, photo.description)
+          let generated = 0
+          if (rerun.scope === 'IMAGES') {
+            const budget = Math.max(0, Math.min(10, Number.isFinite(MAX_GENERATED_IMAGES) ? Math.floor(MAX_GENERATED_IMAGES) : 10) - uploads.length)
+            const planned = prioritizeImageSlots(slots.slice(uploads.length), budget).slice(0, budget)
+            if (!planned.length && !uploads.length && !rerun.logoAssetId) throw new Error('This website has no image positions available to regenerate.')
+            const plan = planned.length ? (await provider.planImages(brief, updated, planned)).data : { images: [] }
+            const allowed = new Set(planned.map(slot => slot.slot))
+            if (planned.length && !plan.images.length) throw new Error('AI did not return any image changes. Please try again.')
+            const project = await prisma.project.findUniqueOrThrow({ where: { id: projectId } })
+            const storage = getStorage()
+            for (const image of plan.images) {
+              if (!allowed.delete(image.slot)) throw new Error('AI returned an unexpected image position.')
+              const result = await provider.generateImage(`${image.prompt}\nUser direction: ${rerun.instruction}`, image.aspectRatio, image.slot, image.alt)
+              const extension = result.data.contentType === 'image/png' ? 'png' : 'svg'
+              const stored = await storage.put(assetKey(project.workspaceId, projectId, `rerun-${correlationId}-${generated}.${extension}`), result.data.data, result.data.contentType)
+              await prisma.asset.create({ data: { workspaceId: project.workspaceId, projectId, kind: AssetKind.IMAGE, source: AssetSource.AI_GENERATED, storageKey: stored.key, url: stored.url, mimeType: stored.contentType, bytes: stored.bytes, altText: image.alt, prompt: result.data.prompt } })
+              updated = replaceScopedImage(updated, image.slot, stored.url, image.alt)
+              generated++
+            }
+          }
+          return { output: toJson({ scope: rerun.scope, generated, uploaded: uploads.length }), result: updated }
+        })
+      }
+      const websiteVersionId = await runStage(projectId, correlationId, GenerationStage.VALIDATE, toJson({ scope: rerun.scope }), async () => {
+        const validation = validateWebsiteModel(next)
+        if (!validation.valid) throw new Error(validation.issues.filter(issue => issue.level === 'error').map(issue => issue.message).join('; '))
+        const saved = await prisma.$transaction(async tx => {
+          await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${projectId}))`
+          const latest = await tx.websiteVersion.findFirst({ where: { projectId, kind: WebsiteVersionKind.DRAFT }, orderBy: { version: 'desc' } })
+          if (latest?.id !== version.id) throw new Error('The saved website changed during this run. Please rerun against the latest draft.')
+          const last = await tx.websiteVersion.findFirst({ where: { projectId }, orderBy: { version: 'desc' } })
+          const saved = await tx.websiteVersion.create({ data: { projectId, version: (last?.version ?? 0) + 1, kind: WebsiteVersionKind.DRAFT, model: toJson(next), schemaVersion: WEBSITE_MODEL_SCHEMA_VERSION, note: `AI rerun: ${rerun.scope.toLowerCase()}` } })
+          await tx.page.deleteMany({ where: { projectId } })
+          await tx.page.createMany({ data: next.pages.map((page, index) => ({ projectId, title: page.title, slug: page.path === '/' ? 'home' : page.path.replace(/^\//, ''), path: page.path, position: index, status: PageStatus.DRAFT, indexable: page.seo.index, seoTitle: page.seo.title, seoDescription: page.seo.description, sections: toJson(page.sections) })) })
+          await tx.project.update({ where: { id: projectId }, data: { status: ProjectStatus.READY } })
+          return saved
+        })
+        return { output: toJson({ scope: rerun.scope, issues: validation.issues }), result: saved.id }
+      })
+      return { correlationId, websiteVersionId }
+    }
     const presence = await loadPresence(projectId)
 
-    const model = await (async (): Promise<WebsiteModel> => {
-      if (mode !== 'full') {
-        const saved = await prisma.websiteVersion.findFirstOrThrow({where:{projectId,kind:WebsiteVersionKind.DRAFT},orderBy:{version:'desc'}})
-        const retained = websiteModelSchema.parse(saved.model)
-        if (!['images','fill-images'].includes(mode)) {
-          return runStage<WebsiteModel>(projectId,correlationId,GenerationStage.CONTENT,toJson(options),async()=>{
-            let completed = 0
-            await prisma.generationJob.updateMany({where:{projectId,correlationId,stage:GenerationStage.CONTENT,status:JobStatus.RUNNING},data:{output:toJson({completed,total:retained.pages.length,unit:'pages'})}})
-            for (const page of retained.pages) {
-              const result = await rewritePageWithAi(projectId,{model:retained,pageId:page.id,instruction:contentDirectionPrompt(contentDirection)})
-              retained.pages[retained.pages.findIndex(entry=>entry.id===page.id)] = result.page
-              completed += 1
-              await prisma.generationJob.updateMany({where:{projectId,correlationId,stage:GenerationStage.CONTENT,status:JobStatus.RUNNING},data:{output:toJson({completed,total:retained.pages.length,unit:'pages'})}})
-            }
-            return {output:toJson({model:retained,completed,total:retained.pages.length,unit:'pages'}),result:retained}
+    const analysis = await runStage<BriefAnalysis>(
+      projectId,
+      correlationId,
+      GenerationStage.ANALYZE_BRIEF,
+      toJson(brief),
+      async () => {
+        if (brief.designReference) {
+          const observation = await inspectDesignReference(brief.designReference)
+          brief.designReference.observation = observation
+          await prisma.project.update({ where: { id: projectId }, data: { designReferenceObservation: toJson(observation) } })
+        }
+        const { data, usage } = await provider.analyzeBrief(brief)
+
+        await prisma.businessProfile.updateMany({
+          where: { projectId },
+          data: { missingFacts: data.missingFacts },
+        })
+
+        return { output: toJson({ ...data, ...(brief.designReference ? { referenceMessage: brief.designReference.observation?.message } : {}) }), result: data, usage }
+      },
+    )
+
+    await runStage(projectId, correlationId, GenerationStage.NEXT_QUESTIONS, toJson(analysis), async () => {
+      const { data, usage } = await provider.proposeQuestions(brief, analysis)
+      return { output: toJson(data), result: data, usage }
+    })
+
+    const directions = await runStage<DesignDirections>(
+      projectId,
+      correlationId,
+      GenerationStage.DESIGN_DIRECTIONS,
+      toJson(analysis),
+      async () => {
+        const { data, usage } = await provider.proposeDesignDirections(brief, analysis)
+        return { output: toJson(data), result: data, usage }
+      },
+    )
+
+    const { dna, tokens } = await runStage<{ dna: DesignDna; tokens: DesignTokens }>(
+      projectId,
+      correlationId,
+      GenerationStage.DESIGN_DNA,
+      toJson({ selectedDirectionId: request.selectedDirectionId }),
+      async () => {
+        const chosen =
+          directions.options.find((option) => option.id === request.selectedDirectionId) ?? directions.options[0]
+
+        if (!chosen) {
+          throw new Error('No design direction was produced')
+        }
+
+        const brandProfile = await prisma.brandProfile.findUnique({ where: { projectId } })
+        /// A palette the user already accepted always wins over a fresh suggestion.
+        const userTokens = brandProfile?.tokens as DesignTokens | null
+        const resolvedTokens = userTokens?.palette ? userTokens : chosen.tokens
+        const suggestions = paletteAlternatives(resolvedTokens, brief.logoColors)
+
+        await prisma.brandProfile.upsert({
+          where: { projectId },
+          create: {
+            projectId,
+            designDna: toJson(chosen.dna),
+            tokens: toJson(resolvedTokens),
+          },
+          update: { designDna: toJson(chosen.dna), tokens: toJson(resolvedTokens) },
+        })
+
+        return {
+          output: toJson({ dna: chosen.dna, tokens: resolvedTokens, paletteSuggestions: suggestions }),
+          result: { dna: chosen.dna, tokens: resolvedTokens },
+        }
+      },
+    )
+
+    const plan = await runStage<SitePlan>(
+      projectId,
+      correlationId,
+      GenerationStage.SITE_PLAN,
+      toJson(dna),
+      async () => {
+        if (brief.templateId) {
+          const servicePages = brief.services.slice(0,8).map((service,index) => ({path:`/services/${service.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'') || `service-${index+1}`}`,title:service,purpose:`Explain the supplied ${service} service and invite enquiries.`,serviceName:service,inMainNav:false,sectionPlan:templatePageComponents(brief.templateId!, '/services/detail').map(id=>({family:getComponent(id)!.family,intent:service}))}))
+          const templatePlan: SitePlan = { pages:[{path:'/',title:'Home',purpose:brief.description,inMainNav:true},{path:'/about',title:'About',purpose:'Introduce the business using supplied facts.',inMainNav:true},{path:'/services',title:'Services',purpose:'Explain the services supplied by the business.',inMainNav:true},{path:'/contact',title:'Contact',purpose:'Contact the business and submit an enquiry.',inMainNav:true}].map(page=>({...page,sectionPlan:templatePageComponents(brief.templateId!,page.path).map(id=>({family:getComponent(id)!.family,intent:page.purpose}))})).concat(servicePages),navigation:[{label:'Home',path:'/',children:[]},{label:'About',path:'/about',children:[]},{label:'Services',path:'/services',children:servicePages.map(page=>({label:page.title,path:page.path}))},{label:'Contact',path:'/contact',children:[]}] }
+          return {output:toJson(templatePlan),result:templatePlan}
+        }
+        const { data, usage } = await provider.planSite(brief, analysis, dna)
+        return { output: toJson(data), result: data, usage }
+      },
+    )
+
+    const pages = await runStage<WebsitePage[]>(
+      projectId,
+      correlationId,
+      GenerationStage.CONTENT,
+      toJson(plan),
+      async () => {
+        const written: WebsitePage[] = []
+
+        for (const plannedPage of plan.pages) {
+          const { data } = await provider.writePage(brief, analysis, dna, tokens, plannedPage)
+
+          written.push({
+            id: plannedPage.path === '/' ? 'home' : plannedPage.path.replace(/\//g, '') || 'home',
+            path: plannedPage.path,
+            title: plannedPage.title,
+            pageType: plannedPage.serviceName ? 'SERVICE' : 'CUSTOM',
+            h1: data.h1.trim() || plannedPage.title,
+            seo: {
+              ...data.seo,
+              title: data.seo.title.trim() || `${plannedPage.title} | ${brief.businessName}`,
+              description: data.seo.description.trim() || plannedPage.purpose || brief.description.slice(0, 160),
+              canonical: data.seo.canonical ?? data.path,
+            },
+            sections: brief.templateId ? templatePageComponents(brief.templateId, plannedPage.path).map((componentId,index) => data.sections.find(section=>section.componentId===componentId) ?? {id:`layout-unused-${index}`,componentId,componentVersion:'1.0.0',hidden:true,props:initialTemplateProps(componentId)}) : data.sections,
           })
         }
-        return retained
-      }
-      const analysis = await runStage<BriefAnalysis>(
-        projectId,
-        correlationId,
-        GenerationStage.ANALYZE_BRIEF,
-        toJson(brief),
-        async () => {
-          if (brief.designReference) {
-            const observation = await inspectDesignReference(brief.designReference)
-            brief.designReference.observation = observation
-            await prisma.project.update({ where: { id: projectId }, data: { designReferenceObservation: toJson(observation) } })
-          }
-          const { data, usage } = await provider.analyzeBrief(brief)
 
-          await prisma.businessProfile.updateMany({
-            where: { projectId },
-            data: { missingFacts: data.missingFacts },
-          })
+        return { output: toJson({ pageCount: written.length, pages: written }), result: written }
+      },
+    )
 
-          return { output: toJson({ ...data, ...(brief.designReference ? { referenceMessage: brief.designReference.observation?.message } : {}) }), result: data, usage }
-        },
-      )
+    const model = await runStage<WebsiteModel>(
+      projectId,
+      correlationId,
+      GenerationStage.COMPOSE,
+      toJson({ pages: pages.length }),
+      async () => {
+        const project = await prisma.project.findUniqueOrThrow({ where: { id: projectId } })
 
-      await runStage(projectId, correlationId, GenerationStage.NEXT_QUESTIONS, toJson(analysis), async () => {
-        const { data, usage } = await provider.proposeQuestions(brief, analysis)
-        return { output: toJson(data), result: data, usage }
-      })
+        /// Unknown components and invalid props are rejected here rather than
+        /// being rendered: the registry is the only allowed vocabulary.
+        const rejected: string[] = []
+        const sanitizedPages = (brief.templateId ? pages : applyTestimonials(pages, brief.testimonials)).map((page) => ({
+          ...page,
+          sections: page.sections.flatMap((section) => {
+            const family = getComponent(section.componentId)?.family
 
-      const directions = await runStage<DesignDirections>(
-        projectId,
-        correlationId,
-        GenerationStage.DESIGN_DIRECTIONS,
-        toJson(analysis),
-        async () => {
-          const { data, usage } = await provider.proposeDesignDirections(brief, analysis)
-          return { output: toJson(data), result: data, usage }
-        },
-      )
+            /// Header and footer are global: a page-level copy would render
+            /// twice, so any the model adds is dropped.
+            if (family === 'HEADER' || family === 'FOOTER') {
+              return []
+            }
 
-      const { dna, tokens } = await runStage<{ dna: DesignDna; tokens: DesignTokens }>(
-        projectId,
-        correlationId,
-        GenerationStage.DESIGN_DNA,
-        toJson({ selectedDirectionId: request.selectedDirectionId }),
-        async () => {
-          const chosen =
-            directions.options.find((option) => option.id === request.selectedDirectionId) ?? directions.options[0]
+            const validation = validateSectionProps(section.id, section.componentId, section.props)
 
-          if (!chosen) {
-            throw new Error('No design direction was produced')
-          }
+            if (!validation.ok) {
+              rejected.push(`${page.path} ${section.id} (${section.componentId}): ${validation.error.message}`)
+              return []
+            }
 
-          const brandProfile = await prisma.brandProfile.findUnique({ where: { projectId } })
-          /// A palette the user already accepted always wins over a fresh suggestion.
-          const userTokens = brandProfile?.tokens as DesignTokens | null
-          const resolvedTokens = userTokens?.palette ? userTokens : chosen.tokens
-          const suggestions = paletteAlternatives(resolvedTokens, brief.logoColors)
+            return [{ ...section, props: validation.props as Record<string, unknown> }]
+          }),
+        }))
 
-          await prisma.brandProfile.upsert({
-            where: { projectId },
-            create: {
-              projectId,
-              designDna: toJson(chosen.dna),
-              tokens: toJson(resolvedTokens),
-            },
-            update: { designDna: toJson(chosen.dna), tokens: toJson(resolvedTokens) },
-          })
+        const emptyPage = sanitizedPages.find((page) => page.sections.length === 0)
 
-          return {
-            output: toJson({ dna: chosen.dna, tokens: resolvedTokens, paletteSuggestions: suggestions }),
-            result: { dna: chosen.dna, tokens: resolvedTokens },
-          }
-        },
-      )
+        if (emptyPage) {
+          throw new Error(
+            `Every section of ${emptyPage.path} failed registry validation: ${rejected.join(' | ')}`,
+          )
+        }
 
-      const plan = await runStage<SitePlan>(
-        projectId,
-        correlationId,
-        GenerationStage.SITE_PLAN,
-        toJson(dna),
-        async () => {
-          if (brief.templateId) {
-            const servicePages = brief.services.slice(0,8).map((service,index) => ({path:`/services/${service.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'') || `service-${index+1}`}`,title:service,purpose:`Explain the supplied ${service} service and invite enquiries.`,serviceName:service,inMainNav:false,sectionPlan:templatePageComponents(brief.templateId!, '/services/detail').map(id=>({family:getComponent(id)!.family,intent:service}))}))
-            const templatePlan: SitePlan = { pages:[{path:'/',title:'Home',purpose:brief.description,inMainNav:true},{path:'/about',title:'About',purpose:'Introduce the business using supplied facts.',inMainNav:true},{path:'/services',title:'Services',purpose:'Explain the services supplied by the business.',inMainNav:true},{path:'/contact',title:'Contact',purpose:'Contact the business and submit an enquiry.',inMainNav:true}].map(page=>({...page,sectionPlan:templatePageComponents(brief.templateId!,page.path).map(id=>({family:getComponent(id)!.family,intent:page.purpose}))})).concat(servicePages),navigation:[{label:'Home',path:'/',children:[]},{label:'About',path:'/about',children:[]},{label:'Services',path:'/services',children:servicePages.map(page=>({label:page.title,path:page.path}))},{label:'Contact',path:'/contact',children:[]}] }
-            return {output:toJson(templatePlan),result:templatePlan}
-          }
-          const { data, usage } = await provider.planSite(brief, analysis, dna)
-          return { output: toJson(data), result: data, usage }
-        },
-      )
+        /// The header CTA must land on a page that exists, so it targets the
+        /// booking/contact page when the plan produced one.
+        const ctaPage =
+          sanitizedPages.find((page) => /contact|book|appointment|quote/i.test(page.path)) ??
+          sanitizedPages.find((page) => page.path !== '/')
 
-      const pages = await runStage<WebsitePage[]>(
-        projectId,
-        correlationId,
-        GenerationStage.CONTENT,
-        toJson(plan),
-        async () => {
-          const checkpoint = await prisma.generationJob.findFirst({where:{projectId,correlationId,stage:GenerationStage.CONTENT},select:{output:true}})
-          const saved = (checkpoint?.output as {pages?:WebsitePage[]} | null)?.pages ?? []
-          const written: WebsitePage[] = []
-          await prisma.generationJob.updateMany({where:{projectId,correlationId,stage:GenerationStage.CONTENT,status:JobStatus.RUNNING},data:{output:toJson({completed:saved.length,total:plan.pages.length,unit:'pages',pages:saved})}})
+        const header = dna.navigation === 'transparent-overlay' ? 'HeaderTransparent' : 'HeaderSplitUtility'
+        const footer = dna.composition.density === 'dense' ? 'FooterCompact' : 'FooterEditorial'
+        const navigation = {
+          primaryMenu: plan.navigation.map((item) => ({
+            label: item.label, linkType: 'PAGE' as const,
+            pageId: sanitizedPages.find((page) => page.path === item.path)?.id,
+            newTab: false,
+            children: item.children.map((child) => ({ label: child.label, linkType: 'PAGE' as const, pageId: sanitizedPages.find((page) => page.path === child.path)?.id, newTab: false, children: [] })),
+          })),
+          footerMenu: [],
+          utilityMenu: [],
+        }
 
-          for (const plannedPage of plan.pages) {
-            const cached = saved.find(page=>page.path===plannedPage.path)
-            if (cached) { written.push(cached); continue }
-            const { data } = await provider.writePage(brief, analysis, dna, tokens, plannedPage)
-
-            written.push({
-              id: plannedPage.path === '/' ? 'home' : plannedPage.path.replace(/\//g, '') || 'home',
-              path: plannedPage.path,
-              title: plannedPage.title,
-              pageType: plannedPage.serviceName ? 'SERVICE' : 'CUSTOM',
-              h1: data.h1.trim() || plannedPage.title,
-              seo: {
-                ...data.seo,
-                title: data.seo.title.trim() || `${plannedPage.title} | ${brief.businessName}`,
-                description: data.seo.description.trim() || plannedPage.purpose || brief.description.slice(0, 160),
-                canonical: data.seo.canonical ?? data.path,
-              },
-              sections: brief.templateId ? templatePageComponents(brief.templateId, plannedPage.path).map((componentId,index) => data.sections.find(section=>section.componentId===componentId) ?? {id:`layout-unused-${index}`,componentId,componentVersion:'1.0.0',hidden:true,props:initialTemplateProps(componentId)}) : data.sections,
-            })
-            await prisma.generationJob.updateMany({where:{projectId,correlationId,stage:GenerationStage.CONTENT,status:JobStatus.RUNNING},data:{output:toJson({completed:written.length,total:plan.pages.length,unit:'pages',pages:[...written,...saved.filter(page=>!written.some(done=>done.path===page.path))]})}})
-          }
-
-          return { output: toJson({ completed:written.length,total:plan.pages.length,unit:'pages',pageCount: written.length, pages: written }), result: written }
-        },
-      )
-
-      const composedModel = await runStage<WebsiteModel>(
-        projectId,
-        correlationId,
-        GenerationStage.COMPOSE,
-        toJson({ pages: pages.length }),
-        async () => {
-          const project = await prisma.project.findUniqueOrThrow({ where: { id: projectId } })
-
-          /// Unknown components and invalid props are rejected here rather than
-          /// being rendered: the registry is the only allowed vocabulary.
-          const rejected: string[] = []
-          const sanitizedPages = (brief.templateId ? pages : applyTestimonials(pages, brief.testimonials)).map((page) => ({
-            ...page,
-            sections: page.sections.flatMap((section) => {
-              const family = getComponent(section.componentId)?.family
-
-              /// Header and footer are global: a page-level copy would render
-              /// twice, so any the model adds is dropped.
-              if (family === 'HEADER' || family === 'FOOTER') {
-                return []
-              }
-
-              const validation = validateSectionProps(section.id, section.componentId, section.props)
-
-              if (!validation.ok) {
-                rejected.push(`${page.path} ${section.id} (${section.componentId}): ${validation.error.message}`)
-                return []
-              }
-
-              return [{ ...section, props: validation.props as Record<string, unknown> }]
-            }),
-          }))
-
-          const emptyPage = sanitizedPages.find((page) => page.sections.length === 0)
-
-          if (emptyPage) {
-            throw new Error(
-              `Every section of ${emptyPage.path} failed registry validation: ${rejected.join(' | ')}`,
-            )
-          }
-
-          /// The header CTA must land on a page that exists, so it targets the
-          /// booking/contact page when the plan produced one.
-          const ctaPage =
-            sanitizedPages.find((page) => /contact|book|appointment|quote/i.test(page.path)) ??
-            sanitizedPages.find((page) => page.path !== '/')
-
-          const header = dna.navigation === 'transparent-overlay' ? 'HeaderTransparent' : 'HeaderSplitUtility'
-          const footer = dna.composition.density === 'dense' ? 'FooterCompact' : 'FooterEditorial'
-          const navigation = {
-            primaryMenu: plan.navigation.map((item) => ({
-              label: item.label, linkType: 'PAGE' as const,
-              pageId: sanitizedPages.find((page) => page.path === item.path)?.id,
-              newTab: false,
-              children: item.children.map((child) => ({ label: child.label, linkType: 'PAGE' as const, pageId: sanitizedPages.find((page) => page.path === child.path)?.id, newTab: false, children: [] })),
-            })),
-            footerMenu: [],
-            utilityMenu: [],
-          }
-
-          const composed: WebsiteModel = {
-            schemaVersion: WEBSITE_MODEL_SCHEMA_VERSION,
-            site: {
-              name: brief.businessName,
-              locale: project.defaultLocale,
-              previewHost: project.previewHost,
-            },
-            businessProfileRef: projectId,
-            designDna: dna,
-            tokens,
-            navigation,
-            globalComponents: {
-              header: {
-                componentId: header,
-                componentVersion: getComponent(header)?.version ?? '1.0.0',
-                props: {
-                  logoText: brief.businessName,
-                  items: navigation.primaryMenu.map((item) => ({
-                    label: item.label,
-                    href: sanitizedPages.find((page) => page.id === item.pageId)?.path ?? '/',
-                    children: item.children.map((child) => ({ label: child.label, href: sanitizedPages.find((page) => page.id === child.pageId)?.path ?? '/' })),
-                  })),
-                  cta: { label: 'Get in touch', href: ctaPage?.path ?? '/' },
-                  sticky: true,
-                },
-              },
-              footer: {
-                componentId: footer,
-                componentVersion: getComponent(footer)?.version ?? '1.0.0',
-                props: {
-                  businessName: brief.businessName,
-                  tagline: brief.description.slice(0, 90),
-                  columns: [
-                    {
-                      title: 'Pages',
-                      items: sanitizedPages.map((page) => ({ label: page.title, href: page.path })),
-                    },
-                  ],
-                  socials: presence.socials.map((social) => ({ platform: social.network, href: social.url })),
-                  legalLinks: [],
-                },
+        const composed: WebsiteModel = {
+          schemaVersion: WEBSITE_MODEL_SCHEMA_VERSION,
+          site: {
+            name: brief.businessName,
+            locale: project.defaultLocale,
+            previewHost: project.previewHost,
+          },
+          businessProfileRef: projectId,
+          designDna: dna,
+          tokens,
+          navigation,
+          globalComponents: {
+            header: {
+              componentId: header,
+              componentVersion: getComponent(header)?.version ?? '1.0.0',
+              props: {
+                logoText: brief.businessName,
+                items: navigation.primaryMenu.map((item) => ({
+                  label: item.label,
+                  href: sanitizedPages.find((page) => page.id === item.pageId)?.path ?? '/',
+                  children: item.children.map((child) => ({ label: child.label, href: sanitizedPages.find((page) => page.id === child.pageId)?.path ?? '/' })),
+                })),
+                cta: { label: 'Get in touch', href: ctaPage?.path ?? '/' },
+                sticky: true,
               },
             },
-            pages: sanitizedPages,
-            collections: {},
-            socials: presence.socials,
-            contact: presence.contact,
-            google: presence.google,
-            schemaSettings: { organizationType: 'LocalBusiness', enabledTypes: ['LocalBusiness'] },
-            analyticsSettings: presence.analytics,
-            publishSettings: { wwwPreference: 'non-www', robotsAllowIndexing: true },
-          }
+            footer: {
+              componentId: footer,
+              componentVersion: getComponent(footer)?.version ?? '1.0.0',
+              props: {
+                businessName: brief.businessName,
+                tagline: brief.description.slice(0, 90),
+                columns: [
+                  {
+                    title: 'Pages',
+                    items: sanitizedPages.map((page) => ({ label: page.title, href: page.path })),
+                  },
+                ],
+                socials: presence.socials.map((social) => ({ platform: social.network, href: social.url })),
+                legalLinks: [],
+              },
+            },
+          },
+          pages: sanitizedPages,
+          collections: {},
+          socials: presence.socials,
+          contact: presence.contact,
+          google: presence.google,
+          schemaSettings: { organizationType: 'LocalBusiness', enabledTypes: ['LocalBusiness'] },
+          analyticsSettings: presence.analytics,
+          publishSettings: { wwwPreference: 'non-www', robotsAllowIndexing: true },
+        }
 
-          const selectedTemplate = getLayoutTemplate(brief.templateId)
-          if (selectedTemplate) {
-            const items = navigation.primaryMenu.map(item=>({label:item.label,href:sanitizedPages.find(page=>page.id===item.pageId)?.path || '/',children:item.children.map(child=>({label:child.label,href:sanitizedPages.find(page=>page.id===child.pageId)?.path || '/'}))}))
-            const chromeInput={businessName:brief.businessName,description:brief.description,email:presence.contact.email,phone:presence.contact.phone,address:presence.contact.addressLine1,items}
-            composed.globalComponents.header={componentId:selectedTemplate.header,componentVersion:'1.0.0',props:templateChromeProps(selectedTemplate.header,chromeInput)}
-            composed.globalComponents.footer={componentId:selectedTemplate.footer,componentVersion:'1.0.0',props:templateChromeProps(selectedTemplate.footer,chromeInput)}
-          }
+        const selectedTemplate = getLayoutTemplate(brief.templateId)
+        if (selectedTemplate) {
+          const items = navigation.primaryMenu.map(item=>({label:item.label,href:sanitizedPages.find(page=>page.id===item.pageId)?.path || '/',children:item.children.map(child=>({label:child.label,href:sanitizedPages.find(page=>page.id===child.pageId)?.path || '/'}))}))
+          const chromeInput={businessName:brief.businessName,description:brief.description,email:presence.contact.email,phone:presence.contact.phone,address:presence.contact.addressLine1,items}
+          composed.globalComponents.header={componentId:selectedTemplate.header,componentVersion:'1.0.0',props:templateChromeProps(selectedTemplate.header,chromeInput)}
+          composed.globalComponents.footer={componentId:selectedTemplate.footer,componentVersion:'1.0.0',props:templateChromeProps(selectedTemplate.footer,chromeInput)}
+        }
 
-          // Reject structural problems before spending time generating imagery.
-          const base = normalizeSiteHeadings(alignTemplateServiceCards(ensureContactPageLayout(ensureServiceDetailPages(composed))))
-          const completed = provider.name === 'openai' ? await enrichServiceDetailPages(projectId,base) : base
-          const structure = validateWebsiteModel(completed)
-          if (!structure.valid) {
-            throw new Error(structure.issues.filter((issue) => issue.level === 'error').map((issue) => issue.message).join('; '))
-          }
-          const fingerprint = buildFingerprint(completed)
+        // Reject structural problems before spending time generating imagery.
+        const structure = validateWebsiteModel(composed)
+        if (!structure.valid) {
+          throw new Error(structure.issues.filter((issue) => issue.level === 'error').map((issue) => issue.message).join('; '))
+        }
+        const fingerprint = buildFingerprint(composed)
 
-          await prisma.brandProfile.update({
-            where: { projectId },
-            data: { fingerprint: toJson(fingerprint) },
-          })
+        await prisma.brandProfile.update({
+          where: { projectId },
+          data: { fingerprint: toJson(fingerprint) },
+        })
 
-          return { output: toJson({ fingerprint, model: completed }), result: completed }
-        },
-      )
+        return { output: toJson({ fingerprint, model: composed }), result: composed }
+      },
+    )
 
-    return composedModel
-    })()
-
-    const modelWithImages = mode === 'content' ? model : await runStage<WebsiteModel>(
+    const modelWithImages = await runStage<WebsiteModel>(
       projectId,
       correlationId,
       GenerationStage.IMAGES,
@@ -646,66 +687,47 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
       async () => {
         const storage = getStorage()
         const project = await prisma.project.findUniqueOrThrow({ where: { id: projectId } })
-        const imageSource = createHash('sha256').update(JSON.stringify(model)).digest('hex')
-        const checkpoint = await prisma.generationJob.findFirst({where:{projectId,correlationId,stage:GenerationStage.IMAGES},select:{output:true}})
-        const savedImages = checkpoint?.output as { imageSource?:string; model?:unknown; completed?:number; generated?:number } | null
-        const resumingImages = Boolean(savedImages?.model) && (savedImages?.imageSource === imageSource || mode === 'full')
-        const filled = resumingImages ? websiteModelSchema.parse(savedImages!.model) : structuredClone(model)
-        if (mode === 'full') {
-          // Reuse the saved brand logo across reruns; an uploaded logo always wins.
-          let brand = await prisma.brandProfile.findUnique({ where: { projectId }, include: { logo: true } })
-          let logo = brand?.logo
-          if (!logo) {
-            logo = await prisma.asset.findFirst({
-              where: { projectId, kind: AssetKind.LOGO, source: AssetSource.UPLOAD },
-              orderBy: { createdAt: 'desc' },
-            })
-          }
-          if (!logo) {
-            const prompt = [
-              `Create an original, professional business logo for ${JSON.stringify(brief.businessName)}.`,
-              `The exact business name is ${JSON.stringify(brief.businessName)}; spell it accurately and include no other text.`,
-              `Business context: ${brief.industry ?? brief.description}.`,
-              `Use these brand colours: ${JSON.stringify(filled.tokens.palette)}.`,
-              'Simple flat design, clear readable lettering, generous margins, suitable for a small website header. No mockup, photo, watermark or extra tagline.',
-            ].join(' ')
-            const { data: image } = await provider.generateImage(prompt, '16:9', 'brand:logo', brief.businessName)
-            const extension = image.contentType === 'image/png' ? 'png' : 'svg'
-            const stored = await storage.put(assetKey(project.workspaceId, projectId, `logo.${extension}`), image.data, image.contentType)
-            logo = await prisma.asset.create({
-              data: {
-                workspaceId: project.workspaceId, projectId, kind: AssetKind.LOGO,
-                source: AssetSource.AI_GENERATED, storageKey: stored.key, url: stored.url,
-                mimeType: stored.contentType, bytes: stored.bytes, altText: brief.businessName, prompt,
-              },
-            })
-          }
-          await prisma.brandProfile.upsert({
-            where: { projectId },
-            create: { projectId, logoAssetId: logo.id },
-            update: {},
+        const filled = structuredClone(model)
+        // Reuse the saved brand logo across reruns; an uploaded logo always wins.
+        let brand = await prisma.brandProfile.findUnique({ where: { projectId }, include: { logo: true } })
+        let logo = brand?.logo
+        if (!logo) {
+          logo = await prisma.asset.findFirst({
+            where: { projectId, kind: AssetKind.LOGO, source: AssetSource.UPLOAD },
+            orderBy: { createdAt: 'desc' },
           })
-          // Do not overwrite a logo uploaded while the image request was running.
-          await prisma.brandProfile.updateMany({
-            where: { projectId, logoAssetId: null }, data: { logoAssetId: logo.id },
+        }
+        if (!logo) {
+          const prompt = [
+            `Create an original, professional business logo for ${JSON.stringify(brief.businessName)}.`,
+            `The exact business name is ${JSON.stringify(brief.businessName)}; spell it accurately and include no other text.`,
+            `Business context: ${brief.industry ?? brief.description}.`,
+            `Use these brand colours: ${JSON.stringify(filled.tokens.palette)}.`,
+            'Simple flat design, clear readable lettering, generous margins, suitable for a small website header. No mockup, photo, watermark or extra tagline.',
+          ].join(' ')
+          const { data: image } = await provider.generateImage(prompt, '16:9', 'brand:logo', brief.businessName)
+          const extension = image.contentType === 'image/png' ? 'png' : 'svg'
+          const stored = await storage.put(assetKey(project.workspaceId, projectId, `logo.${extension}`), image.data, image.contentType)
+          logo = await prisma.asset.create({
+            data: {
+              workspaceId: project.workspaceId, projectId, kind: AssetKind.LOGO,
+              source: AssetSource.AI_GENERATED, storageKey: stored.key, url: stored.url,
+              mimeType: stored.contentType, bytes: stored.bytes, altText: brief.businessName, prompt,
+            },
           })
-          brand = await prisma.brandProfile.findUnique({ where: { projectId }, include: { logo: true } })
-          filled.globalComponents.header.props.logoImageUrl = brand?.logo?.url ?? logo.url
-          filled.globalComponents.header.props.logoText = brief.businessName
         }
-        const generatedUrls = new Set<string>()
-        if (['images','content-images'].includes(mode) && !resumingImages) {
-          const generatedAssets = await prisma.asset.findMany({where:{projectId,kind:AssetKind.IMAGE,source:AssetSource.AI_GENERATED},select:{url:true}})
-          generatedAssets.forEach(asset=>generatedUrls.add(asset.url))
-          const clearGenerated = (value: unknown): void => {
-            if (!value || typeof value !== 'object') return
-            for (const [key, item] of Object.entries(value)) {
-              if (typeof item === 'string' && generatedUrls.has(item)) (value as Record<string,unknown>)[key] = ''
-              else clearGenerated(item)
-            }
-          }
-          for (const page of filled.pages) for (const section of page.sections) clearGenerated(section.props)
-        }
+        await prisma.brandProfile.upsert({
+          where: { projectId },
+          create: { projectId, logoAssetId: logo.id },
+          update: {},
+        })
+        // Do not overwrite a logo uploaded while the image request was running.
+        await prisma.brandProfile.updateMany({
+          where: { projectId, logoAssetId: null }, data: { logoAssetId: logo.id },
+        })
+        brand = await prisma.brandProfile.findUnique({ where: { projectId }, include: { logo: true } })
+        filled.globalComponents.header.props.logoImageUrl = brand?.logo?.url ?? logo.url
+        filled.globalComponents.header.props.logoText = brief.businessName
         const slots = collectImageSlots(filled)
 
         const resolve = (slot: string): Record<string, unknown> | undefined => {
@@ -717,10 +739,12 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
         }
 
         /// Images the user uploaded are always preferred over generated ones.
-        const uploads = mode === 'full' ? [...brief.uploadedImageUrls] : []
+        const uploads = [...(brief.uploadedPhotos ?? brief.uploadedImageUrls.map(url => ({ url, purpose: 'other', description: '' })))]
         const pending: ImageSlotRequest[] = []
 
-        for (const slot of slots) {
+        // Assign personal photos to story/team slots before general imagery consumes them.
+        const orderedSlots = [...slots].sort((a, b) => Number(['ABOUT', 'TEAM'].includes(b.family)) - Number(['ABOUT', 'TEAM'].includes(a.family)))
+        for (const slot of orderedSlots) {
           const props = resolve(slot.slot)
           const pointer = slot.slot.split(':')[2]
 
@@ -728,69 +752,78 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
             continue
           }
 
-          const upload = uploads.shift()
+          const preferredPurpose = ['ABOUT', 'TEAM'].includes(slot.family) ? 'personal' : slot.family === 'SERVICES' ? 'product' : slot.family === 'GALLERY' ? 'work' : 'other'
+          const preferredIndex = uploads.findIndex(photo => photo.purpose === preferredPurpose)
+          const upload = uploads.splice(preferredIndex < 0 ? 0 : preferredIndex, 1)[0]
 
           if (upload) {
-            setByPointer(props, pointer, upload)
+            setByPointer(props, pointer, upload.url)
+            if (pointer.endsWith('/imageUrl')) setByPointer(props, pointer.replace(/\/imageUrl$/, '/imageAlt'), upload.description)
+            if (pointer.endsWith('/url')) setByPointer(props, pointer.replace(/\/url$/, '/alt'), upload.description)
             continue
           }
 
+          if (brief.intakeMedia?.imageMode === 'upload') {
+            const photo = brief.uploadedPhotos?.[orderedSlots.indexOf(slot) % brief.uploadedImageUrls.length]
+            const url = photo?.url ?? brief.uploadedImageUrls[0]
+            if (!url) throw new Error('Upload at least one photo before generating a photos-only website.')
+            setByPointer(props, pointer, url)
+            if (pointer.endsWith('/imageUrl')) setByPointer(props, pointer.replace(/\/imageUrl$/, '/imageAlt'), photo?.description ?? '')
+            continue
+          }
           pending.push(slot)
         }
 
-        // Every visible image slot is part of the layout contract. Batch the
-        // planning request instead of silently dropping slots after ten images.
+        const planned = prioritizeImageSlots(pending, MAX_GENERATED_IMAGES)
+        const plan = planned.length && brief.intakeMedia?.imageMode !== 'upload'
+          ? (await provider.planImages(brief, filled, planned)).data
+          : { images: [] }
         let generated = 0
-        const previouslyCompleted = resumingImages ? (savedImages?.completed ?? savedImages?.generated ?? 0) : 0
-        const totalImages = previouslyCompleted + pending.length
-        await prisma.generationJob.updateMany({where:{projectId,correlationId,stage:GenerationStage.IMAGES,status:JobStatus.RUNNING},data:{output:toJson({imageSource,model:filled,completed:previouslyCompleted,total:totalImages,unit:'images',generated:previouslyCompleted})}})
-        for (let offset = 0; offset < pending.length; offset += IMAGE_PLAN_BATCH_SIZE) {
-          const planned = pending.slice(offset, offset + IMAGE_PLAN_BATCH_SIZE)
-          const { data: plan } = await provider.planImages(brief, filled, planned)
-          for (const image of plan.images) {
-            const props = resolve(image.slot)
-            const [, sectionId, pointer] = image.slot.split(':')
 
-            if (!props || !pointer || !sectionId) {
-              continue
-            }
+        for (const image of plan.images) {
+          const props = resolve(image.slot)
+          const [, sectionId, pointer] = image.slot.split(':')
 
-            const { data: generatedImage } = await provider.generateImage(
-              `${image.prompt}\n${imageDirectionPrompt(imageDirection, brief.location)}`,
-              image.aspectRatio,
-              image.slot,
-              image.alt,
-            )
-            const extension = generatedImage.contentType === 'image/png' ? 'png' : 'svg'
-            const key = assetKey(project.workspaceId, projectId, `${sectionId}-${randomUUID()}.${extension}`)
-            const stored = await storage.put(key, generatedImage.data, generatedImage.contentType)
-
-            await prisma.asset.create({
-              data: {
-                workspaceId: project.workspaceId,
-                projectId,
-                kind: AssetKind.IMAGE,
-                source: AssetSource.AI_GENERATED,
-                storageKey: stored.key,
-                url: stored.url,
-                mimeType: stored.contentType,
-                bytes: stored.bytes,
-                altText: generatedImage.alt,
-                prompt: generatedImage.prompt,
-              },
-            })
-
-            setByPointer(props, pointer, stored.url)
-            generated += 1
-            await prisma.generationJob.updateMany({where:{projectId,correlationId,stage:GenerationStage.IMAGES,status:JobStatus.RUNNING},data:{output:toJson({imageSource,model:filled,generated:previouslyCompleted+generated,completed:previouslyCompleted+generated,total:totalImages,unit:'images'})}})
-            console.info(`Website images: ${generated}/${pending.length} completed (${sectionId})`)
+          if (!props || !pointer || !sectionId) {
+            continue
           }
-        }
-        const missing = collectImageSlots(filled)
-        if (missing.length) throw new Error(`Image generation left ${missing.length} required layout slots empty. Retry the image stage to complete them.`)
 
+          const { data: generatedImage } = await provider.generateImage(
+            image.prompt,
+            image.aspectRatio,
+            image.slot,
+            image.alt,
+          )
+          const extension = generatedImage.contentType === 'image/png' ? 'png' : 'svg'
+          const key = assetKey(project.workspaceId, projectId, `${sectionId}-${generated}.${extension}`)
+          const stored = await storage.put(key, generatedImage.data, generatedImage.contentType)
+
+          await prisma.asset.create({
+            data: {
+              workspaceId: project.workspaceId,
+              projectId,
+              kind: AssetKind.IMAGE,
+              source: AssetSource.AI_GENERATED,
+              storageKey: stored.key,
+              url: stored.url,
+              mimeType: stored.contentType,
+              bytes: stored.bytes,
+              altText: generatedImage.alt,
+              prompt: generatedImage.prompt,
+            },
+          })
+
+          setByPointer(props, pointer, stored.url)
+          if (pointer.endsWith('/imageUrl')) setByPointer(props, pointer.replace(/\/imageUrl$/, '/imageAlt'), generatedImage.alt)
+          generated += 1
+        }
+
+        if (brief.intakeMedia?.videos.length) {
+          const homepage = filled.pages.find(page => page.path === '/')
+          if (homepage) homepage.sections.push({ id: `intake-videos-${projectId}`, componentId: 'IntakeVideos', componentVersion: '1.0.0', hidden: false, props: { heading: 'Our videos', videos: brief.intakeMedia.videos } })
+        }
         return {
-          output: toJson({ completed:totalImages,total:totalImages,unit:'images',imageSource, slots: slots.length, reused: brief.uploadedImageUrls.length, generated, model: filled }),
+          output: toJson({ slots: slots.length, reused: brief.uploadedImageUrls.length, generated, model: filled }),
           result: filled,
         }
       },
@@ -809,12 +842,13 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
         }
 
         const homepage = modelWithImages.pages.find((page) => page.path === '/')
+        const designSections = homepage?.sections.filter(section => section.componentId !== 'IntakeVideos') ?? []
         const [minSections, maxSections] = brief.homepageLength === 'expanded' ? [5, 6] : [3, 4]
-        if (mode === 'full' && (!homepage || !brief.templateId && (homepage.sections.length < minSections! || homepage.sections.length > maxSections!))) {
+        if (!homepage || !brief.templateId && (designSections.length < minSections! || designSections.length > maxSections!)) {
           throw new Error(`Homepage must contain ${minSections}–${maxSections} sections for the selected length`)
         }
-        if(mode === 'full' && brief.templateId && homepage!.sections.map(section=>section.componentId).join(',')!==templatePageComponents(brief.templateId,'/').join(','))throw new Error('Generated sections do not match the selected layout.')
-        for (const page of modelWithImages.pages.filter((entry) => mode === 'full' && entry.pageType === 'SERVICE')) {
+        if(brief.templateId && designSections.map(section=>section.componentId).join(',')!==templatePageComponents(brief.templateId,'/').join(','))throw new Error('Generated sections do not match the selected layout.')
+        for (const page of modelWithImages.pages.filter((entry) => entry.pageType === 'SERVICE')) {
           if (!page.sections.some((section) => typeof section.props.imageUrl === 'string' && section.props.imageUrl.trim())) {
             throw new Error(`Service page ${page.path} is missing its required image`)
           }
@@ -843,7 +877,7 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
             kind: WebsiteVersionKind.DRAFT,
             model: toJson(modelWithImages),
             schemaVersion: WEBSITE_MODEL_SCHEMA_VERSION,
-            note: `AI generation: ${mode}`,
+            note: rerun ? 'AI rerun: full website' : 'Initial AI generation',
           },
         })
 
@@ -883,6 +917,23 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
 
 /// Re-runs a single failed stage onwards. Used by the "retry" action in the UI.
 export async function retryGeneration(projectId: string, correlationId: string): Promise<void> {
-  const contentJob = await prisma.contentJob.findFirst({where:{id:correlationId,projectId},select:{id:true}})
-  await runGeneration({ projectId, correlationId, ...(contentJob ? {contentJobId:contentJob.id} : {}) })
+  await prisma.generationJob.deleteMany({
+    where: { projectId, correlationId, status: { in: [JobStatus.FAILED, JobStatus.CANCELLED] } },
+  })
+
+  const completed = await prisma.generationJob.findMany({
+    where: { projectId, correlationId, status: JobStatus.SUCCEEDED },
+  })
+
+  /// Stages are cheap enough to redo from the first incomplete one, which keeps
+  /// resume logic simple and always consistent.
+  const firstIncomplete = generationStages.find(
+    (descriptor) => !completed.some((job) => job.stage === descriptor.stage),
+  )
+
+  if (firstIncomplete) {
+    await prisma.generationJob.deleteMany({ where: { projectId, correlationId } })
+  }
+
+  await runGeneration({ projectId, correlationId })
 }

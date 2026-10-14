@@ -122,3 +122,9 @@ npm run lint
 npm run build
 npm run db:studio
 ```
+
+Production builds use one workspace task at a time, Webpack's memory
+optimizations, and one Next.js page-generation worker. The web build caps its
+JavaScript heap at 1536 MB; this is not a cap on total process or server memory.
+Type checking remains enabled. `npm run typecheck` also runs sequentially to
+avoid competing TypeScript processes on small servers.

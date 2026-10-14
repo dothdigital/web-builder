@@ -1,6 +1,7 @@
 // Full generation uses disposable records, stub AI and local storage only.
 require('dotenv').config({ path: require('node:path').resolve(__dirname, '../.env'), quiet: true })
 process.env.AI_PROVIDER = 'stub'
+process.env.NEXT_PUBLIC_ENABLE_LAYOUT_TEMPLATES = 'true'
 process.env.S3_BUCKET = ''
 process.env.LOCAL_UPLOAD_DIR = '/tmp/webtummy-layout-validation/uploads'
 const assert = require('node:assert/strict')
@@ -72,8 +73,8 @@ async function main() {
       }
       const html = renderToStaticMarkup(React.createElement(SiteRenderer, { model, page, baseUrl: '', forms: { projectId: 'test', action: 'https://webtummy.com/api/leads/test' } }))
       const doc = new JSDOM(html).window.document
-      assert.doesNotMatch(doc.body.textContent, /webtummy-insurance|webtummy-business|elevate your business|john doe|david smith|\$\s?\d/i, `${template.id} ${page.path}: demo copy leaked`)
-      for (const anchor of doc.querySelectorAll('a[href]')) assert.doesNotMatch(anchor.getAttribute('href'), /\.html|Webtummy|webtummy|Webtummy/i)
+      assert.doesNotMatch(doc.body.textContent, /insurigo|finbiz|elevate your business|john doe|david smith|\$\s?\d/i, `${template.id} ${page.path}: demo copy leaked`)
+      for (const anchor of doc.querySelectorAll('a[href]')) assert.doesNotMatch(anchor.getAttribute('href'), /\.html|themeforest|rstheme|reactheme/i)
       for (const image of doc.querySelectorAll('img[src]')) assert.doesNotMatch(image.getAttribute('src'), /\/testimonials\/.*logo|award-logo|\/faq\/logo|\/logo\/logo|\/user\//i, `${template.id}: demo logo or staff image leaked`)
       if (page.path === '/contact') assert.ok(doc.querySelector('form'), `${template.id}: contact form present`)
       await fs.mkdir(path.join(output, template.id, page.path), { recursive: true })

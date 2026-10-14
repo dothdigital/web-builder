@@ -1,0 +1,122 @@
+.swiper {
+    width: 100%;
+    height: 100%;
+  }
+
+  .swiper-slide {
+    text-align: center;
+    font-size: 18px;
+    background: #fff;
+
+    /* Center slide text vertically */
+    display: -webkit-box;
+    display: -ms-flexbox;
+    display: -webkit-flex;
+    display: flex;
+    -webkit-box-pack: center;
+    -ms-flex-pack: center;
+    -webkit-justify-content: center;
+    justify-content: center;
+    -webkit-box-align: center;
+    -ms-flex-align: center;
+    -webkit-align-items: center;
+    align-items: center;
+  }
+
+  .swiper-slide img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+
+
+
+.banner-one{
+    .swiper-wrapper{
+        .swiper-slide{
+            background-image: url(../images/banner/banner-01.jpg);
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center;
+            &.two{
+              background-image: url(../images/banner/banner-02.jpg);
+            }
+            &.three{
+              background-image: url(../images/banner/banner-03.jpg);
+            }
+        }
+    }
+}
+
+
+
+.offwrap {
+  cursor: url(../images/banner/shape/close.png), auto;
+  width: 100%;
+  left: 100%;
+  transition: all 0.8s ease-out 0s;
+  position: fixed;
+  background: #fff;
+  height: 100vh;
+  top: 0;
+  bottom: 0;
+  opacity: .6;
+  z-index: 222;
+}
+
+
+.swiper.mySwiperh2_Service.swiper-initialized.swiper-horizontal.swiper-pointer-events.swiper-backface-hidden {
+  padding-bottom: 62px;
+}
+
+.mySwiperh2_Business_Cases{
+  .swiper-slide{
+    border-radius: 20px;
+  }
+}
+
+.mySwiperh2_clients{
+  .swiper-slide{
+    border-radius: 20px;
+  }
+}
+.mySwiperh3_business-case{
+  .swiper-slide{
+    border-radius: 20px;
+  }
+}
+.mySwiperh1_team{
+  .swiper-slide{
+    border-radius: 20px;
+    padding-top: 20px;
+    background: transparent;
+  }
+}
+.mySwiperh1_blog{
+  .swiper-slide{
+    background: transparent;
+    text-align: left;
+   
+  }
+}
+.mySwiperh2_banner{
+  .swiper-slide{
+    background: transparent;
+  }
+}
+
+
+.mySwiperh3_team{
+  padding-bottom: 109px;
+  @media #{$large-mobile} {
+    padding-bottom: 30px;
+  }
+}
+
+.mySwiperh2_Business_Cases{
+  .swiper-slide{
+    background: transparent;
+  }
+}

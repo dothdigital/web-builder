@@ -7,15 +7,17 @@ import { revalidatePath } from 'next/cache'
 import { CollectionType, ProjectStatus, WorkspaceRole, prisma } from '@awb/database'
 import { createAiProvider } from '@awb/ai'
 import { submitContentJob } from '@/lib/content-jobs'
-import { generationOptionsSchema, type GenerationOptions, slugify } from '@awb/shared'
+import { slugify } from '@awb/shared'
+import { intakeMediaSchema, type IntakeMedia } from '@awb/shared/intake-media'
 import { designReferenceSchema } from '@awb/shared/design-reference'
 import { isLayoutId } from '@awb/shared/layout-catalogue'
 import { designTokensSchema, type DesignTokens } from '@awb/website-model'
 import { z } from 'zod'
+import { rerunRequestSchema, type RerunRequest } from '@awb/shared/rerun-request'
 import { primaryWorkspace, requireProject, requireUser } from '@/lib/tenancy'
 
 const briefSchema = z.object({
-  templateId: z.string().refine(isLayoutId, 'Choose an available layout').optional(),
+  templateId: z.string().refine(value => process.env.NEXT_PUBLIC_ENABLE_LAYOUT_TEMPLATES === 'true' && isLayoutId(value), 'Template selection is temporarily unavailable. Use the default design option.').optional(),
   designReference: designReferenceSchema.optional(),
   homepageSections: z.array(z.enum(['About us / Who we are', 'Service areas', 'Our methodology / Approach', 'Why choose us'])).max(4).default([]),
   homepageLength: z.enum(['compact', 'expanded']).default('expanded'),
@@ -209,10 +211,16 @@ export async function saveBrandColors(projectId: string, tokens: DesignTokens, l
   })
 }
 
-export async function startGeneration(projectId: string, options?: Partial<GenerationOptions>): Promise<{ correlationId: string; mode: string }> {
+export async function startGeneration(projectId: string, rawRerun?: RerunRequest): Promise<{ correlationId: string; mode: string }> {
   const { project } = await requireProject(projectId, WorkspaceRole.EDITOR)
-  const generationOptions = generationOptionsSchema.parse(options ?? {})
-  if (generationOptions.mode !== 'full' && !await prisma.websiteVersion.findFirst({ where: { projectId, kind: 'DRAFT' }, select: { id: true } })) throw new Error('Create a website draft before using a partial rerun.')
+  const rerun = rawRerun === undefined ? undefined : rerunRequestSchema.parse(rawRerun)
+  const baseVersion = rerun ? await prisma.websiteVersion.findFirst({ where: { projectId, kind: 'DRAFT' }, orderBy: { version: 'desc' }, select: { id: true } }) : null
+  if (rerun && rerun.scope !== 'FULL' && !baseVersion) throw new Error('Build this website first, or choose a full website rebuild.')
+  if (rerun) {
+    const ids = [...rerun.imageAssetIds, ...(rerun.logoAssetId ? [rerun.logoAssetId] : [])]
+    const assets = await prisma.asset.findMany({ where: { projectId, source: 'UPLOAD', id: { in: ids } }, select: { id: true, kind: true } })
+    if (rerun.imageAssetIds.some(id => !assets.some(asset => asset.id === id && asset.kind === 'IMAGE')) || rerun.logoAssetId && !assets.some(asset => asset.id === rerun.logoAssetId && asset.kind === 'LOGO')) throw new Error('One of your uploads is unavailable. Upload it again.')
+  }
   // Validate configuration before reserving the project for a background run.
   createAiProvider()
   const claimed = await prisma.project.updateMany({
@@ -224,7 +232,7 @@ export async function startGeneration(projectId: string, options?: Partial<Gener
   }
 
   try {
-    const job = await submitContentJob(projectId, 'WEBSITE', generationOptions)
+    const job = await submitContentJob(projectId, 'WEBSITE', rerun ? { rerun, baseVersionId: baseVersion?.id } : {})
     const result = { correlationId: job.jobId, mode: 'queue' }
     revalidatePath('/dashboard')
     revalidatePath(`/projects/${projectId}`)
@@ -236,4 +244,15 @@ export async function startGeneration(projectId: string, options?: Partial<Gener
     })
     throw error
   }
+}
+
+export async function saveIntakeMedia(projectId: string, input: IntakeMedia): Promise<void> {
+  await requireProject(projectId, WorkspaceRole.EDITOR)
+  const media = intakeMediaSchema.parse(input)
+  const assets = await prisma.asset.findMany({ where: { projectId, id: { in: media.photos.map(photo => photo.assetId) }, kind: 'IMAGE', source: 'UPLOAD' } })
+  if (media.photos.some(photo => !assets.some(asset => asset.id === photo.assetId))) throw new Error('One of your photos is no longer available. Upload it again.')
+  await prisma.$transaction([
+    prisma.project.update({ where: { id: projectId }, data: { intakeMedia: media } }),
+    ...media.photos.map(photo => prisma.asset.update({ where: { id: photo.assetId }, data: { altText: photo.description } })),
+  ])
 }

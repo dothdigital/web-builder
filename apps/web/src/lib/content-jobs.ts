@@ -18,7 +18,6 @@ export async function submitContentJob(projectId: string, kind: 'COVER' | 'PATCH
     const model = websiteModelSchema.parse(input.model)
     if (kind === 'CREATE') {
       const request = contentRequestSchema.parse(input.request)
-      if (request.kind === 'blog' && !request.coverImageUrl) throw new Error('Choose a blog cover image first.')
       validateContentRequest(model, request)
       title = `${request.kind === 'blog' ? 'Blog' : 'Page'}: ${request.topic}`
     } else {

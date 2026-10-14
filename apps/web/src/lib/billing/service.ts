@@ -24,7 +24,7 @@ export async function checkout(workspaceId: string, priceId: string, email: stri
     if (workspace.status !== 'ACTIVE') throw new Error('This workspace is suspended. Contact support.')
     const price = await tx.billingPrice.findUnique({ where: { id: priceId }, include: { plan: true } })
     if (!price?.active || !price.plan.active || price.plan.slug !== INDIVIDUAL_PLAN_SLUG || price.amount !== individualPriceFilter.amount || price.currency !== individualPriceFilter.currency || price.interval !== individualPriceFilter.interval) throw new Error('This plan is not available for purchase.')
-    if (await tx.project.count({ where: { workspaceId } }) > price.plan.websiteLimit) throw new Error('This plan has fewer websites than your workspace uses.')
+    const quantity = Math.max(1, workspace.billingWebsiteQuantity, await tx.project.count({ where: { workspaceId } }))
     let customer = workspace.stripeCustomerId
     if (!customer) {
       const created = await stripe.customers.create({ email, name: workspace.name, metadata: { workspaceId } }, { idempotencyKey: `workspace-customer-${workspaceId}` })
@@ -47,7 +47,7 @@ export async function checkout(workspaceId: string, priceId: string, email: stri
     if (workspace.checkoutSessionId && workspace.checkoutExpiresAt && workspace.checkoutExpiresAt > new Date()) {
       const pending = await stripe.checkout.sessions.retrieve(workspace.checkoutSessionId)
       if (pending.status === 'open' && pending.url) {
-        if (pending.metadata?.priceId === price.id && pending.allow_promotion_codes && pending.metadata?.trialPolicy === '7-days-v1' && (pending.metadata.trialGranted !== 'true' || trialEligible)) return pending.url
+        if (pending.metadata?.priceId === price.id && Number(pending.metadata.websiteQuantity ?? 1) === quantity && pending.allow_promotion_codes && pending.metadata?.trialPolicy === '7-days-v1' && (pending.metadata.trialGranted !== 'true' || trialEligible)) return pending.url
         await stripe.checkout.sessions.expire(pending.id)
         expiredTrialCheckout = pending.metadata?.trialGranted === 'true'
       }
@@ -58,8 +58,8 @@ export async function checkout(workspaceId: string, priceId: string, email: stri
       }
     }
     if (trialEligible && buyer.billingTrialReservedUntil && buyer.billingTrialReservedUntil > new Date() && !expiredTrialCheckout) throw new Error('Your free-trial checkout is already open. Complete it or wait until it expires before starting another.')
-    const trialGranted = trialEligible && (expiredTrialCheckout || !buyer.billingTrialReservedUntil || buyer.billingTrialReservedUntil <= new Date())
-    const session = await stripe.checkout.sessions.create({ mode: 'subscription', allow_promotion_codes: true, payment_method_collection: 'always', payment_method_types: ['card'], custom_text: { submit: { message: trialGranted ? '7 days free, then US$29 per month. Your card is collected today and automatically charged when the trial ends unless you cancel beforehand. One trial per customer.' : 'US$29 per month. Payment is required to reactivate. Previous trial customers do not receive another free trial. Cancel renewal anytime through Plans & billing.' } }, customer, client_reference_id: workspaceId, line_items: [{ price: price.stripePriceId, quantity: 1 }], success_url: `${appUrl()}/billing?checkout=success`, cancel_url: `${appUrl()}/billing?checkout=cancelled`, expires_at: Math.floor(Date.now() / 1000) + 1800, metadata: { workspaceId, priceId: price.id, trialPolicy: '7-days-v1', trialGranted: String(trialGranted) }, subscription_data: { metadata: { workspaceId }, ...(trialGranted ? { trial_period_days: TRIAL_DAYS, trial_settings: { end_behavior: { missing_payment_method: 'cancel' as const } } } : {}) }, billing_address_collection: 'auto' })
+    const trialGranted = quantity === 1 && trialEligible && (expiredTrialCheckout || !buyer.billingTrialReservedUntil || buyer.billingTrialReservedUntil <= new Date())
+    const session = await stripe.checkout.sessions.create({ mode: 'subscription', allow_promotion_codes: true, payment_method_collection: 'always', payment_method_types: ['card'], custom_text: { submit: { message: trialGranted ? '7 days free, then US$29 per month. Your card is collected today and automatically charged when the trial ends unless you cancel beforehand. One trial per customer.' : `US$${29 * quantity} per month for ${quantity} website${quantity === 1 ? '' : 's'}, before discounts and tax. Payment is required to reactivate. Previous trial customers do not receive another free trial. Cancel renewal anytime through Plans & billing.` } }, customer, client_reference_id: workspaceId, line_items: [{ price: price.stripePriceId, quantity }], success_url: `${appUrl()}/billing?checkout=success`, cancel_url: `${appUrl()}/billing?checkout=cancelled`, expires_at: Math.floor(Date.now() / 1000) + 1800, metadata: { workspaceId, priceId: price.id, websiteQuantity: String(quantity), trialPolicy: '7-days-v1', trialGranted: String(trialGranted) }, subscription_data: { metadata: { workspaceId }, ...(trialGranted ? { trial_period_days: TRIAL_DAYS, trial_settings: { end_behavior: { missing_payment_method: 'cancel' as const } } } : {}) }, billing_address_collection: 'auto' })
     if (!session.url) throw new Error('Stripe did not create a checkout page. Please try again.')
     await tx.workspace.update({ where: { id: workspaceId }, data: { checkoutSessionId: session.id, checkoutExpiresAt: new Date(session.expires_at * 1000) } })
     if (trialGranted) await tx.user.update({ where: { id: buyer.id }, data: { billingTrialReservedUntil: new Date(session.expires_at * 1000) } })
@@ -75,7 +75,8 @@ export async function billingPortal(workspaceId: string) {
 export function subscriptionState(subscription: Stripe.Subscription, planId: string | null) {
   const periods = subscription.items.data.map(item => item.current_period_end)
   const end = periods.length ? Math.min(...periods) : 0
-  return { stripeSubscriptionId: subscription.id, billingPlanId: planId, billingStatus: planId && subscription.items.data.length === 1 && subscription.items.data[0]!.quantity === 1 ? subscription.status : 'unmapped', billingPeriodEnd: end ? new Date(end * 1000) : null, cancelAtPeriodEnd: subscription.cancel_at_period_end }
+  const quantity = subscription.items.data[0]?.quantity
+  return { stripeSubscriptionId: subscription.id, billingPlanId: planId, billingStatus: planId && subscription.items.data.length === 1 && Number.isSafeInteger(quantity) && quantity! >= 1 ? subscription.status : 'unmapped', billingPeriodEnd: end ? new Date(end * 1000) : null, cancelAtPeriodEnd: subscription.cancel_at_period_end }
 }
 
 const objectId = (value: unknown): string | undefined => typeof value === 'string' ? value : value && typeof value === 'object' && 'id' in value && typeof value.id === 'string' ? value.id : undefined
@@ -112,14 +113,19 @@ export async function syncSubscription(workspaceId: string, subscriptionId: stri
     // Initial failed checkout never grants a grace period. Only previously paid accounts get it.
     const openInvoices = await client.invoices.list({ customer: current.stripeCustomerId!, subscription: subscription.id, status: 'open', limit: 100 })
     if (openInvoices.has_more) throw new Error('Invoice history needs reconciliation before access can be restored')
-    const outstanding = openInvoices.data.filter(item => item.attempted).sort((a, b) => a.created - b.created)[0]
+    // An unpaid optional slot purchase must not restrict already-paid websites.
+    const pendingInvoiceId = subscription.pending_update ? objectId(subscription.latest_invoice) : undefined
+    const outstanding = openInvoices.data.filter(item => item.attempted && item.id !== pendingInvoiceId).sort((a, b) => a.created - b.created)[0]
     if (outstanding && state.billingStatus === 'active') state.billingStatus = 'past_due'
     const recovered = !outstanding && state.billingStatus === 'active' && !!paidThrough && paidThrough > new Date() && invoice?.status === 'paid'
     const trialActive = state.billingStatus === 'trialing' && !!trialEnd && trialEnd > new Date()
     const delinquent = ['past_due', 'unpaid'].includes(state.billingStatus) || subscription.cancellation_details?.reason === 'payment_failed' || state.billingStatus === 'incomplete' && !!invoice?.attempted && invoice.status === 'open'
     const since = recovered ? null : delinquent ? (replacing ? null : current.billingDelinquentSince) ?? new Date((outstanding?.created ?? invoice?.created ?? event?.created ?? Math.floor(Date.now() / 1000)) * 1000) : current.billingDelinquentSince
+    const quantity = subscription.items.data[0]?.quantity ?? 1
+    const confirmedQuantity = state.billingStatus !== 'unmapped' && !subscription.pending_update && (quantity <= current.billingWebsiteQuantity || recovered || trialActive && quantity === 1)
+      ? quantity : replacing ? 1 : current.billingWebsiteQuantity
     const workspace = await tx.workspace.update({ where: { id: workspaceId }, data: {
-      ...state, billingPaidThrough: paidThrough, billingDelinquentSince: since, billingTrialEnd: trialEnd,
+      ...state, billingWebsiteQuantity: confirmedQuantity, billingPaidThrough: paidThrough, billingDelinquentSince: since, billingTrialEnd: trialEnd,
       ...(subscription.trial_start ? { billingTrialUsedAt: current.billingTrialUsedAt ?? new Date(subscription.trial_start * 1000) } : {}),
       billingNextRetryAt: (outstanding ?? invoice)?.next_payment_attempt ? new Date((outstanding ?? invoice)!.next_payment_attempt! * 1000) : null,
       billingCancellationReason: subscription.cancellation_details?.reason ?? null,
@@ -139,7 +145,7 @@ export async function syncSubscription(workspaceId: string, subscriptionId: stri
     await queueBillingNotices(tx, workspace)
     const paidInvoice = event?.type === 'invoice.paid' ? await client.invoices.retrieve((event.data.object as Stripe.Invoice).id) : invoice
     if (paidInvoice && !isTrialInvoice(paidInvoice)) await queuePaymentEmail(tx, workspace, paidInvoice)
-    const audit = await tx.auditEvent.create({ data: { workspaceId, action: 'billing.subscription.sync', targetType: 'Subscription', targetId: subscription.id, metadata: { status: subscription.status, ...(event ? { eventId: event.id } : {}), source: event ? 'webhook' : 'reconciliation' } } })
+    const audit = await tx.auditEvent.create({ data: { workspaceId, action: 'billing.subscription.sync', targetType: 'Subscription', targetId: subscription.id, metadata: { status: subscription.status, websiteQuantity: confirmedQuantity, previousWebsiteQuantity: current.billingWebsiteQuantity, ...(event ? { eventId: event.id } : {}), source: event ? 'webhook' : 'reconciliation' } } })
     if (state.cancelAtPeriodEnd && (!current.cancelAtPeriodEnd || replacing)) await queueSubscriptionEmail(tx, workspace, 'CANCELLATION', audit.id)
     else if (!replacing && current.cancelAtPeriodEnd && !state.cancelAtPeriodEnd && !['canceled', 'incomplete_expired'].includes(subscription.status) && !!state.billingPeriodEnd && state.billingPeriodEnd > new Date()) await queueSubscriptionEmail(tx, workspace, 'RESUMED', audit.id)
     if (recovered && (current.billingPaidThrough || replacing && current.billingTrialUsedAt) && (replacing || !billingLifecycle(current).editing)) await queueSubscriptionEmail(tx, workspace, 'REACTIVATED', audit.id)

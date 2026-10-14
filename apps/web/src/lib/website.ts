@@ -1,6 +1,5 @@
 import { WebsiteVersionKind, prisma } from '@awb/database'
 import { websiteModelSchema, type WebsiteModel } from '@awb/website-model'
-import { ensureServiceDetailPages, ensureContactPageLayout, normalizeSiteHeadings } from '@awb/component-registry'
 
 export async function loadDraftModel(projectId: string): Promise<WebsiteModel | undefined> {
   const version = await prisma.websiteVersion.findFirst({
@@ -14,7 +13,7 @@ export async function loadDraftModel(projectId: string): Promise<WebsiteModel | 
 
   const parsed = websiteModelSchema.safeParse(version.model)
 
-  return parsed.success ? normalizeSiteHeadings(ensureContactPageLayout(ensureServiceDetailPages(parsed.data))) : undefined
+  return parsed.success ? parsed.data : undefined
 }
 
 export async function saveDraftModel(
@@ -22,12 +21,13 @@ export async function saveDraftModel(
   model: WebsiteModel,
   note: string,
   staffActorId?: string,
-): Promise<void> {
+  previewActorId?: string,
+): Promise<{ testLinkQueued: boolean }> {
   const last = await prisma.websiteVersion.findFirst({ where: { projectId }, orderBy: { version: 'desc' } })
 
   /// Every edit produces a new immutable version, so undo and rollback are a
   /// query rather than a diff.
-  await prisma.$transaction(async tx => {
+  return prisma.$transaction(async tx => {
   const saved = await tx.websiteVersion.create({
     data: {
       projectId,
@@ -38,6 +38,11 @@ export async function saveDraftModel(
       note,
     },
   })
+  const queued = previewActorId ? await tx.hostingSite.updateMany({
+    where: { projectId, previewHost: { not: null }, previewStatus: { not: 'SUSPENDED' }, billingGateApplied: false },
+    data: { previewRequestedVersionId: saved.id, previewRequestedById: previewActorId },
+  }) : { count: 0 }
   if (staffActorId) await tx.auditEvent.create({ data: { actorId: staffActorId, projectId, action: 'staff.website.save', targetType: 'WebsiteVersion', targetId: saved.id } })
+  return { testLinkQueued: queued.count > 0 }
   })
 }

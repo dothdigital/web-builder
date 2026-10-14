@@ -16,7 +16,7 @@ target="$releases/$release"
 copy_source() {
   [[ ! -e "$target" ]] || { echo 'Release already exists; use a new ID.'; exit 1; }
   mkdir -p "$target"
-  rsync -a --exclude=.git --exclude=node_modules --exclude=.next --exclude=.turbo --exclude=.env --exclude='.env-*' --exclude=.uploads "$source_root/" "$target/"
+  rsync -a --exclude=.git --exclude=node_modules --exclude=.next --exclude=.turbo --exclude=.env --exclude='.env-*' --exclude='.env.*' --exclude=.uploads "$source_root/" "$target/"
   ln -s "$source_root/.env" "$target/.env"
   ln -s "$source_root/.uploads" "$target/.uploads"
 }
@@ -56,7 +56,8 @@ case "$mode" in
     else
       for candidate_port in 3002 3003; do
         [[ "$candidate_port" != "$current_port" ]] || continue
-        if ! ss -H -ltn "sport = :$candidate_port" | rg -q .; then port="$candidate_port"; break; fi
+        listeners=$(ss -H -ltn "sport = :$candidate_port") || { echo 'Could not inspect candidate ports; live traffic left unchanged.'; exit 1; }
+        if [[ -z "$listeners" ]]; then port="$candidate_port"; break; fi
       done
       [[ -n "${port:-}" ]] || { echo 'Both candidate ports occupied. Retire a previously drained release explicitly; live site left running.'; exit 1; }
       printf 'WEBTUMMY_PORT=%s\n' "$port" > "$target/deploy/runtime.env"
@@ -66,9 +67,10 @@ case "$mode" in
     sudo rsync -a --chmod=D755,F644 "$source_root/apps/web/.next/static/" "$assets/"
     sudo rsync -a --chmod=D755,F644 "$target/apps/web/.next/static/" "$assets/"
     sudo systemctl start "webtummy-web@$release"
+    sudo systemctl is-active --quiet "webtummy-web@$release" || { echo 'Candidate service is not active. Live traffic left unchanged.'; exit 1; }
     ready=false
     for attempt in {1..30}; do
-      if curl --fail --silent --max-time 3 "http://127.0.0.1:$port/api/health" | rg -q '"database":"up"'; then ready=true; break; fi
+      if curl --fail --silent --max-time 3 "http://127.0.0.1:$port/api/health" | grep -qE '"database"[[:space:]]*:[[:space:]]*"up"'; then ready=true; break; fi
       sleep 1
     done
     [[ "$ready" == true ]] || { echo 'Candidate health failed. Live traffic left unchanged.'; exit 1; }
@@ -76,8 +78,12 @@ case "$mode" in
       curl --fail --silent --max-time 10 "http://127.0.0.1:$port$route" -o /dev/null
     done
     switched=false
+    active_release_tmp=''
     restore_proxy() {
       code=$?
+      if [[ -n "$active_release_tmp" ]]; then
+        rm -f -- "$active_release_tmp"
+      fi
       if [[ "$code" != 0 && "$switched" == true ]]; then
         sudo install -m 644 "$target/deploy/proxy-before.conf" "$proxy"
         sudo nginx -t && sudo systemctl reload nginx
@@ -88,6 +94,11 @@ case "$mode" in
     trap restore_proxy EXIT
     trap 'exit 130' INT
     trap 'exit 143' TERM
+    # Stage metadata before changing traffic. Atomic replacement only requires
+    # write permission on the directory, even if the old marker has another owner.
+    active_release_tmp=$(mktemp "$releases/.active-release.XXXXXX")
+    printf '%s\n' "$release" > "$active_release_tmp"
+    chmod 644 "$active_release_tmp"
     sed "s/127.0.0.1:$current_port/127.0.0.1:$port/" "$target/deploy/proxy-before.conf" > "$target/deploy/proxy-next.conf"
     switched=true
     sudo install -m 644 "$target/deploy/proxy-next.conf" "$proxy"
@@ -98,7 +109,8 @@ case "$mode" in
     for route in /api/health /signup /pricing; do
       curl --fail --silent --max-time 15 "https://webtummy.com$route" -o /dev/null
     done
-    printf '%s\n' "$release" > "$releases/active-release"
+    mv -fT -- "$active_release_tmp" "$releases/active-release"
+    active_release_tmp=''
     trap - EXIT
     echo "Traffic now serves $release on $port. Previous version remains running for draining and rollback."
     ;;

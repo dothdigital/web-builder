@@ -1,3 +1,4 @@
+import { BalancedGrid } from '../balanced-grid'
 import { imageSizing } from '../image-sizing'
 import { elementColor, cardColor } from '../element-colors'
 import { z } from 'zod'
@@ -49,17 +50,17 @@ export const servicesLargeNumbers = defineComponent({
   editorFields: servicesEditorFields,
   tokenDeps: ['palette.border', 'typography.headingFamily'],
   fixture,
-  render: ({ props }) => (
+  render: ({ props, context }) => (
     <Section style={{ paddingTop: 'clamp(3rem, 6vw, 6rem)', paddingBottom: 'clamp(3rem, 6vw, 6rem)' }}>
       <Container style={{ display: 'grid', gap: '2.5rem' }}>
         <div style={{ display: 'grid', gap: '0.8rem', maxWidth: '65ch' }}>
           <Heading level={2} style={elementColor(props, '/heading')} data-awb-element={'/heading'}>{props.heading}</Heading>
           {props.intro && <Prose style={{ margin: 0 , ...elementColor(props, '/intro')}} data-awb-element={'/intro'}>{props.intro}</Prose>}
         </div>
-        <ol style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: '1.5rem', listStyle: 'none', margin: 0, padding: 0 }}>
+        <BalancedGrid scope={context.staticRenderScope} as="ol" count={props.items.length} style={{ listStyle: 'none', margin: 0, padding: 0 }}>
           {props.items.map((item, index) => (
-            <li key={item.title} style={{ overflow: 'hidden', borderRadius: '16px', border: '1px solid var(--awb-border)', background: 'var(--awb-bg)', boxShadow: '0 8px 26px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', ...cardColor(props, `/items/${index}`) }} data-awb-element={`/items/${index}`}>
-              {item.imageUrl && <Media sizeStyle={imageSizing(props, `/items/${index}/imageUrl`)} data-awb-element={`/items/${index}/imageUrl`} src={item.imageUrl} alt={item.imageAlt || item.title} ratio="16 / 10" style={{ display: 'block' }} />}
+            <li key={item.title} style={{ overflow: 'hidden', borderRadius: '16px', border: '1px solid var(--awb-border)', background: 'var(--awb-bg)', boxShadow: '0 8px 26px rgba(0,0,0,0.04)', display: props.items.length === 1 && item.imageUrl ? 'grid' : 'flex', gridTemplateColumns: props.items.length === 1 && item.imageUrl ? 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))' : undefined, alignItems: props.items.length === 1 ? 'center' : undefined, flexDirection: 'column', ...cardColor(props, `/items/${index}`) }} data-awb-element={`/items/${index}`}>
+              {item.imageUrl && <Media sizeStyle={imageSizing(props, `/items/${index}/imageUrl`)} data-awb-element={`/items/${index}/imageUrl`} src={item.imageUrl} alt={item.imageAlt || item.title} ratio="16 / 10" style={{ display: 'block', ...(props.items.length === 1 ? { maxHeight: 320, objectFit: 'cover' } : {}) }} />}
               <div style={{ padding: '1.5rem', display: 'grid', gap: '0.85rem', flex: 1 }}>
                 <span style={{ color: 'var(--awb-primary)', fontWeight: 700, fontSize: '0.8rem', letterSpacing: '0.15em' }}>{String(index + 1).padStart(2, '0')}</span>
                 <Heading level={3} style={elementColor(props, `/items/${index}/title`)} data-awb-element={`/items/${index}/title`}>{item.title}</Heading>
@@ -69,7 +70,7 @@ export const servicesLargeNumbers = defineComponent({
               </div>
             </li>
           ))}
-        </ol>
+        </BalancedGrid>
         {props.cta && <div><Cta data-awb-element="/cta" style={elementColor(props, '/cta')} {...props.cta} variant="outline" /></div>}
       </Container>
     </Section>
@@ -96,7 +97,7 @@ export const servicesImageRail = defineComponent({
         </div>
         <div style={{ display: 'grid', gridAutoFlow: 'column', gridAutoColumns: 'minmax(260px, 1fr)', gap: '1.5rem', overflowX: 'auto', paddingBottom: '1rem' }}>
           {props.items.map((item, index) => (
-            <article key={item.title} style={{ display: 'grid', gap: '1rem', ...cardColor(props, `/items/${index}`) }} data-awb-element={`/items/${index}`}>
+            <article key={item.title} style={{ display: 'grid', gap: '1rem', ...cardColor(props, `/items/${index}`, false) }} data-awb-element={`/items/${index}`}>
               <Media sizeStyle={imageSizing(props, `/items/${index}/imageUrl`)} data-awb-element={`/items/${index}/imageUrl`} src={item.imageUrl} alt={item.imageAlt || item.title} ratio="3 / 4" style={{ borderRadius: 'var(--awb-radius)' }} />
               <Heading level={3} style={elementColor(props, `/items/${index}/title`)} data-awb-element={`/items/${index}/title`}>{item.title}</Heading>
               {item.description && <Prose style={{ margin: 0, fontSize: '0.95rem' , ...elementColor(props, `/items/${index}/description`)}} data-awb-element={`/items/${index}/description`}>{item.description}</Prose>}
@@ -131,11 +132,11 @@ export const servicesAlternatingShowcase = defineComponent({
             key={item.title}
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
               gap: '2.5rem',
               alignItems: 'center',
               direction: index % 2 === 1 ? 'rtl' : 'ltr',
-              ...cardColor(props, `/items/${index}`),
+              ...cardColor(props, `/items/${index}`, false),
             }}
            data-awb-element={`/items/${index}`}>
             <div style={{ direction: 'ltr' }}>

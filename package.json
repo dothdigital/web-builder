@@ -8,9 +8,9 @@
   ],
   "scripts": {
     "dev": "turbo run dev",
-    "build": "turbo run build",
+    "build": "turbo run build --concurrency=1",
     "lint": "turbo run lint",
-    "typecheck": "turbo run typecheck",
+    "typecheck": "turbo run typecheck --concurrency=1",
     "db:generate": "npm run db:generate -w @awb/database",
     "db:migrate": "npm run db:migrate -w @awb/database",
     "db:deploy": "npm run db:deploy -w @awb/database",

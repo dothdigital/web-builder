@@ -70,7 +70,7 @@ export async function runBillingSweep() {
     try {
       if (workspace.stripeSubscriptionId && (!workspace.billingLastReconciledAt || Date.now() - workspace.billingLastReconciledAt.getTime() > 30 * 60000 || workspace.billingStatus === 'trialing' && !!workspace.billingTrialEnd && workspace.billingTrialEnd <= new Date() || workspace.cancelAtPeriodEnd && !!workspace.billingPaidThrough && workspace.billingPaidThrough <= new Date())) await syncSubscription(workspace.id, workspace.stripeSubscriptionId)
       await reconcileBillingLifecycle(workspace.id)
-      const sites = await prisma.hostingSite.findMany({ where: { project: { workspaceId: workspace.id }, distributionId: { not: null } }, select: { projectId: true } })
+      const sites = await prisma.hostingSite.findMany({ where: { project: { workspaceId: workspace.id }, OR: [{ distributionId: { not: null } }, { serverId: { not: null } }] }, select: { projectId: true } })
       for (const site of sites) await withHostingLock(site.projectId, () => syncBillingHosting(site.projectId))
       processed++
     } catch { failed++ }

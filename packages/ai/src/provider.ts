@@ -12,7 +12,6 @@ import type { AiTask } from './models'
 import type { DesignReference, ReferenceObservation } from '@awb/shared/design-reference'
 
 export interface GenerationBrief {
-  imageDirection?: import('@awb/shared').ImageDirection
   templateId?: string
   designReference?: DesignReference & { observation?: ReferenceObservation }
   homepageLength?: 'compact' | 'expanded'
@@ -29,6 +28,8 @@ export interface GenerationBrief {
   logoColors: string[]
   /// URLs of images the user uploaded; empty means AI must generate imagery.
   uploadedImageUrls: string[]
+  intakeMedia?: import('@awb/shared/intake-media').IntakeMedia
+  uploadedPhotos?: Array<{ url: string; purpose: string; description: string }>
   testimonials: Array<{ quote: string; author: string; source?: string }>
 }
 

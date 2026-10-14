@@ -29,7 +29,7 @@ export const pageSchema = z.object({
   title: z.string().min(1),
   navLabel: z.string().optional(),
   pageType: z.string().default('CUSTOM'),
-  contentBrief: z.object({ keyword: z.string(), secondaryKeywords: z.string().default(''), audience: z.string(), goal: z.string(), location: z.string().default(''), details: z.string(), internalPaths: z.array(z.string()).default([]) }).optional(),
+  contentBrief: z.object({ includeCoverImage: z.boolean().optional(), imageSubject: z.string().optional(), imageStyle: z.string().optional(), keyword: z.string(), secondaryKeywords: z.string().default(''), audience: z.string(), goal: z.string(), location: z.string().default(''), details: z.string(), internalPaths: z.array(z.string()).default([]) }).optional(),
   h1: z.string().min(1),
   seo: seoSchema,
   sections: z.array(sectionSchema),

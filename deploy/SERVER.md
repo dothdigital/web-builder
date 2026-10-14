@@ -1,5 +1,45 @@
 # Webtummy server deployment
 
+## Current deployment — October 14, 2026
+
+The Webtummy platform now runs on dedicated public IP `16.52.5.28` (private
+address `172.31.10.87`). Cloudflare A records for `webtummy.com` and
+`www.webtummy.com` point to this dedicated IP. SSH uses
+`ubuntu@ec2-16-52-5-28.ca-central-1.compute.amazonaws.com` with the
+Webtummy key. Application URLs remain `https://webtummy.com`.
+
+Source is at `/home/ubuntu/webtummy`. The active web release is
+`website-review-notice-20261013`, served by its systemd unit on loopback port
+3003. The worker runs the `option-images-20261013` release and consumes
+`website-generation` and `website-content`. Both use the matching Node
+22.23.2 runtime at `/usr/local/bin/webtummy-node22`.
+
+PostgreSQL 18 (`webtummy`, port 5433) and Redis (port 6380) are private to the
+new host. All 47 tables and the queue were restored from the final snapshot
+after draining the old runtime. Source, uploads, both deployed releases,
+runtime configuration, TLS certificates and old hashed assets were copied.
+Web, worker, database, Redis, hosting reconciliation and certificate renewal
+are enabled at boot. A 4 GB swap file is configured.
+
+Customer sites continue to use S3 and the existing hosting server
+`15.222.206.98` (`172.31.5.2`). Its agent permits private administration from
+the new platform address on TCP 9090. Customer-site DNS was not changed.
+
+The old platform host (`99.79.22.221`) retains source and database/queue
+files for recovery. Its Webtummy runtime and duplicate certificate renewal
+entries are disabled; Senuke remains running. Cached old-origin requests
+proxy over verified HTTPS to `172.31.10.87`, so the fallback does not depend
+on the upcoming dedicated public IP. The old data is a migration snapshot:
+recovering onto the old host after new writes requires copying current data
+back first.
+
+Migration scripts, final backups and verification records are retained in
+`/home/ubuntu/webtummy-migration` on the old host. Sign-in, dashboard,
+publishing-page rendering, mobile layout, S3 access, authenticated hosting
+connectivity and certificate renewal passed. Exactly one consumer is
+connected to each worker queue. Earlier deployment notes below describe
+the previous setup; use this section and `RELEASES.md` for current operations.
+
 Source checkout: `/home/ubuntu/webtummy` from `dothdigital/web-builder`.
 Webtummy has no application, database, queue, or configuration dependency on Senuke.
 

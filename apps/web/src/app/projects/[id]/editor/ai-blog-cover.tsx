@@ -5,12 +5,12 @@ import { useRouter } from 'next/navigation'
 import { createBlogCover, readContentResult } from '@/app/actions/content-jobs'
 import { LibraryThumbnail } from './inspector'
 
-export function AiBlogCover({ projectId, topic, keyword, details, onUse }: {
-  projectId: string; topic: string; keyword: string; details: string
+export function AiBlogCover({ projectId, topic, keyword, details, onUse, requiredDirection = false, initialDirection = '' }: {
+  requiredDirection?: boolean; initialDirection?: string; projectId: string; topic: string; keyword: string; details: string
   onUse: (url: string, alt: string) => void
 }) {
   const router = useRouter()
-  const [direction, setDirection] = useState('')
+  const [direction, setDirection] = useState(initialDirection)
   const [jobId, setJobId] = useState<string>()
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<{ url: string; alt: string }>()
@@ -45,9 +45,9 @@ export function AiBlogCover({ projectId, topic, keyword, details, onUse }: {
     return () => { cancelled = true; controller.abort(); clearInterval(timer) }
   }, [jobId, projectId, router])
   return <div className="grid gap-2 rounded border border-violet-200 bg-white p-3">
-    <label className="grid gap-1">AI image description (optional)<textarea rows={2} maxLength={1000} value={direction} onChange={(event) => setDirection(event.target.value)} placeholder="For example: a conceptual illustration of a family protecting their future, in blue and gold" className="rounded border p-2" /></label>
+    <label className="grid gap-1">AI image description {requiredDirection ? '(required)' : '(optional)'}<textarea required={requiredDirection} minLength={requiredDirection ? 10 : undefined} rows={2} maxLength={1000} value={direction} onChange={(event) => setDirection(event.target.value)} placeholder="For example: a conceptual illustration of a family protecting their future, in blue and gold" className="rounded border p-2" /></label>
     <p>Uses your blog topic, keyword and brief. Generated images are saved in your project library.</p>
-    <button type="button" disabled={busy || !!jobId || topic.trim().length < 3} className="rounded bg-violet-700 p-2 text-white disabled:opacity-50" onClick={async () => {
+    <button type="button" disabled={busy || !!jobId || topic.trim().length < 3 || (requiredDirection && direction.trim().length < 10)} className="rounded bg-violet-700 p-2 text-white disabled:opacity-50" onClick={async () => {
       setBusy(true); setError(''); setUsed(false)
       try {
         const job = await createBlogCover(projectId, { topic, keyword, details, direction, requestId: crypto.randomUUID() })

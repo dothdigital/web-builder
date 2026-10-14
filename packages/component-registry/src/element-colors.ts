@@ -39,9 +39,9 @@ export function elementColor(props: unknown, path: string): CSSProperties {
 }
 
 // Cards with their own surface should use theme text, not the section overlay text.
-export function cardColor(props: unknown, path: string): CSSProperties {
+export function cardColor(props: unknown, path: string, hasSurface = true): CSSProperties {
   const styles = elementColor(props, path)
-  return { color: 'var(--awb-card-fg, var(--awb-fg))', '--awb-muted': 'var(--awb-card-muted, var(--awb-muted))', ...styles,
+  return { ...(hasSurface || styles.backgroundColor ? { color: 'var(--awb-card-fg, var(--awb-fg))', '--awb-muted': 'var(--awb-card-muted, var(--awb-muted))' } : {}), ...styles,
     ...(styles.color ? { '--awb-muted': styles.color, '--awb-fg': styles.color } : {}),
   } as CSSProperties
 }

@@ -6,6 +6,7 @@ import { validateSectionProps } from '@awb/component-registry'
 import { validateWebsiteModel, websiteModelSchema, type WebsiteModel } from '@awb/website-model'
 import { requireProject } from '@/lib/tenancy'
 import { saveDraftModel } from '@/lib/website'
+import { paidAccess } from '@/lib/billing/access'
 import { submitContentJob } from '@/lib/content-jobs'
 
 function assertRenderable(model: WebsiteModel): void {
@@ -26,13 +27,13 @@ function assertRenderable(model: WebsiteModel): void {
   }
 }
 
-export async function saveModel(projectId: string, model: unknown, note = 'Editor change'): Promise<void> {
-  const { user } = await requireProject(projectId, WorkspaceRole.EDITOR)
+export async function saveModel(projectId: string, model: unknown, note = 'Editor change'): Promise<{ testLinkQueued: boolean }> {
+  const { user, project } = await requireProject(projectId, WorkspaceRole.EDITOR)
 
   const parsed = websiteModelSchema.parse(model)
   assertRenderable(parsed)
 
-  await saveDraftModel(projectId, parsed, note, user.isPlatformAdmin || user.isPlatformSupport ? user.id : undefined)
+  const saved = await saveDraftModel(projectId, parsed, note, user.isPlatformAdmin || user.isPlatformSupport ? user.id : undefined, paidAccess(project.workspace) && (!user.isPlatformSupport || user.isPlatformAdmin) ? user.id : undefined)
   const ready = await prisma.contentJob.findMany({ where: { projectId, status: 'READY', kind: { not: 'WEBSITE' } } })
   for (const job of ready) {
     const output = job.result as Record<string, unknown> | null
@@ -43,6 +44,8 @@ export async function saveModel(projectId: string, model: unknown, note = 'Edito
 
   revalidatePath(`/projects/${projectId}/editor`)
   revalidatePath(`/preview/${projectId}`)
+  revalidatePath('/dashboard')
+  return saved
 }
 
 export async function askAiForSection(projectId: string, input: { model: unknown; pageId: string; sectionId: string; instruction: string }) {
