@@ -30,6 +30,8 @@ async function main() {
   try {
     browser = await chromium.launch({ headless: true, args: ['--no-sandbox', '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'], env: { ...process.env, LD_LIBRARY_PATH: '/tmp/webtummy-browser-libs/root/usr/lib/x86_64-linux-gnu' } })
     const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, permissions: ['microphone'] })
+    // Keep this check focused on the recorded fallback; live streaming has its own browser check.
+    await context.addInitScript(() => { Object.defineProperty(window, 'RTCPeerConnection', { value: undefined, configurable: true }) })
     const candidate = process.env.UI_CHECK_BASE || 'http://127.0.0.1:3002'
     await context.route('https://webtummy.com/**', async route => {
       const response = await route.fetch({ url: route.request().url().replace('https://webtummy.com', candidate), headers: { ...route.request().headers(), host: 'webtummy.com', 'x-forwarded-host': 'webtummy.com', 'x-forwarded-proto': 'https' }, maxRedirects: 0 })
@@ -83,6 +85,15 @@ async function main() {
     await page.getByRole('button', { name: /Ocean blue/ }).click()
     assert.equal(await page.getByRole('button', { name: /Ocean blue/ }).getAttribute('aria-pressed'), 'true')
     await page.getByText('Fine-tune any colour', { exact: true }).waitFor()
+    await page.getByRole('button', { name: 'Continue', exact: true }).click()
+    const uploadPhotos = page.getByRole('button', { name: 'Upload photos', exact: true })
+    await uploadPhotos.waitFor()
+    const chooserPromise = page.waitForEvent('filechooser')
+    await uploadPhotos.click()
+    const chooser = await chooserPromise
+    assert.equal(chooser.isMultiple(), true)
+    await chooser.setFiles([])
+    assert.equal(await page.locator('input[type="file"]:visible').count(), 0, 'Native No file chosen control is hidden')
     await page.setViewportSize({ width: 390, height: 844 })
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), 'Intake has no horizontal overflow on mobile')
     await page.screenshot({ path: '/tmp/webtummy-intake-palettes-mobile.png', fullPage: true })

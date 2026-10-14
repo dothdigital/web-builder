@@ -102,6 +102,7 @@ export function OnboardingWizard({ templatesEnabled = false }: { templatesEnable
   const [logoPreview, setLogoPreview] = useState<string>()
   const [localLogoPreview, setLocalLogoPreview] = useState<string>()
   const logoInput = useRef<HTMLInputElement>(null)
+  const photosInput = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     return () => {
@@ -351,7 +352,7 @@ export function OnboardingWizard({ templatesEnabled = false }: { templatesEnable
 
       {step.key === 'brief' && (
         <div className="mt-8 grid gap-4 rounded-lg border border-neutral-200 bg-white p-6">
-          <Field label="Business name" onVoiceText={setBusinessName}>
+          <Field label="Business name">
             <input className={inputClass} value={businessName} onChange={(event) => setBusinessName(event.target.value)} />
           </Field>
           <Field label="What does the business do?" hint="A few sentences. This drives the whole site." onVoiceText={text => setDescription(current => [current, text].filter(Boolean).join('\n\n'))}>
@@ -363,10 +364,10 @@ export function OnboardingWizard({ templatesEnabled = false }: { templatesEnable
             />
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Industry" onVoiceText={setIndustry}>
+            <Field label="Industry">
               <input className={inputClass} value={industry} onChange={(event) => setIndustry(event.target.value)} />
             </Field>
-            <Field label="City or service area" onVoiceText={setCity}>
+            <Field label="City or service area">
               <input className={inputClass} value={city} onChange={(event) => setCity(event.target.value)} />
             </Field>
             <Field label="Phone">
@@ -375,7 +376,7 @@ export function OnboardingWizard({ templatesEnabled = false }: { templatesEnable
             <Field label="Email">
               <input className={inputClass} value={email} onChange={(event) => setEmail(event.target.value)} />
             </Field>
-            <Field label="Tone" onVoiceText={setTone}>
+            <Field label="Tone">
               <input
                 className={inputClass}
                 placeholder="warm, premium, direct"
@@ -426,12 +427,11 @@ export function OnboardingWizard({ templatesEnabled = false }: { templatesEnable
             {referenceUrl.trim() && <>
               <label className="grid gap-1 text-sm">What should inspire your design?<select className={inputClass} value={referenceMode} onChange={event => setReferenceMode(event.target.value as typeof referenceMode)}><option value="both">Layout and visual style</option><option value="layout">Layout and section arrangement</option><option value="style">Visual style, colours and typography</option></select></label>
               <label className="grid gap-1 text-sm">What do you like—or want changed?<textarea className={inputClass} rows={3} maxLength={1500} value={referenceNotes} onChange={event => setReferenceNotes(event.target.value)} placeholder="For example: large project images and a badge wall, but use my brand colours and a simpler menu." /></label>
-              <IntakeVoice label="Design inspiration notes" onUseText={text => setReferenceNotes(current => [current, text].filter(Boolean).join('\n').slice(0, 1500))} />
               <p className="text-xs text-neutral-500">We use the readable page structure as inspiration, with original text and images for your business. Your uploaded branding takes priority. Some sites block access; if that happens, we continue with your brief and these notes.</p>
               <button type="button" className="text-left text-xs underline" onClick={() => setReferenceUrl('')}>Skip reference—let AI choose</button>
             </>}
           </fieldset>
-          <Field label="Services" onVoiceText={text => setServices(current => [...current.filter(value => value.trim()), text])}>
+          <Field label="Services">
             <div className="grid gap-2">
               {services.map((service, index) => (
                 <input
@@ -606,9 +606,12 @@ export function OnboardingWizard({ templatesEnabled = false }: { templatesEnable
             ))}
           </div>
 
-          <Field label="Upload your photos" hint="Personal or team photos, products, premises and examples of your work. Up to 30 images, 5 MB each. You can add photos alongside AI images.">
-            <input type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif,image/svg+xml" multiple disabled={busy} className="text-sm" onChange={event => { if (event.target.files) void handleImageUpload(event.target.files); event.target.value = '' }} />
-          </Field>
+          <div className="grid justify-items-start gap-2">
+            <p className="text-sm font-medium">Upload your photos</p>
+            <p id="photos-upload-help" className="text-xs text-neutral-500">Personal or team photos, products, premises and examples of your work. Up to 30 images, 5 MB each. You can add photos alongside AI images.</p>
+            <input ref={photosInput} type="file" aria-label="Upload your photos" accept="image/png,image/jpeg,image/webp,image/gif,image/avif,image/svg+xml" multiple disabled={busy} hidden onChange={event => { if (event.target.files) void handleImageUpload(event.target.files); event.target.value = '' }} />
+            <button type="button" className={primaryButton} disabled={busy} aria-describedby="photos-upload-help" onClick={() => photosInput.current?.click()}>Upload photos</button>
+          </div>
           {uploadedImages.length > 0 && <div className="grid gap-4 sm:grid-cols-2">
             {uploadedImages.map((photo, index) => <div key={photo.assetId} className="grid gap-2 rounded border p-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -620,7 +623,6 @@ export function OnboardingWizard({ templatesEnabled = false }: { templatesEnable
                 </select>
               </label>
               <label className="grid gap-1 text-sm">Description (optional)<input className={inputClass} maxLength={300} value={photo.description} placeholder="For example: Sarah, owner of the business" disabled={busy} onChange={event => setUploadedImages(current => current.map((entry, i) => i === index ? { ...entry, description: event.target.value } : entry))} /></label>
-              <IntakeVoice label={`Description for ${photo.name}`} onUseText={text => setUploadedImages(current => current.map((entry, i) => i === index ? { ...entry, description: text.slice(0, 300) } : entry))} />
               <button type="button" disabled={busy} className="text-left text-sm underline" onClick={() => setUploadedImages(current => current.filter(entry => entry.assetId !== photo.assetId))}>Remove from this website</button>
             </div>)}
           </div>}
@@ -703,13 +705,13 @@ export function OnboardingWizard({ templatesEnabled = false }: { templatesEnable
           <div className="grid gap-3">
             <p className="text-sm font-medium">Address and opening hours</p>
             <div className="grid gap-3 sm:grid-cols-3">
-              <Field label="Street address" onVoiceText={setAddressLine1}>
+              <Field label="Street address">
                 <input className={inputClass} value={addressLine1} onChange={(event) => setAddressLine1(event.target.value)} />
               </Field>
               <Field label="Postcode">
                 <input className={inputClass} value={postalCode} onChange={(event) => setPostalCode(event.target.value)} />
               </Field>
-              <Field label="Country" onVoiceText={setCountry}>
+              <Field label="Country">
                 <input className={inputClass} value={country} onChange={(event) => setCountry(event.target.value)} />
               </Field>
             </div>
@@ -770,7 +772,7 @@ export function OnboardingWizard({ templatesEnabled = false }: { templatesEnable
       {step.key === 'proof' && (
         <div className="mt-8 grid gap-6 rounded-lg border border-neutral-200 bg-white p-6">
           <div className="grid gap-3">
-            <Field label="Review text" onVoiceText={text => setTestimonialDraft(current => ({ ...current, quote: [current.quote, text].filter(Boolean).join('\n') }))}>
+            <Field label="Review text">
               <textarea
                 className={inputClass}
                 rows={3}
@@ -779,7 +781,7 @@ export function OnboardingWizard({ templatesEnabled = false }: { templatesEnable
               />
             </Field>
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Customer name" onVoiceText={text => setTestimonialDraft(current => ({ ...current, author: text }))}>
+              <Field label="Customer name">
                 <input
                   className={inputClass}
                   value={testimonialDraft.author}
