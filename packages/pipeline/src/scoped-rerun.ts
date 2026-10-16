@@ -4,7 +4,7 @@ import type { WebsiteModel } from '@awb/website-model'
 import { getAtPointer, setAtPointer } from './json-pointer'
 
 // Discover replacement slots without clearing images in the saved website.
-export function replacementImageSlots(model: WebsiteModel): ImageSlotRequest[] {
+export function replacementImageSlots(model: WebsiteModel, protectedImageUrls: ReadonlySet<string> = new Set()): ImageSlotRequest[] {
   return model.pages.flatMap(page => page.sections.flatMap(section => {
     const definition = getComponent(section.componentId)
     if (section.hidden || !definition || ['HEADER', 'FOOTER'].includes(definition.family)) return []
@@ -21,7 +21,9 @@ export function replacementImageSlots(model: WebsiteModel): ImageSlotRequest[] {
         }
       }
     }
-    return emptyImagePointers(section.componentId, cleared).map(pointer => ({
+    return emptyImagePointers(section.componentId, cleared)
+      .filter(pointer => !protectedImageUrls.has(String(getAtPointer(section.props, pointer) ?? '')))
+      .map(pointer => ({
       slot: `${page.id}:${section.id}:${pointer}`,
       pageTitle: page.title, componentId: section.componentId, family: definition.family,
       subjectContext: JSON.stringify({ section: section.props, imageOwner: getAtPointer(section.props, pointer.split('/').slice(0, -1).join('/')) }),

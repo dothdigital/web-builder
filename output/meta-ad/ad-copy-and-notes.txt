@@ -1,0 +1,39 @@
+WEBTUMMY — BIG PLANS. LESS HASSLE.
+20-second Meta video ad | 15 October 2026
+
+DELIVERABLES
+webtummy-ad-reels-stories-1080x1920.mp4 — vertical 9:16
+webtummy-ad-feed-1080x1350.mp4 — portrait 4:5
+MP4, H.264 video, 30 fps, AAC stereo audio, fast-start playback.
+
+SUGGESTED AD COPY
+Primary text:
+Big plans. Less website hassle.
+Create, edit and host your website in one place with Webtummy. No separate hosting to set up.
+Start your 7-day free trial at webtummy.com.
+Card required. A paid subscription follows unless you cancel before the trial ends. Trial eligibility and plan terms apply.
+
+Headline: Your website. Made simple.
+Description: Start your 7-day free trial. Hosting included.
+Suggested Meta button: Learn More
+Landing page: https://webtummy.com/
+
+EDIT
+00:00–00:03 — Happy business-owner visual. Big plans. Less hassle. Start with 7 days free.
+00:03–00:06 — No hassle. Hosting included. No separate hosting to set up.
+00:06–00:10 — Your vision. A starting point. Animated prompt and illustrative website preview.
+00:10–00:13 — Create. Edit. Make it yours.
+00:13–00:16 — Back to what you love. Happy business-owner visual.
+00:16–00:20 — Your website. Made simple. 7 days free. Start your free trial. webtummy.com.
+Trial disclosure on the end card: Card required. Paid subscription follows unless cancelled before the trial ends.
+
+CREATIVE NOTES
+No price is shown, as requested.
+Original AI-generated business-owner photography with animated camera movement; this is a motion-graphics ad, not live-action footage.
+The pictured business owner is illustrative, not a real customer endorsement. No invented quotes or ratings.
+The demo business label is the generic “Your business”, with yourbusiness.example in the address bar.
+Website previews are illustrative concept artwork, not footage of the Webtummy editor or an actual customer website.
+Original synthesized instrumental soundtrack. No commercial recording or stock music was used.
+On-screen copy carries the message when muted. No spoken voiceover.
+The HTML animation, renderer, original photos and soundtrack source are included in source/ for future editing.
+Ads have not been uploaded, published or launched.

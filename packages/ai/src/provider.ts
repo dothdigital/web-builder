@@ -28,6 +28,7 @@ export interface GenerationBrief {
   logoColors: string[]
   /// URLs of images the user uploaded; empty means AI must generate imagery.
   uploadedImageUrls: string[]
+  imageDirection?: import('@awb/shared/image-direction').ImageDirection
   intakeMedia?: import('@awb/shared/intake-media').IntakeMedia
   uploadedPhotos?: Array<{ url: string; purpose: string; description: string }>
   testimonials: Array<{ quote: string; author: string; source?: string }>

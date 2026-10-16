@@ -18,20 +18,12 @@ export function MarketingAboutUs() {
           </div>
           <div className={styles.s317}>
             <p className={styles.s43}>
-              {"Webtummy is created by "}
-              <strong className={styles.s171}>
-                {"Dot H Digital"}
-              </strong>
-              {", a Canadian software company building custom software, CRM automation, ERP workflows, AI systems, websites, ecommerce platforms and growth systems."}
+              {"Webtummy brings website creation, management and hosting together in one platform, built by a team with experience in software, automation, AI and digital growth."}
             </p>
             <p className={styles.s43}>
               {"We saw the same problem across every industry: getting online meant stitching together builders, designers, developers, hosting, SEO tools and content. Webtummy puts that whole team into one platform."}
             </p>
           </div>
-        </div>
-      </section>
-      <section className={styles.s318}>
-        <div className={styles.s319} role="img" aria-label="Dot H Digital">
         </div>
       </section>
       <section className={styles.s166}>
@@ -40,7 +32,7 @@ export function MarketingAboutUs() {
             {"Software and digital systems built to improve operations, conversion and growth."}
           </h2>
           <p className={styles.s62}>
-            {"Dot H Digital helps businesses operate better, sell smarter and scale with less friction. The focus is implementation, not just strategy — building, improving, integrating and deploying practical solutions that move a business forward."}
+            {"Our team helps businesses operate better, sell smarter and scale with less friction. The focus is implementation, not just strategy — building, improving, integrating and deploying practical solutions that move a business forward."}
           </p>
           <p className={styles.s62}>
             {"Recent work spans manufacturing, ecommerce, professional services and operations-heavy teams. Webtummy brings that experience to every small business, entrepreneur and agency."}
@@ -97,62 +89,13 @@ export function MarketingAboutUs() {
           </div>
         </div>
       </section>
-      <section className={styles.s37}>
-        <div className={styles.s335}>
-          <h2 className={styles.s336}>
-            {"Recognized for delivery and results."}
-          </h2>
-          <div className={styles.s337}>
-            <div className={styles.s338}>
-              <div className={styles.s339} role="img" aria-label="Top Web Developers in Canada">
-              </div>
-              <span className={styles.s340}>
-                {"CLUTCH"}
-              </span>
-              <div className={styles.s341}>
-                {"Top Web Developers in Canada"}
-              </div>
-            </div>
-            <div className={styles.s342}>
-              <div className={styles.s343} role="img" aria-label="Top B2B Design & Development Company">
-              </div>
-              <span className={styles.s344}>
-                {"CLUTCH"}
-              </span>
-              <div className={styles.s341}>
-                {"Top B2B Design & Development Company"}
-              </div>
-            </div>
-            <div className={styles.s345}>
-              <div className={styles.s346} role="img" aria-label="Top B2B Development Companies">
-              </div>
-              <span className={styles.s347}>
-                {"CLUTCH"}
-              </span>
-              <div className={styles.s341}>
-                {"Top B2B Development Companies"}
-              </div>
-            </div>
-            <div className={styles.s348}>
-              <div className={styles.s349} role="img" aria-label="Incubated by MaRS DD">
-              </div>
-              <span className={styles.s350}>
-                {"INCUBATOR"}
-              </span>
-              <div className={styles.s341}>
-                {"Incubated by MaRS DD"}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
       <section className={styles.s351}>
         <div className={styles.s352}>
           <h2 className={styles.s353}>
             {"A proven process that keeps projects on track."}
           </h2>
           <p className={styles.s354}>
-            {"The same step-by-step delivery model behind Dot H's client work shapes how Webtummy is built and supported."}
+            {"A step-by-step delivery model shapes how Webtummy is built and supported."}
           </p>
         </div>
         <div className={styles.s355}>
@@ -213,57 +156,12 @@ export function MarketingAboutUs() {
           </div>
         </div>
       </section>
-      <section className={styles.s110}>
-        <div className={styles.s367}>
-          <h2 className={styles.s336}>
-            {"What clients say about Dot H."}
-          </h2>
-          <div className={styles.s368}>
-            <div className={styles.s369}>
-              <p className={styles.s370}>
-                {"“Excellent work across websites and mobile apps. Highly recommend them.”"}
-              </p>
-              <div className={styles.s233}>
-                {"— Sudhir Thuppale"}
-              </div>
-            </div>
-            <div className={styles.s371}>
-              <p className={styles.s370}>
-                {"“They rebuilt our website and ecommerce portal. Excellent service and pricing.”"}
-              </p>
-              <div className={styles.s233}>
-                {"— Business Edge International"}
-              </div>
-            </div>
-            <div className={styles.s372}>
-              <p className={styles.s370}>
-                {"“Delivered excellent and timely results no matter how complex the project was.”"}
-              </p>
-              <div className={styles.s233}>
-                {"— Joe Russell, Kboovo"}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
       <section className={styles.s373}>
         <div className={styles.s374}>
-          <div className={styles.s103}>
-            {"Dot H Digital Inc."}
-          </div>
-          <div className={styles.s375}>
-            {"302 East Tower, 2233 Argentia Rd,"}
-            <br />
-            {"Mississauga, ON L5N 6A6, Canada"}
-          </div>
+          <h2 className={styles.s103}>Let’s build your online presence.</h2>
         </div>
         <div className={styles.s264}>
-          <Link className={styles.s376} href="/contact">
-            {"Get in touch"}
-          </Link>
-          <a className={styles.s377} href="https://dothdigital.com" target="_blank" rel="noopener noreferrer">
-            {"Visit dothdigital.com ↗"}
-          </a>
+          <Link className={styles.s376} href="/contact">Get in touch</Link>
         </div>
       </section>
     </div>

@@ -1,9 +1,12 @@
 'use client'
+import { UploadButton } from '@/components/upload-button'
+import { ImageDirectionFields } from '@/components/image-direction-fields'
+import type { ImageDirection } from '@awb/shared/image-direction'
 import { ErrorNotice } from '@/components/error-notice'
 import { LayoutGallery } from '@/components/account/layout-gallery'
 import { layoutCatalogue } from '@awb/shared/layout-catalogue'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { DesignTokens } from '@awb/website-model'
 import { videoLinkSchema, type IntakeMedia } from '@awb/shared/intake-media'
@@ -13,6 +16,7 @@ import { IntakeVoice } from './intake-voice'
 import {
   createProjectFromBrief,
   saveBrandColors,
+  letAiChooseBrandColors,
   saveIntakeMedia,
   saveBusinessPresence,
   saveTestimonials,
@@ -101,8 +105,6 @@ export function OnboardingWizard({ templatesEnabled = false }: { templatesEnable
   const [selectedPalette, setSelectedPalette] = useState<DesignTokens>()
   const [logoPreview, setLogoPreview] = useState<string>()
   const [localLogoPreview, setLocalLogoPreview] = useState<string>()
-  const logoInput = useRef<HTMLInputElement>(null)
-  const photosInput = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     return () => {
@@ -110,6 +112,7 @@ export function OnboardingWizard({ templatesEnabled = false }: { templatesEnable
     }
   }, [localLogoPreview])
 
+  const [imageDirection, setImageDirection] = useState<ImageDirection>({ style: 'auto', styles: [], notes: '' })
   const [imageMode, setImageMode] = useState<'upload' | 'generate' | 'mixed'>('mixed')
   const [uploadedImages, setUploadedImages] = useState<Array<IntakeMedia['photos'][number] & { url: string; name: string }>>([])
   const [videos, setVideos] = useState<IntakeMedia['videos']>([])
@@ -250,7 +253,7 @@ export function OnboardingWizard({ templatesEnabled = false }: { templatesEnable
         if (!videoTitle.trim()) throw new Error('Add a title for your video.')
         savedVideos = [...videos, { url: result.data, title: videoTitle.trim() }]
       }
-      await saveIntakeMedia(projectId, { imageMode, photos: uploadedImages.map(({ assetId, purpose, description }) => ({ assetId, purpose, description })), videos: savedVideos })
+      await saveIntakeMedia(projectId, { imageMode, ...(imageMode !== 'upload' ? { imageDirection } : {}), photos: uploadedImages.map(({ assetId, purpose, description }) => ({ assetId, purpose, description })), videos: savedVideos })
       setVideos(savedVideos)
       setVideoUrl('')
       setVideoTitle('')
@@ -321,6 +324,8 @@ export function OnboardingWizard({ templatesEnabled = false }: { templatesEnable
       setTestimonialDraft({ quote: '', author: '', source: '' })
       if (selectedPalette) {
         await saveBrandColors(projectId, selectedPalette, logoColors)
+      } else {
+        await letAiChooseBrandColors(projectId, logoColors)
       }
 
       const { correlationId } = await startGeneration(projectId)
@@ -463,22 +468,7 @@ export function OnboardingWizard({ templatesEnabled = false }: { templatesEnable
       {step.key === 'logo' && (
         <div className="mt-8 grid gap-6 rounded-lg border border-neutral-200 bg-white p-6">
           <Field label="Do you have a logo?" hint="PNG or SVG · up to 5 MB. We read its dominant colours and propose a palette.">
-            <button type="button" className="wt-button w-fit disabled:opacity-50" disabled={busy} onClick={() => logoInput.current?.click()}>
-              {busy ? 'Uploading logo…' : logoPreview ? 'Replace logo' : 'Upload logo'}
-            </button>
-            <input
-              ref={logoInput}
-              aria-label="Choose logo file"
-              type="file"
-              accept="image/*"
-              className="hidden"
-              disabled={busy}
-              onChange={(event) => {
-                const file = event.target.files?.[0]
-                event.target.value = ''
-                if (file) void handleLogoUpload(file)
-              }}
-            />
+            <UploadButton label="Upload logo" inputLabel="Choose logo file" className="wt-button w-fit disabled:opacity-50" accept="image/*" disabled={busy} onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; if (file) void handleLogoUpload(file) }} />
           </Field>
 
           {(localLogoPreview || logoPreview) && (
@@ -531,9 +521,9 @@ export function OnboardingWizard({ templatesEnabled = false }: { templatesEnable
                   </span>
                 </button>
               ))}
-              {!logoPreview && <button type="button" aria-pressed={!selectedPalette} onClick={() => setSelectedPalette(undefined)} className={`rounded-md border p-3 text-left text-sm ${!selectedPalette ? 'border-neutral-900' : 'border-neutral-200'}`}>
+              <button type="button" aria-pressed={!selectedPalette} onClick={() => setSelectedPalette(undefined)} className={`rounded-md border p-3 text-left text-sm ${!selectedPalette ? 'border-neutral-900' : 'border-neutral-200'}`}>
                 Let AI choose my colours
-              </button>}
+              </button>
             </div>
           )}
 
@@ -606,11 +596,12 @@ export function OnboardingWizard({ templatesEnabled = false }: { templatesEnable
             ))}
           </div>
 
+          {imageMode !== 'upload' && <ImageDirectionFields value={imageDirection} onChange={setImageDirection} disabled={busy} />}
+
           <div className="grid justify-items-start gap-2">
             <p className="text-sm font-medium">Upload your photos</p>
             <p id="photos-upload-help" className="text-xs text-neutral-500">Personal or team photos, products, premises and examples of your work. Up to 30 images, 5 MB each. You can add photos alongside AI images.</p>
-            <input ref={photosInput} type="file" aria-label="Upload your photos" accept="image/png,image/jpeg,image/webp,image/gif,image/avif,image/svg+xml" multiple disabled={busy} hidden onChange={event => { if (event.target.files) void handleImageUpload(event.target.files); event.target.value = '' }} />
-            <button type="button" className={primaryButton} disabled={busy} aria-describedby="photos-upload-help" onClick={() => photosInput.current?.click()}>Upload photos</button>
+            <UploadButton label="Upload images" inputLabel="Upload your photos" accept="image/png,image/jpeg,image/webp,image/gif,image/avif,image/svg+xml" multiple disabled={busy} className={primaryButton} describedBy="photos-upload-help" onChange={event => { if (event.target.files) void handleImageUpload(event.target.files); event.target.value = '' }} />
           </div>
           {uploadedImages.length > 0 && <div className="grid gap-4 sm:grid-cols-2">
             {uploadedImages.map((photo, index) => <div key={photo.assetId} className="grid gap-2 rounded border p-3">

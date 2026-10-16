@@ -1,3 +1,6 @@
+import { applySitePalette } from '@awb/website-model'
+import { imageDirectionPrompt } from '@awb/shared/image-direction'
+import { allowsPersonalPhoto, removeMisplacedPersonalPhotos } from './personal-photo-policy'
 import { intakeMediaSchema } from '@awb/shared/intake-media'
 import { canGenerate } from './billing-access'
 import { randomUUID } from 'node:crypto'
@@ -303,7 +306,7 @@ async function loadBrief(projectId: string): Promise<GenerationBrief> {
     logoColors: (project.brandProfile?.tokens as { logoColors?: string[] } | null)?.logoColors ?? [],
     uploadedImageUrls: media?.imageMode === 'generate' ? [] : selectedPhotos.map(photo => photo.url),
     uploadedPhotos: media?.imageMode === 'generate' ? [] : selectedPhotos,
-    ...(media ? { intakeMedia: media } : {}),
+    ...(media ? { intakeMedia: media, imageDirection: media.imageDirection } : {}),
     testimonials:
       testimonialCollection?.items.map((item) => {
         const data = item.data as { quote?: string; author?: string; source?: string }
@@ -336,6 +339,7 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
   try {
     const brief = await loadBrief(projectId)
     const rerun = request.rerun ? rerunRequestSchema.parse(request.rerun) : undefined
+    if (rerun?.imageDirection && ['IMAGES', 'FULL'].includes(rerun.scope)) brief.imageDirection = rerun.imageDirection
     if (rerun?.instruction) {
       brief.answers.rerunInstructions = rerun.instruction
       brief.description += `\n\nRequested changes for this run: ${rerun.instruction}\nUse supplied business facts only.`
@@ -374,7 +378,11 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
               if (Array.isArray(props.removedElements)) props.removedElements = props.removedElements.filter(path => path !== '/logoImageUrl')
             }
           }
-          const slots = replacementImageSlots(updated)
+          // A style rerun regenerates artwork, not the customer's real uploaded photos.
+          const protectedAssets = rerun.scope === 'IMAGES'
+            ? await prisma.asset.findMany({ where: { projectId, kind: AssetKind.IMAGE, source: AssetSource.UPLOAD }, select: { url: true } })
+            : []
+          const slots = replacementImageSlots(updated, new Set(protectedAssets.map(asset => asset.url)))
           const uploads = rerun.imageAssetIds.length ? brief.uploadedPhotos ?? [] : []
           if (uploads.length > slots.length) throw new Error('There are more uploaded photos than available image positions. Use the editor to place the extra photos.')
           for (const [index, photo] of uploads.entries()) updated = replaceScopedImage(updated, slots[index]!.slot, photo.url, photo.description)
@@ -390,7 +398,7 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
             const storage = getStorage()
             for (const image of plan.images) {
               if (!allowed.delete(image.slot)) throw new Error('AI returned an unexpected image position.')
-              const result = await provider.generateImage(`${image.prompt}\nUser direction: ${rerun.instruction}`, image.aspectRatio, image.slot, image.alt)
+              const result = await provider.generateImage(`${image.prompt}\nUser direction: ${rerun.instruction}${brief.imageDirection ? `\n${imageDirectionPrompt(brief.imageDirection, brief.location)}` : ''}`, image.aspectRatio, image.slot, image.alt)
               const extension = result.data.contentType === 'image/png' ? 'png' : 'svg'
               const stored = await storage.put(assetKey(project.workspaceId, projectId, `rerun-${correlationId}-${generated}.${extension}`), result.data.data, result.data.contentType)
               await prisma.asset.create({ data: { workspaceId: project.workspaceId, projectId, kind: AssetKind.IMAGE, source: AssetSource.AI_GENERATED, storageKey: stored.key, url: stored.url, mimeType: stored.contentType, bytes: stored.bytes, altText: image.alt, prompt: result.data.prompt } })
@@ -401,6 +409,7 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
           return { output: toJson({ scope: rerun.scope, generated, uploaded: uploads.length }), result: updated }
         })
       }
+      if (rerun.palette) next = applySitePalette(next, rerun.palette)
       const websiteVersionId = await runStage(projectId, correlationId, GenerationStage.VALIDATE, toJson({ scope: rerun.scope }), async () => {
         const validation = validateWebsiteModel(next)
         if (!validation.valid) throw new Error(validation.issues.filter(issue => issue.level === 'error').map(issue => issue.message).join('; '))
@@ -410,6 +419,11 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
           if (latest?.id !== version.id) throw new Error('The saved website changed during this run. Please rerun against the latest draft.')
           const last = await tx.websiteVersion.findFirst({ where: { projectId }, orderBy: { version: 'desc' } })
           const saved = await tx.websiteVersion.create({ data: { projectId, version: (last?.version ?? 0) + 1, kind: WebsiteVersionKind.DRAFT, model: toJson(next), schemaVersion: WEBSITE_MODEL_SCHEMA_VERSION, note: `AI rerun: ${rerun.scope.toLowerCase()}` } })
+          if (rerun.palette) {
+            const brand = await tx.brandProfile.findUnique({ where: { projectId } })
+            const tokens = toJson({ ...((brand?.tokens as Record<string, unknown> | null) ?? {}), ...next.tokens })
+            await tx.brandProfile.upsert({ where: { projectId }, create: { projectId, tokens, letAiChoose: false }, update: { tokens, letAiChoose: false } })
+          }
           await tx.page.deleteMany({ where: { projectId } })
           await tx.page.createMany({ data: next.pages.map((page, index) => ({ projectId, title: page.title, slug: page.path === '/' ? 'home' : page.path.replace(/^\//, ''), path: page.path, position: index, status: PageStatus.DRAFT, indexable: page.seo.index, seoTitle: page.seo.title, seoDescription: page.seo.description, sections: toJson(page.sections) })) })
           await tx.project.update({ where: { id: projectId }, data: { status: ProjectStatus.READY } })
@@ -475,7 +489,7 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
         const brandProfile = await prisma.brandProfile.findUnique({ where: { projectId } })
         /// A palette the user already accepted always wins over a fresh suggestion.
         const userTokens = brandProfile?.tokens as DesignTokens | null
-        const resolvedTokens = userTokens?.palette ? userTokens : chosen.tokens
+        const resolvedTokens = rerun?.palette ? { ...(userTokens?.palette ? userTokens : chosen.tokens), palette: rerun.palette } : userTokens?.palette ? userTokens : chosen.tokens
         const suggestions = paletteAlternatives(resolvedTokens, brief.logoColors)
 
         await prisma.brandProfile.upsert({
@@ -530,11 +544,12 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
             h1: data.h1.trim() || plannedPage.title,
             seo: {
               ...data.seo,
+              targetKeyword: data.seo.targetKeyword || plannedPage.serviceName || data.h1,
               title: data.seo.title.trim() || `${plannedPage.title} | ${brief.businessName}`,
               description: data.seo.description.trim() || plannedPage.purpose || brief.description.slice(0, 160),
               canonical: data.seo.canonical ?? data.path,
             },
-            sections: brief.templateId ? templatePageComponents(brief.templateId, plannedPage.path).map((componentId,index) => data.sections.find(section=>section.componentId===componentId) ?? {id:`layout-unused-${index}`,componentId,componentVersion:'1.0.0',hidden:true,props:initialTemplateProps(componentId)}) : data.sections,
+            sections: brief.templateId ? templatePageComponents(brief.templateId, plannedPage.path).map((componentId,index) => data.sections.find(section=>section.componentId===componentId) ?? {id:`layout-unused-${index}`,componentId,componentVersion:'1.0.0',hidden:true,props:initialTemplateProps(componentId)}).concat(data.sections.filter(section => section.componentId === 'FaqAccordion' && !templatePageComponents(brief.templateId!, plannedPage.path).includes('FaqAccordion'))) : data.sections,
           })
         }
 
@@ -687,7 +702,7 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
       async () => {
         const storage = getStorage()
         const project = await prisma.project.findUniqueOrThrow({ where: { id: projectId } })
-        const filled = structuredClone(model)
+        const filled = rerun?.palette ? applySitePalette(structuredClone(model), rerun.palette) : structuredClone(model)
         // Reuse the saved brand logo across reruns; an uploaded logo always wins.
         let brand = await prisma.brandProfile.findUnique({ where: { projectId }, include: { logo: true } })
         let logo = brand?.logo
@@ -728,6 +743,8 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
         brand = await prisma.brandProfile.findUnique({ where: { projectId }, include: { logo: true } })
         filled.globalComponents.header.props.logoImageUrl = brand?.logo?.url ?? logo.url
         filled.globalComponents.header.props.logoText = brief.businessName
+        const personalUrls = new Set((brief.uploadedPhotos ?? []).filter(photo => photo.purpose === 'personal').map(photo => photo.url))
+        removeMisplacedPersonalPhotos(filled, personalUrls)
         const slots = collectImageSlots(filled)
 
         const resolve = (slot: string): Record<string, unknown> | undefined => {
@@ -742,19 +759,17 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
         const uploads = [...(brief.uploadedPhotos ?? brief.uploadedImageUrls.map(url => ({ url, purpose: 'other', description: '' })))]
         const pending: ImageSlotRequest[] = []
 
-        // Assign personal photos to story/team slots before general imagery consumes them.
-        const orderedSlots = [...slots].sort((a, b) => Number(['ABOUT', 'TEAM'].includes(b.family)) - Number(['ABOUT', 'TEAM'].includes(a.family)))
+        const orderedSlots = [...slots].sort((a, b) => Number(allowsPersonalPhoto(filled, b.slot)) - Number(allowsPersonalPhoto(filled, a.slot)))
         for (const slot of orderedSlots) {
           const props = resolve(slot.slot)
           const pointer = slot.slot.split(':')[2]
+          if (!props || !pointer) continue
 
-          if (!props || !pointer) {
-            continue
-          }
-
-          const preferredPurpose = ['ABOUT', 'TEAM'].includes(slot.family) ? 'personal' : slot.family === 'SERVICES' ? 'product' : slot.family === 'GALLERY' ? 'work' : 'other'
-          const preferredIndex = uploads.findIndex(photo => photo.purpose === preferredPurpose)
-          const upload = uploads.splice(preferredIndex < 0 ? 0 : preferredIndex, 1)[0]
+          const preferredPurpose = allowsPersonalPhoto(filled, slot.slot) ? 'personal' : slot.family === 'SERVICES' ? 'product' : slot.family === 'GALLERY' ? 'work' : 'other'
+          const eligible = (photo: typeof uploads[number]) => photo.purpose !== 'personal' || allowsPersonalPhoto(filled, slot.slot)
+          let preferredIndex = uploads.findIndex(photo => eligible(photo) && photo.purpose === preferredPurpose)
+          if (preferredIndex < 0) preferredIndex = uploads.findIndex(eligible)
+          const upload = preferredIndex >= 0 ? uploads.splice(preferredIndex, 1)[0] : undefined
 
           if (upload) {
             setByPointer(props, pointer, upload.url)
@@ -764,9 +779,11 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
           }
 
           if (brief.intakeMedia?.imageMode === 'upload') {
-            const photo = brief.uploadedPhotos?.[orderedSlots.indexOf(slot) % brief.uploadedImageUrls.length]
-            const url = photo?.url ?? brief.uploadedImageUrls[0]
-            if (!url) throw new Error('Upload at least one photo before generating a photos-only website.')
+            const compatible = (brief.uploadedPhotos ?? brief.uploadedImageUrls.map(url => ({ url, purpose: 'other', description: '' }))).filter(eligible)
+            const photo = compatible[0]
+            // Photos-only mode may leave a slot empty; never fill it with an unrelated portrait.
+            if (!photo) continue
+            const url = photo.url
             setByPointer(props, pointer, url)
             if (pointer.endsWith('/imageUrl')) setByPointer(props, pointer.replace(/\/imageUrl$/, '/imageAlt'), photo?.description ?? '')
             continue
@@ -789,7 +806,7 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
           }
 
           const { data: generatedImage } = await provider.generateImage(
-            image.prompt,
+            `${image.prompt}${brief.imageDirection ? `\n${imageDirectionPrompt(brief.imageDirection, brief.location)}` : ''}`,
             image.aspectRatio,
             image.slot,
             image.alt,
@@ -842,12 +859,12 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
         }
 
         const homepage = modelWithImages.pages.find((page) => page.path === '/')
-        const designSections = homepage?.sections.filter(section => section.componentId !== 'IntakeVideos') ?? []
+        const designSections = homepage?.sections.filter(section => section.componentId !== 'IntakeVideos' && section.componentId !== 'FaqAccordion') ?? []
         const [minSections, maxSections] = brief.homepageLength === 'expanded' ? [5, 6] : [3, 4]
         if (!homepage || !brief.templateId && (designSections.length < minSections! || designSections.length > maxSections!)) {
           throw new Error(`Homepage must contain ${minSections}–${maxSections} sections for the selected length`)
         }
-        if(brief.templateId && designSections.map(section=>section.componentId).join(',')!==templatePageComponents(brief.templateId,'/').join(','))throw new Error('Generated sections do not match the selected layout.')
+        if(brief.templateId && designSections.map(section=>section.componentId).join(',')!==templatePageComponents(brief.templateId,'/').filter(id => id !== 'FaqAccordion').join(','))throw new Error('Generated sections do not match the selected layout.')
         for (const page of modelWithImages.pages.filter((entry) => entry.pageType === 'SERVICE')) {
           if (!page.sections.some((section) => typeof section.props.imageUrl === 'string' && section.props.imageUrl.trim())) {
             throw new Error(`Service page ${page.path} is missing its required image`)

@@ -10,6 +10,20 @@ import { loadDraftModel } from '@/lib/website'
 import { requireProjectOnPage } from '@/lib/tenancy'
 import { generationProgressHref } from '@/lib/generation-navigation'
 
+export async function generateMetadata({ params }: { params: Promise<{ projectId: string; path?: string[] }> }) {
+  const { projectId, path } = await params
+  await requireProjectOnPage(projectId)
+  const model = await loadDraftModel(projectId)
+  const route = `/${(path ?? []).join('/')}`.replace(/\/$/, '') || '/'
+  const page = model?.pages.find(candidate => candidate.path === route)
+  return {
+    title: { absolute: page?.seo.title || model?.site.name || 'Website preview' },
+    description: page?.seo.description,
+    keywords: [page?.seo.targetKeyword, page?.seo.secondaryKeywords].filter((value): value is string => Boolean(value)),
+    robots: { index: false, follow: false },
+  }
+}
+
 export default async function PreviewPage({
   params,
 }: {

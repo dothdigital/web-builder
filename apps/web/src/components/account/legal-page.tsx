@@ -15,7 +15,7 @@ export function LegalPage({ title, introduction, sections, effectiveDate = 'Octo
         <Link href="/signin">Sign in →</Link>
       </header>
       <article className="wt-legal-document">
-        <p className="wt-eyebrow">DOTH DIGITAL INC. · ONTARIO, CANADA</p>
+        <p className="wt-eyebrow">WEBTUMMY</p>
         <h1>{title}</h1>
         <p className="wt-legal-date">Effective {effectiveDate}</p>
         <p className="wt-legal-intro">{introduction}</p>
@@ -29,7 +29,7 @@ export function LegalPage({ title, introduction, sections, effectiveDate = 'Octo
             <p>{section.content}</p>
           </section>
         ))}
-        <p className="wt-legal-contact">Questions? Contact DotH digital Inc. at <a href="mailto:info@dothdigital.com">info@dothdigital.com</a>.</p>
+        <p className="wt-legal-contact">Questions? Contact Webtummy at <a href="mailto:info@webtummy.com">info@webtummy.com</a>.</p>
       </article>
       <SiteFooter />
     </main>

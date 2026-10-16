@@ -1,0 +1,22 @@
+{
+  "release": "compact-inner-heroes-20261016",
+  "scope": "Shared native hero layouts across all projects",
+  "behavior": {
+    "innerPageImageHeight": "clamp(220px, 28vw, 360px)",
+    "innerPageBackgroundHeroMinHeight": "clamp(280px, 32vw, 420px)",
+    "homepage": "unchanged",
+    "manualImageSizing": "preserved"
+  },
+  "checks": {
+    "webTypecheck": "passed",
+    "nativeHeroDesktopMobileRender": "passed",
+    "homepageMarkupRegression": "passed",
+    "manualImageSizingRegression": "passed",
+    "isolatedProductionBuild": "passed",
+    "authenticatedPreviewAndEditorBrowser": "passed"
+  },
+  "deployment": {
+    "release": "compact-inner-heroes-20261016",
+    "webPort": 3003
+  }
+}

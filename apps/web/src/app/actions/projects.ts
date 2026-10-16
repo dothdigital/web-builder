@@ -199,6 +199,12 @@ export async function saveTestimonials(projectId: string, input: z.input<typeof 
   })
 }
 
+export async function letAiChooseBrandColors(projectId: string, logoColors: string[]): Promise<void> {
+  await requireProject(projectId, WorkspaceRole.EDITOR)
+  const colors = z.array(z.string().regex(/^#[\da-f]{6}$/i)).max(10).parse(logoColors)
+  await prisma.brandProfile.upsert({ where: { projectId }, create: { projectId, tokens: { logoColors: colors }, letAiChoose: true }, update: { tokens: { logoColors: colors }, letAiChoose: true } })
+}
+
 export async function saveBrandColors(projectId: string, tokens: DesignTokens, logoColors: string[]): Promise<void> {
   await requireProject(projectId, WorkspaceRole.EDITOR)
 

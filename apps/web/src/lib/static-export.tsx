@@ -161,6 +161,7 @@ function headTags(model: WebsiteModel, page: WebsitePage, options: StaticExportO
   const canonical = new URL(options.preview ? page.path : page.seo.canonical ?? page.path, `${siteUrl}/`).href
   const title = page.seo.title?.trim() || `${page.title} | ${model.site.name}`
   const description = page.seo.description ?? ''
+  const keywords = [page.seo.targetKeyword || page.contentBrief?.keyword, page.seo.secondaryKeywords || page.contentBrief?.secondaryKeywords].filter(Boolean).join(', ')
   const faq = buildFaqJsonLd(page)
   const article = buildBlogJsonLd(page, siteUrl)
   const business = buildLocalBusinessJsonLd(
@@ -194,13 +195,17 @@ function headTags(model: WebsiteModel, page: WebsitePage, options: StaticExportO
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${escapeHtml(title)}</title>
     ${description ? `<meta name="description" content="${escapeHtml(description)}" />` : ''}
+    ${keywords ? `<meta name="keywords" content="${escapeHtml(keywords)}" />` : ''}
     <link rel="canonical" href="${escapeHtml(canonical)}" />
-    ${options.preview || page.seo.index === false ? '<meta name="robots" content="noindex,nofollow" />' : ''}
+    ${options.preview || model.publishSettings.robotsAllowIndexing === false || page.seo.index === false ? '<meta name="robots" content="noindex,nofollow" />' : ''}
     ${model.google.searchConsoleVerification ? `<meta name="google-site-verification" content="${escapeHtml(model.google.searchConsoleVerification)}" />` : ''}
     <meta property="og:type" content="${article ? 'article' : 'website'}" />
     <meta property="og:title" content="${escapeHtml(title)}" />
     ${description ? `<meta property="og:description" content="${escapeHtml(description)}" />` : ''}
     <meta property="og:url" content="${escapeHtml(canonical)}" />
+    <meta name="twitter:title" content="${escapeHtml(title)}" />
+    ${description ? `<meta name="twitter:description" content="${escapeHtml(description)}" />` : ''}
+    <link rel="alternate" type="text/markdown" href="${root}llms.txt" title="Site information for AI readers" />
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="stylesheet" href="${root}assets/site.css" />
     <script type="application/ld+json">${scriptJson(buildPageJsonLd(model, page, siteUrl))}</script>
@@ -296,9 +301,12 @@ export async function buildStaticExport(
     zip.file(pageFilePath(page), await renderPage(model, page, options))
   }
 
-  zip.file('sitemap.xml', buildSitemapXml(model, options.siteUrl))
+  const crawlerModel = options.preview ? { ...model, publishSettings: { ...model.publishSettings, robotsAllowIndexing: false } } : model
+  zip.file('sitemap.xml', buildSitemapXml(crawlerModel, options.siteUrl))
   zip.file('robots.txt', options.preview ? 'User-agent: *\nDisallow: /\n' : buildRobotsTxt(model, options.siteUrl))
-  zip.file('llms.txt', buildLlmsTxt(model, options.siteUrl))
+  const aiIndex = buildLlmsTxt(crawlerModel, options.siteUrl)
+  zip.file('llms.txt', aiIndex)
+  zip.file('aillm.txt', aiIndex)
   zip.file(
     'README.txt',
     `${model.site.name} — static export

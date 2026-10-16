@@ -26,7 +26,7 @@ const nextConfig: NextConfig = {
       { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
       { key: 'X-Content-Type-Options', value: 'nosniff' },
       { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-    ] }, { source: '/onboarding', headers: [{ key: 'Permissions-Policy', value: 'camera=(), microphone=(self), geolocation=()' }] }, ...['/api/projects/:id/editor-image', '/uploads/:path*'].map(source => ({ source, headers: [{ key: 'Content-Security-Policy', value: "sandbox; default-src 'none'; img-src data:; style-src 'unsafe-inline'" }] }))]
+    ] }, ...['/api/:path*', '/admin/:path*', '/dashboard/:path*', '/projects/:path*', '/preview/:path*', '/onboarding/:path*', '/account/:path*', '/billing/:path*', '/team/:path*', '/invite/:path*', '/signin/:path*', '/signup/:path*', '/forgot-password/:path*', '/reset-password/:path*', '/verify-email/:path*', '/email-preferences/:path*', '/template-library/:path*', '/uploads/:path*'].map(source => ({ source, headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }] })), { source: '/onboarding', headers: [{ key: 'Permissions-Policy', value: 'camera=(), microphone=(self), geolocation=()' }] }, ...['/api/projects/:id/editor-image', '/uploads/:path*'].map(source => ({ source, headers: [{ key: 'Content-Security-Policy', value: "sandbox; default-src 'none'; img-src data:; style-src 'unsafe-inline'" }] }))]
   },
   /// Workspace packages ship TypeScript source, so Next compiles them itself.
   transpilePackages: [

@@ -1,0 +1,25 @@
+{
+  "release": "logo-palette-20261016",
+  "scope": "platform-wide",
+  "checks": {
+    "typecheck": "passed",
+    "logoColorExtraction": "passed",
+    "sitePaletteAndRevert": "passed",
+    "scopedRerun": "passed",
+    "workerIntegrationUploadAndFullPalette": "passed",
+    "browserCandidate": "passed"
+  },
+  "changes": [
+    "Distinct logo color grouping and hue-aware accent selection",
+    "Original logo brand colors retained",
+    "Theme and rerun logo palette suggestions with Apply and Revert",
+    "All saved theme, button, and custom section colors listed across pages",
+    "Current logo can be analyzed without uploading again"
+  ],
+  "customerProjectChanges": "Read-only diagnosis; no model changes",
+  "deployment": {
+    "web": "logo-palette-20261016 on port 3002",
+    "worker": "logo-palette-20261016",
+    "publicHealth": "ok; database up"
+  }
+}

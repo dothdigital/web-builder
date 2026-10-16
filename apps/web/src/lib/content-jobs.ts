@@ -13,7 +13,7 @@ export async function submitContentJob(projectId: string, kind: 'COVER' | 'PATCH
   if (kind === 'COVER') {
     const request = blogCoverRequestSchema.parse(raw)
     if (createAiProvider().name !== 'openai') throw new Error('AI cover images require OpenAI to be configured.')
-    title = `Blog cover: ${request.topic}`
+    title = `${request.purpose === 'website' ? 'Image update' : 'Blog cover'}: ${request.topic}`
   } else if (kind !== 'WEBSITE') {
     const model = websiteModelSchema.parse(input.model)
     if (kind === 'CREATE') {

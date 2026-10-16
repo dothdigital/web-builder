@@ -67,7 +67,7 @@ export function SiteRenderer({
     }
     return rewriteLinks(props) as Record<string, unknown>
   }
-  const context: RenderContext = { tokens: model.tokens, baseUrl, editing, forms }
+  const context: RenderContext = { tokens: model.tokens, baseUrl, editing, forms, pagePath: page.path }
 
   return (
     <div style={{ ...tokensToCssVars(model.tokens), background: 'var(--awb-bg)', color: 'var(--awb-fg)' }}>

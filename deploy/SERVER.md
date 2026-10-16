@@ -178,8 +178,7 @@ discards honeypot submissions, and uses AWS SES with the visitor's address as Re
 Only the configured server-side recipient can receive messages; visitors cannot select a recipient.
 See `deploy/contact.env.example` for the private settings. Sending remains disabled until a
 recipient and verified sender are configured. The existing EC2 role was denied SES identity/account
-inspection; no email was sent during setup. The requested recipient needs confirmation because the
-user wrote `info@dothdigtial.com` after previously providing `info@dothdigital.com`.
+inspection; no email was sent during setup. The contact form recipient is `info@webtummy.com`, as confirmed by the owner.
 
 Contact reCAPTCHA supports v2 checkbox and v3; the supplied keys were confirmed as v3.
 Set CONTACT_RECAPTCHA_TYPE=v3 and configure both site and secret keys in the private root .env.

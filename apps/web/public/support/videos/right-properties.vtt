@@ -1,0 +1,33 @@
+WEBVTT
+
+1
+00:00:02.843 --> 00:00:08.289
+Use Section, Page, Theme, and Integrations
+
+2
+00:00:08.289 --> 00:00:15.717
+Section properties change the selected section’s content, background, and available layout variants.
+
+3
+00:00:15.717 --> 00:00:18.609
+Page properties contain page rewriting, the page title, H1, and search settings.
+
+4
+00:00:18.609 --> 00:00:24.166
+Update the SEO title, description, keywords, canonical path, and page indexing.
+
+5
+00:00:24.166 --> 00:00:27.010
+Theme controls shared design: logo, header appearance, buttons, palette, and typography.
+
+6
+00:00:27.010 --> 00:00:33.751
+Check changes across several pages. An individual object can override theme defaults.
+
+7
+00:00:33.751 --> 00:00:37.788
+Integrations includes site indexing, Search Console verification, GA4, reCAPTCHA, and custom scripts.
+
+8
+00:00:37.788 --> 00:00:41.299
+Review your changes, then Save. Publish separately when you are ready to go live.

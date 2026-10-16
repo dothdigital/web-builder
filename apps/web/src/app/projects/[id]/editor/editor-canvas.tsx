@@ -360,7 +360,7 @@ export function EditorCanvas({
 }) {
   const [canvasNode, setCanvasNode] = useState<HTMLDivElement | null>(null)
   const [draggingId, setDraggingId] = useState<string>()
-  const context: RenderContext = { tokens: model.tokens, baseUrl: '', editing: true }
+  const context: RenderContext = { tokens: model.tokens, baseUrl: '', editing: true, pagePath: page.path }
   const header = getComponent(model.globalComponents.header.componentId)
   const footer = getComponent(model.globalComponents.footer.componentId)
   const headerProps = header?.propsSchema.safeParse(model.globalComponents.header.props)

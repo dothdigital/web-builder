@@ -17,7 +17,7 @@ function template(subject: string, paragraphs: string[], links: { label: string;
 ${paragraphs.map(p => `<p style="margin:0 0 18px;font-size:15px;line-height:1.7;color:#3E4A63">${escapeHtml(p)}</p>`).join('')}
 ${links.map((link, index) => index === 0 ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0"><tr><td bgcolor="#6B4EE6" style="border-radius:10px"><a href="${escapeHtml(link.url)}" style="display:inline-block;padding:16px 26px;color:white;text-decoration:none;font-size:15px;font-weight:bold">${escapeHtml(link.label)} &rarr;</a></td></tr></table>` : `<p style="font-size:14px;line-height:1.7"><a style="color:#6B4EE6" href="${escapeHtml(link.url)}">${escapeHtml(link.label)}</a></p>`).join('')}
 <p style="margin-top:28px;font-size:14px;line-height:1.7">${escapeHtml(footer).replace(/\n/g, '<br>')}</p></td></tr>
-<tr><td align="center" style="padding:24px 12px 0;font-size:11px;line-height:1.7;color:#8A93A8">Webtummy · A product of Dot H Digital Inc.<br>Mississauga, Ontario, Canada<br>Design. Build. Optimize. Deploy. Run. Grow.</td></tr></table></td></tr></table></body></html>`,
+<tr><td align="center" style="padding:24px 12px 0;font-size:11px;line-height:1.7;color:#8A93A8">Webtummy<br>Design. Build. Optimize. Deploy. Run. Grow.</td></tr></table></td></tr></table></body></html>`,
   }
 }
 

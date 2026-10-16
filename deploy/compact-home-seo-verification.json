@@ -1,0 +1,370 @@
+{
+  "origin": "https://webtummy.com",
+  "publicPagesPassed": 68,
+  "landingPagesPassed": [
+    "/ai-website-builder",
+    "/website-builder-for-entrepreneurs",
+    "/no-code-website-builder",
+    "/website-builder-for-consultants",
+    "/restaurant-website-builder",
+    "/freelancer-website-builder"
+  ],
+  "checks": [
+    "sitemap",
+    "robots",
+    "unique titles",
+    "descriptions",
+    "canonicals",
+    "public indexing",
+    "one H1",
+    "Open Graph",
+    "Twitter cards",
+    "JSON-LD",
+    "no geographic schema",
+    "image alt text",
+    "auth noindex",
+    "404 responses"
+  ],
+  "pages": [
+    {
+      "path": "/",
+      "title": "AI Website Builder with Hosting & SEO | Webtummy",
+      "images": 1
+    },
+    {
+      "path": "/how-it-works",
+      "title": "How Our AI Website Builder Works | Webtummy",
+      "images": 0
+    },
+    {
+      "path": "/pricing",
+      "title": "AI Website Builder Pricing \u2014 US$29/Month | Webtummy",
+      "images": 0
+    },
+    {
+      "path": "/about-us",
+      "title": "About Webtummy \u2014 AI Website Builder & Growth Tools",
+      "images": 0
+    },
+    {
+      "path": "/faq",
+      "title": "AI Website Builder FAQs \u2014 Hosting, SEO & Plans | Webtummy",
+      "images": 0
+    },
+    {
+      "path": "/contact",
+      "title": "Contact Webtummy \u2014 Website & Account Support",
+      "images": 0
+    },
+    {
+      "path": "/support",
+      "title": "Webtummy Help Center \u2014 Website Builder Guides",
+      "images": 6
+    },
+    {
+      "path": "/privacy",
+      "title": "Privacy Policy | Webtummy",
+      "images": 0
+    },
+    {
+      "path": "/terms",
+      "title": "Terms of Use | Webtummy",
+      "images": 0
+    },
+    {
+      "path": "/ai-website-builder",
+      "title": "AI Website Builder for Small Business | Webtummy",
+      "images": 1
+    },
+    {
+      "path": "/website-builder-for-entrepreneurs",
+      "title": "Website Builder for Entrepreneurs | Webtummy",
+      "images": 1
+    },
+    {
+      "path": "/no-code-website-builder",
+      "title": "No Code Website Builder with AI Editing | Webtummy",
+      "images": 1
+    },
+    {
+      "path": "/website-builder-for-consultants",
+      "title": "AI Website Builder for Consultants | Webtummy",
+      "images": 1
+    },
+    {
+      "path": "/restaurant-website-builder",
+      "title": "AI Restaurant Website Builder | Webtummy",
+      "images": 1
+    },
+    {
+      "path": "/freelancer-website-builder",
+      "title": "AI Website Builder for Freelancers | Webtummy",
+      "images": 1
+    },
+    {
+      "path": "/support/dashboard",
+      "title": "Find your way around the dashboard | Webtummy Help",
+      "images": 2
+    },
+    {
+      "path": "/support/new-website",
+      "title": "Create a website from your brief | Webtummy Help",
+      "images": 2
+    },
+    {
+      "path": "/support/editor-tour",
+      "title": "Your editor, at a glance | Webtummy Help",
+      "images": 6
+    },
+    {
+      "path": "/support/workspace-panels",
+      "title": "Show panels or focus the canvas | Webtummy Help",
+      "images": 4
+    },
+    {
+      "path": "/support/switch-pages",
+      "title": "Switch between website pages | Webtummy Help",
+      "images": 2
+    },
+    {
+      "path": "/support/add-page",
+      "title": "Add a new website page | Webtummy Help",
+      "images": 6
+    },
+    {
+      "path": "/support/add-blog",
+      "title": "Create a blog post and cover image | Webtummy Help",
+      "images": 4
+    },
+    {
+      "path": "/support/page-settings",
+      "title": "Edit the page title and main heading | Webtummy Help",
+      "images": 2
+    },
+    {
+      "path": "/support/page-seo",
+      "title": "Set page SEO and search visibility | Webtummy Help",
+      "images": 2
+    },
+    {
+      "path": "/support/add-section",
+      "title": "Add a section with AI | Webtummy Help",
+      "images": 4
+    },
+    {
+      "path": "/support/choose-section-layout",
+      "title": "Choose a section layout yourself | Webtummy Help",
+      "images": 2
+    },
+    {
+      "path": "/support/blank-section",
+      "title": "Build a blank section without AI | Webtummy Help",
+      "images": 4
+    },
+    {
+      "path": "/support/reorder-sections",
+      "title": "Reorder sections | Webtummy Help",
+      "images": 2
+    },
+    {
+      "path": "/support/hide-duplicate-delete-section",
+      "title": "Hide, duplicate, or delete a section | Webtummy Help",
+      "images": 2
+    },
+    {
+      "path": "/support/section-properties",
+      "title": "Use the right-hand Section properties | Webtummy Help",
+      "images": 4
+    },
+    {
+      "path": "/support/layout-variant",
+      "title": "Change a section\u2019s layout variant | Webtummy Help",
+      "images": 2
+    },
+    {
+      "path": "/support/portfolio-credentials",
+      "title": "Add portfolios, products, awards, and badges | Webtummy Help",
+      "images": 2
+    },
+    {
+      "path": "/support/select-components",
+      "title": "Select components and use the element tree | Webtummy Help",
+      "images": 4
+    },
+    {
+      "path": "/support/add-objects",
+      "title": "Add objects and components | Webtummy Help",
+      "images": 2
+    },
+    {
+      "path": "/support/edit-text",
+      "title": "Edit and format text | Webtummy Help",
+      "images": 2
+    },
+    {
+      "path": "/support/buttons-links",
+      "title": "Edit buttons and text links | Webtummy Help",
+      "images": 2
+    },
+    {
+      "path": "/support/spacing",
+      "title": "Adjust padding and margins | Webtummy Help",
+      "images": 2
+    },
+    {
+      "path": "/support/borders-backgrounds",
+      "title": "Change borders and background fills | Webtummy Help",
+      "images": 2
+    },
+    {
+      "path": "/support/layout-columns",
+      "title": "Arrange components and columns | Webtummy Help",
+      "images": 2
+    },
+    {
+      "path": "/support/move-resize-layers",
+      "title": "Move, resize, and layer objects | Webtummy Help",
+      "images": 4
+    },
+    {
+      "path": "/support/multi-select",
+      "title": "Select multiple objects and group them | Webtummy Help",
+      "images": 2
+    },
+    {
+      "path": "/support/duplicate-delete-object",
+      "title": "Duplicate or remove a component | Webtummy Help",
+      "images": 2
+    },
+    {
+      "path": "/support/menus-social-embeds",
+      "title": "Add menus, social links, lists, and embeds | Webtummy Help",
+      "images": 2
+    },
+    {
+      "path": "/support/replace-image",
+      "title": "Upload or replace an image | Webtummy Help",
+      "images": 4
+    },
+    {
+      "path": "/support/generate-image",
+      "title": "Generate or update an image with AI | Webtummy Help",
+      "images": 2
+    },
+    {
+      "path": "/support/image-size",
+      "title": "Resize images and choose fit or crop | Webtummy Help",
+      "images": 2
+    },
+    {
+      "path": "/support/theme",
+      "title": "Set site-wide colours and typography | Webtummy Help",
+      "images": 6
+    },
+    {
+      "path": "/support/logo-header-footer",
+      "title": "Change the logo, header, footer, and navigation | Webtummy Help",
+      "images": 4
+    },
+    {
+      "path": "/support/ai-assistant",
+      "title": "Use the page AI Assistant | Webtummy Help",
+      "images": 4
+    },
+    {
+      "path": "/support/assistant-add",
+      "title": "Use the assistant\u2019s add menu | Webtummy Help",
+      "images": 2
+    },
+    {
+      "path": "/support/rewrite-page",
+      "title": "Rewrite a page while keeping its layout | Webtummy Help",
+      "images": 2
+    },
+    {
+      "path": "/support/section-ai",
+      "title": "Ask AI to improve a section | Webtummy Help",
+      "images": 2
+    },
+    {
+      "path": "/support/rerun-ai",
+      "title": "Rerun AI for content, images, or the whole website | Webtummy Help",
+      "images": 2
+    },
+    {
+      "path": "/support/background-jobs",
+      "title": "Follow generation progress and review ready content | Webtummy Help",
+      "images": 2
+    },
+    {
+      "path": "/support/contact-forms",
+      "title": "Add and customize contact forms | Webtummy Help",
+      "images": 4
+    },
+    {
+      "path": "/support/site-seo",
+      "title": "Set site indexing and Search Console verification | Webtummy Help",
+      "images": 4
+    },
+    {
+      "path": "/support/ga4",
+      "title": "Add Google Analytics tracking | Webtummy Help",
+      "images": 2
+    },
+    {
+      "path": "/support/recaptcha",
+      "title": "Protect forms with reCAPTCHA | Webtummy Help",
+      "images": 2
+    },
+    {
+      "path": "/support/custom-scripts",
+      "title": "Add global or page-specific scripts | Webtummy Help",
+      "images": 2
+    },
+    {
+      "path": "/support/save-undo",
+      "title": "Save changes and use undo or redo | Webtummy Help",
+      "images": 4
+    },
+    {
+      "path": "/support/responsive-preview",
+      "title": "Preview desktop, tablet, and mobile | Webtummy Help",
+      "images": 4
+    },
+    {
+      "path": "/support/test-link",
+      "title": "Share a test link for feedback | Webtummy Help",
+      "images": 2
+    },
+    {
+      "path": "/support/connect-domain",
+      "title": "Connect your domain | Webtummy Help",
+      "images": 2
+    },
+    {
+      "path": "/support/publish",
+      "title": "Publish your saved website | Webtummy Help",
+      "images": 2
+    },
+    {
+      "path": "/support/analytics",
+      "title": "Read website traffic and Google reports | Webtummy Help",
+      "images": 2
+    },
+    {
+      "path": "/support/account",
+      "title": "Manage your account and password | Webtummy Help",
+      "images": 2
+    },
+    {
+      "path": "/support/billing",
+      "title": "Manage your plan and website slots | Webtummy Help",
+      "images": 2
+    },
+    {
+      "path": "/support/troubleshooting",
+      "title": "Fix common editing and publishing problems | Webtummy Help",
+      "images": 2
+    }
+  ]
+}

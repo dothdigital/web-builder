@@ -1,0 +1,16 @@
+{
+  "release": "image-direction-20261015",
+  "intake": "AI-only and mixed show original five style checkboxes and notes; upload-only hides them",
+  "rerun": "Images only and Full website show same component and saved intake choices",
+  "prompts": "Passed to planner and appended to final generation prompt",
+  "checks": [
+    "production build and typecheck",
+    "intake/rerun interactive tests",
+    "candidate and public browser tests",
+    "desktop/mobile layouts",
+    "project preference persistence",
+    "legacy intake and scoped rerun validation",
+    "worker and application health"
+  ],
+  "externalAiCallsDuringTests": 0
+}

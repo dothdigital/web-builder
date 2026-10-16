@@ -1,4 +1,6 @@
 'use client'
+import { UploadButton } from '@/components/upload-button'
+import { AiImageUpdate } from './ai-image-update'
 import { ErrorNotice } from '@/components/error-notice'
 
 import { SpacingProperties } from './spacing-properties'
@@ -174,6 +176,8 @@ function InspectorFields({
             key={field.path}
             field={isHeader ? { ...field, label: field.label.replace(/^Section/, 'Header') } : field}
             componentId={currentComponentId}
+            aiContext={JSON.stringify({ heading: displayedProps.heading, body: displayedProps.body, imageField: field.label }).slice(0, 8000)}
+            onGenerated={(url, alt) => { const parent = field.path.split('/').slice(0, -1).join('/'); const key = field.path.split('/').pop()!; const owner = parent ? getAtPointer(displayedProps, parent) : displayedProps; onChange(parent, { ...(owner as Record<string, unknown>), [key]: url, ...(key === 'imageUrl' ? { imageAlt: alt } : key === 'url' ? { alt } : {}) }) }}
             sizeControls={field.type === 'image' ? <ImageSizeControls path={field.path} sizes={(displayedProps.imageSizes ?? {}) as Parameters<typeof ImageSizeControls>[0]['sizes']} background={field.path === '/sectionBackgroundImageUrl' || field.path === '/backgroundImageUrl' || (isHero && displayedProps.imageLayout === 'background' && field.path === '/imageUrl')} onChange={(sizes) => onChange('/imageSizes', sizes)} /> : undefined}
             imageUrls={imageUrls}
             projectId={projectId}
@@ -228,6 +232,8 @@ function InspectorFields({
 
 function FieldEditor({
   sizeControls,
+  aiContext,
+  onGenerated,
   componentId,
   imageUrls,
   field,
@@ -235,6 +241,8 @@ function FieldEditor({
   projectId,
   onChange,
 }: {
+  aiContext?: string
+  onGenerated?: (url: string, alt: string) => void
   sizeControls?: ReactNode
   componentId: string
   imageUrls: Record<string, string>
@@ -266,7 +274,7 @@ function FieldEditor({
     return (
       <div className="grid gap-1">
         {label}
-        <ImageField imageUrls={imageUrls} projectId={projectId} value={typeof value === 'string' ? value : ''} onChange={onChange} />
+        <ImageField imagePointer={field.path} aiContext={aiContext} onGenerated={onGenerated} imageUrls={imageUrls} projectId={projectId} value={typeof value === 'string' ? value : ''} onChange={onChange} />
         {sizeControls}
       </div>
     )
@@ -359,7 +367,7 @@ function ShowcaseItemsEditor({ credentials, items, imageUrls, projectId, onChang
     {items.map((item, index) => <details key={index} open className="rounded-lg border border-neutral-200 p-3">
       <summary className="cursor-pointer text-sm font-medium">{index + 1}. {item.title || `New ${name}`}</summary>
       <div className="mt-3 grid gap-3">
-        <ImageField projectId={projectId} imageUrls={imageUrls} value={item.imageUrl || ''} onChange={imageUrl => onChange(items.map((entry, position) => position === index ? { ...entry, imageUrl } : entry))} />
+        <ImageField imagePointer={`/items/${index}/imageUrl`} aiContext={JSON.stringify(item).slice(0, 8000)} onGenerated={(imageUrl, imageAlt) => onChange(items.map((entry, position) => position === index ? { ...entry, imageUrl, imageAlt } : entry))} projectId={projectId} imageUrls={imageUrls} value={item.imageUrl || ''} onChange={imageUrl => onChange(items.map((entry, position) => position === index ? { ...entry, imageUrl } : entry))} />
         {[...fields, ['imageAlt', 'Image description (accessibility)']].map(([key, label]) => <label key={key} className="grid gap-1 text-xs">{label}{key === 'description' ? <textarea className={controlClass} rows={3} value={item[key!] || ''} onChange={event => onChange(items.map((entry, position) => position === index ? { ...entry, [key!]: event.target.value } : entry))} /> : <input className={controlClass} value={item[key!] || ''} placeholder={key === 'href' ? '/work/project-name or https://…' : undefined} onChange={event => onChange(items.map((entry, position) => position === index ? { ...entry, [key!]: event.target.value } : entry))} />}</label>)}
         <div className="flex flex-wrap gap-3 text-xs">{[-1, 1].map(direction => <button key={direction} type="button" disabled={index + direction < 0 || index + direction >= items.length} className="disabled:opacity-30" onClick={() => { const next = [...items]; [next[index], next[index + direction]] = [next[index + direction]!, next[index]!]; onChange(next) }}>{direction < 0 ? 'Move up' : 'Move down'}</button>)}<button type="button" className="text-red-700" onClick={() => onChange(items.filter((_, position) => position !== index))}>Remove {name}</button></div>
       </div>
@@ -373,13 +381,20 @@ export function ImageField({
   projectId,
   value,
   onChange,
+  aiContext,
+  imagePointer,
+  onGenerated,
 }: {
+  imagePointer?: string
+  aiContext?: string
+  onGenerated?: (url: string, alt: string) => void
   imageUrls: Record<string, string>
   projectId: string
   value: string
   onChange: (value: string) => void
 }) {
   const router = useRouter()
+  const [aiOpen, setAiOpen] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [libraryOpen, setLibraryOpen] = useState(false)
   const [error, setError] = useState<string>()
@@ -412,8 +427,9 @@ export function ImageField({
             </button>)}
           </div>}
       </div>}
-      <label className="grid gap-1 text-xs text-neutral-600">Upload from computer
-        <input type="file" accept="image/*" disabled={uploading} className="max-w-full text-xs"
+      <button type="button" aria-expanded={aiOpen} className="rounded-md border border-violet-300 px-3 py-2 text-xs font-medium text-violet-900" onClick={() => setAiOpen(open => !open)}>{aiOpen ? 'Close AI image update' : 'Update with AI'}</button>
+      {aiOpen && <AiImageUpdate imagePointer={imagePointer} originalUrl={value} projectId={projectId} context={aiContext} onUse={(url, alt) => { setUploaded(current => ({ ...current, [url]: `/api/projects/${projectId}/editor-image?thumbnail=1&url=${encodeURIComponent(url)}` })); if (onGenerated) onGenerated(url, alt); else onChange(url); setAiOpen(false); setNotice('AI image selected. Save the website to keep this change.'); setError(undefined) }} />}
+      <UploadButton label={/logo/i.test(imagePointer ?? '') ? 'Upload logo' : 'Upload image'} disabled={uploading}
           onChange={async (event) => {
             const input = event.currentTarget
             const file = input.files?.[0]
@@ -443,7 +459,6 @@ export function ImageField({
               input.value = ''
             }
           }} />
-      </label>
       <details className="text-xs text-neutral-500"><summary className="cursor-pointer">Use an image URL</summary><input aria-label="Image URL" className={controlClass} value={value} onChange={(event) => onChange(event.target.value)} /></details>
       {value && <button type="button" className="text-left text-xs text-neutral-600 underline" onClick={() => { onChange(''); setNotice('Image removed from this section. It remains in the library.') }}>Clear image selection</button>}
       {uploading && <p role="status" className="text-xs text-neutral-500">Uploading and saving image…</p>}

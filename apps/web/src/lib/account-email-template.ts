@@ -22,7 +22,7 @@ export function accountEmailTemplate({ purpose, name, url }: AccountEmailInput) 
   const ignored = verifying
     ? 'If you didn’t create a Webtummy account, you can safely ignore this email.'
     : 'If you didn’t request a password change, ignore this email. Your password will stay the same.'
-  const text = [greeting, introduction, instruction, `${button}: ${url}`, 'For your security, this link expires in one hour and can be used once.', nextStep, ignored, 'Need a hand? Email support@webtummy.com.', 'Warm regards,\nTeam Webtummy\nYour AI Growth Team', 'Webtummy is a product of Dot H Digital Inc.\nMississauga, Ontario, Canada'].filter(Boolean).join('\n\n')
+  const text = [greeting, introduction, instruction, `${button}: ${url}`, 'For your security, this link expires in one hour and can be used once.', nextStep, ignored, 'Need a hand? Email support@webtummy.com.', 'Warm regards,\nTeam Webtummy\nYour AI Growth Team', 'Webtummy'].filter(Boolean).join('\n\n')
   const html = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(subject)}</title></head>
 <body style="margin:0;padding:0;background:#F8F7FC;color:#14243A;font-family:Arial,Helvetica,sans-serif">
@@ -44,7 +44,7 @@ ${nextStep ? `<div style="padding:16px 18px;background:#F8F7FC;border-radius:12p
 <p style="margin:0 0 24px;font-size:13px;line-height:1.7;color:#55607A">${escapeHtml(ignored)}</p>
 <p style="margin:0 0 24px;font-size:13px;line-height:1.7;color:#55607A">Need a hand? <a href="mailto:support@webtummy.com" style="color:#6B4EE6">support@webtummy.com</a></p>
 <p style="margin:0;font-size:14px;line-height:1.7">Warm regards,<br><strong>Team Webtummy</strong><br><span style="color:#55607A">Your AI Growth Team</span></p>
-</td></tr><tr><td align="center" style="padding:24px 12px 0;font-size:11px;line-height:1.7;color:#8A93A8">Webtummy · A product of Dot H Digital Inc.<br>Mississauga, Ontario, Canada<br>Design. Build. Optimize. Deploy. Run. Grow.</td></tr></table>
+</td></tr><tr><td align="center" style="padding:24px 12px 0;font-size:11px;line-height:1.7;color:#8A93A8">Webtummy<br>Design. Build. Optimize. Deploy. Run. Grow.</td></tr></table>
 </td></tr></table></body></html>`
   return { subject, text, html }
 }

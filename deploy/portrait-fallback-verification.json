@@ -1,0 +1,34 @@
+{
+  "release": "portrait-fallback-20261016",
+  "projectId": "cmv8r9j240000twpapiu39z6x",
+  "rootCause": "Empty section images inherited the first image on the page, reintroducing portraits removed during generation.",
+  "siteRepair": {
+    "sourceVersion": 27,
+    "savedVersion": 28,
+    "changedSlots": 6,
+    "changes": "Contextual existing artwork for six empty supporting slots on Home/About; copy, layout and other images retained.",
+    "beforePortraitCounts": {
+      "home": 5,
+      "about": 3
+    },
+    "afterPortraitCounts": {
+      "home": 1,
+      "about": 1,
+      "otherPages": 0
+    }
+  },
+  "platformChange": "No automatic page-hero inheritance for empty or missing image fields, including detached objects. Explicit images and linked service/blog covers retained.",
+  "checks": {
+    "optionImageAndPortraitFallbackTests": "passed",
+    "containerAndDetachedImageTests": "passed",
+    "contentCreationTests": "passed",
+    "generationPersonalPhotoPolicy": "passed",
+    "webTypecheck": "passed",
+    "productionBuild": "passed",
+    "freshFixturePreviewAndEditorBrowser": "passed",
+    "liveProjectAll17Routes": "passed",
+    "liveHomeAboutVisibleBrowserCounts": "passed",
+    "publicHealth": "ok; database up"
+  },
+  "webPort": 3002
+}

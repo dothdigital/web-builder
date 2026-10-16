@@ -1,0 +1,11 @@
+{
+  "release": "rerun-colour-choice-20261016",
+  "change": "Palette selection is submitted directly by the single bottom action; removed AI chooser and separate Apply colours button; recommended default and Keep current colours option.",
+  "checks": {
+    "webTypecheck": "passed",
+    "productionBuild": "passed",
+    "scopedRerun": "passed",
+    "candidateBrowser": "passed: recommended default, selection payload, keep-current payload, uploads-only payload, mobile layout"
+  },
+  "webPort": 3003
+}

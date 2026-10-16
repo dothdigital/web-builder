@@ -1,0 +1,83 @@
+{
+  "recordedAt": "2026-10-15T12:39:53.425Z",
+  "account": "Normal customer; no platform admin or support flags",
+  "website": "Fictional Willow Studio demo",
+  "videos": [
+    {
+      "id": "dashboard-tour",
+      "captions": [
+        "Your dashboard and website actions",
+        "This is an ordinary customer workspace. Willow Studio is our fictional demo website.",
+        "The summary shows your websites, published sites, AI builds, and current package.",
+        "Each website card has its own editor, analytics, publishing, test link, and AI actions.",
+        "The editor has sections on the left, your website in the middle, and Properties on the right.",
+        "Review your changes, then Save. Publish separately when you are ready to go live. "
+      ]
+    },
+    {
+      "id": "add-page",
+      "captions": [
+        "Add a website page or blog post",
+        "Use + Blog / Page in the top bar to create content inside this website.",
+        "Choose New website page. For a post and blog listing, choose Blog post instead.",
+        "Enter a clear topic and review the URL slug created from the title.",
+        "Provide the audience, keywords, purpose, and verified facts you want the page to use.",
+        "An optional cover needs both a subject description and visual style.",
+        "Choose Generate content when your brief is ready. This walkthrough stops before submitting an AI job.",
+        "Review your changes, then Save. Publish separately when you are ready to go live. "
+      ]
+    },
+    {
+      "id": "add-section",
+      "captions": [
+        "Add sections and build without AI",
+        "Choose the page first, then add a section in the left panel.",
+        "AI chooses layout creates a section from your topic and instructions.",
+        "I choose layout lets you browse component families and choose a starting layout.",
+        "A blank section gives you a clean starting point with no AI generation.",
+        "Choose a destination section, then one of the 14 available object types.",
+        "Your new heading is selected. Use Properties to edit its text and styling.",
+        "Review your changes, then Save. Publish separately when you are ready to go live. "
+      ]
+    },
+    {
+      "id": "component-toolbar",
+      "captions": [
+        "Select and style a component",
+        "Click an object to select it. Double-click editable text when you want to type.",
+        "The toolbar changes with your selection: text, image, button, field, or container.",
+        "Set a font, size, emphasis, colour, and alignment for the selected text.",
+        "Spacing controls adjust padding inside the object and margins around it.",
+        "Borders controls colour, width, style, and corner radius.",
+        "Move into section chooses a destination. Layers controls stacking when objects overlap.",
+        "Review your changes, then Save. Publish separately when you are ready to go live. "
+      ]
+    },
+    {
+      "id": "right-properties",
+      "captions": [
+        "Use Section, Page, Theme, and Integrations",
+        "Section properties change the selected section’s content, background, and available layout variants.",
+        "Page properties contain page rewriting, the page title, H1, and search settings.",
+        "Update the SEO title, description, keywords, canonical path, and page indexing.",
+        "Theme controls shared design: logo, header appearance, buttons, palette, and typography.",
+        "Check changes across several pages. An individual object can override theme defaults.",
+        "Integrations includes site indexing, Search Console verification, GA4, reCAPTCHA, and custom scripts.",
+        "Review your changes, then Save. Publish separately when you are ready to go live. "
+      ]
+    },
+    {
+      "id": "replace-image",
+      "captions": [
+        "Replace, resize, or generate an image",
+        "Select the exact image you want to change.",
+        "Use width and height to resize. Fill / crop fills the box; Fit whole image shows the full picture.",
+        "Replace image offers a file upload, your project image library, or an image URL.",
+        "Choose an existing project image from the library. These are demo assets, not customer photos.",
+        "For an AI replacement, describe what the image should show and choose the visual direction.",
+        "Generate only when the instructions are ready. This demo does not submit a generation request.",
+        "Review your changes, then Save. Publish separately when you are ready to go live. "
+      ]
+    }
+  ]
+}

@@ -1,4 +1,5 @@
 'use client'
+import { EditorImageTargetContext, applyEditorImage } from '@/lib/editor-image-update'
 import { ErrorNotice } from '@/components/error-notice'
 
 import { mergeAssistantChanges, sameEditorValue } from '@/lib/assistant-merge'
@@ -13,6 +14,7 @@ import { SectionReorderList } from './section-reorder-list'
 import { reorderSections } from '@/lib/section-order'
 import { HeaderThemeControls } from './header-theme-controls'
 import { ThemeLogoUpload } from './theme-logo-upload'
+import { siteColors, replaceSiteColor, restoreSitePalette } from '@awb/website-model'
 import { applySitePalette } from '@/lib/site-palette'
 import { AddObjectDialog } from './add-object-dialog'
 import { addManualObject } from '@/lib/add-manual-object'
@@ -22,7 +24,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import Link from 'next/link'
 import { flushSync } from 'react-dom'
 import { flushInlineTextEdits, hasActiveInlineEdit } from './inline-edit'
-import { getComponent, listComponents, normalizeHeroSettings } from '@awb/component-registry'
+import { getComponent, listComponents, normalizeHeroSettings, layoutTheme, setTemplateHeading } from '@awb/component-registry'
 import type { ComponentFamily } from '@awb/component-registry'
 import type { DesignTokens, WebsiteModel, WebsiteSection } from '@awb/website-model'
 import { askAiForSection, generateAiSection, saveModel } from '@/app/actions/editor'
@@ -88,6 +90,7 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
   const [insertIndex, setInsertIndex] = useState<number>()
 
   const model = history.present
+  const [paletteBaseline, setPaletteBaseline] = useState<typeof model>()
   const latestModel = useRef(model)
   useLayoutEffect(() => { latestModel.current = model }, [model])
   useEffect(() => {
@@ -220,7 +223,14 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
   })) : []
 
   return (
-    <div className="flex h-screen flex-col bg-neutral-100">
+    <EditorImageTargetContext.Provider value={(pointer, originalUrl) => {
+      if (!selection) return undefined
+      const owner = selection.kind === 'section' ? section?.props : globalComponent?.props
+      const scope = owner && selection.element ? objectScope(owner, selection.element) : undefined
+      const prefix = scope?.entry ? scope.prefix : ''
+      return { pageId: page.id, ...(selection.kind === 'section' ? { sectionId: selection.id } : { globalSlot: selection.kind }), pointer: prefix && !pointer.startsWith(prefix) ? prefix + pointer : pointer, originalUrl }
+    }}>
+    <div data-awb-editor-root="true" className="flex h-screen flex-col bg-neutral-100">
       <header className="flex shrink-0 flex-nowrap items-center justify-between gap-3 overflow-x-auto border-b border-neutral-200 bg-white px-4 py-2">
         <div className="flex shrink-0 items-center gap-3">
           <Link href="/dashboard" className="text-sm text-neutral-500 hover:underline">
@@ -256,6 +266,7 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
             Preview
           </Link>
           <a href={`/projects/${projectId}/publishing`} className={ghostButton}>Domains & Publish</a>
+          <Link href="/support/editor-tour" target="_blank" rel="noreferrer" className={ghostButton}>Help ↗</Link>
           <button type="button" onClick={save} disabled={saving || !dirty} className={primaryButton}>
             {saving ? 'Saving…' : dirty ? 'Save' : 'Saved'}
           </button>
@@ -269,7 +280,11 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
       }} onSelect={target => { setSelection(target.scope === 'page' ? { kind: 'section', id: target.sectionId, ...(target.path ? { element: target.path } : {}) } : { kind: target.scope, ...(target.path ? { element: target.path } : {}) }); revealEditorElement(target.path || undefined) }} />
       <ContentCreatePanel dialogOnly imageUrls={imageUrls} openRequest={createContentRequest} projectId={projectId} model={model} onSelect={(id) => { setPageId(id); setSelection(undefined) }} />
       <ContentJobNotifications projectId={projectId} onApply={(detail) => {
-        if (detail.kind === 'CREATE') {
+        if (detail.kind === 'COVER' && detail.editorTarget) {
+          flushSync(() => flushInlineTextEdits())
+          const next = applyEditorImage(latestModel.current, detail.editorTarget, detail.result as { url: string; alt: string })
+          if (next !== latestModel.current) flushSync(() => commit(next))
+        } else if (detail.kind === 'CREATE') {
           const created = (detail.result as unknown as { page: typeof page }).page
           const alreadyAdded = model.pages.find((entry) => entry.id === created.id && entry.path === created.path)
           if (alreadyAdded) { setPageId(alreadyAdded.id); setSelection(undefined); return }
@@ -645,6 +660,7 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
           {panel === 'section' && !(selection?.kind === 'section' && (selection.elements?.length ?? 0) > 1) &&
             (section && definition ? (
               <Inspector
+                key={section.id}
                 imageUrls={imageUrls}
                 projectId={projectId}
                 componentName={definition.name}
@@ -694,7 +710,7 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
                 }}
               />
             ) : globalSlot && globalComponent && definition ? (
-              <Inspector
+              <Inspector key={globalSlot}
                 imageUrls={imageUrls}
                 projectId={projectId}
                 kind={`Global ${globalSlot}`}
@@ -761,10 +777,26 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
               <Text
                 label="H1"
                 value={page.h1}
-                onChange={(value) => commit(setAtPointer(model, `/pages/${pageIndex}/h1`, value))}
+                onChange={(value) => {
+                  let next = setAtPointer(model, `/pages/${pageIndex}/h1`, value)
+                  const heroIndex = page.sections.findIndex(section => !section.hidden && getComponent(section.componentId)?.family === 'HERO')
+                  if (heroIndex >= 0) {
+                    const root = `/pages/${pageIndex}/sections/${heroIndex}/props`
+                    const hero = page.sections[heroIndex]!
+                    if (layoutTheme(hero.componentId)) {
+                      const props = { ...hero.props }; setTemplateHeading(hero.componentId, props, value)
+                      next = setAtPointer(next, root, props)
+                    } else next = setAtPointer(next, `${root}/heading`, value)
+                    const moved = page.sections[heroIndex]!.props.freeElements as Array<{ componentId?: string; content?: Record<string, unknown> }> | undefined
+                    moved?.forEach((element, index) => {
+                      if (element.componentId?.startsWith('Hero') && element.content?.heading === page.sections[heroIndex]!.props.heading) next = setAtPointer(next, `${root}/freeElements/${index}/content/heading`, value)
+                    })
+                  }
+                  commit(next)
+                }}
               />
               <Text
-                label="SEO title"
+                label="Meta / SEO title"
                 value={page.seo.title}
                 onChange={(value) => commit(setAtPointer(model, `/pages/${pageIndex}/seo/title`, value))}
               />
@@ -777,6 +809,9 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
                   onChange={(event) => commit(setAtPointer(model, `/pages/${pageIndex}/seo/description`, event.target.value))}
                 />
               </label>
+              <Text label="Target keyword" value={page.seo.targetKeyword ?? page.contentBrief?.keyword ?? ''} onChange={(value) => commit(setAtPointer(model, `/pages/${pageIndex}/seo/targetKeyword`, value))} />
+              <Text label="Secondary keywords (comma separated)" value={page.seo.secondaryKeywords ?? page.contentBrief?.secondaryKeywords ?? ''} onChange={(value) => commit(setAtPointer(model, `/pages/${pageIndex}/seo/secondaryKeywords`, value))} />
+              <p className="text-xs text-neutral-500">Use the page topic naturally in its title, H1 and description. Keywords guide content; the keywords meta tag does not affect Google rankings. FAQ markup follows the visible FAQ section.</p>
               <Text
                 label="Canonical path"
                 value={page.seo.canonical ?? page.path}
@@ -796,7 +831,7 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
           {panel === 'page' && <div className="overflow-y-auto border-t p-4"><h3 className="mb-2 text-sm font-semibold">Scripts for this page</h3><ScriptFields value={page.customScripts} onChange={(value) => commit(setAtPointer(model, `/pages/${pageIndex}/customScripts`, value))} /></div>}
           {panel === 'integrations' && <IntegrationsPanel projectId={projectId} model={model} onChange={commit} />}
           {panel === 'theme' && (
-            <ThemePanel logoUpload={<ThemeLogoUpload projectId={projectId} logoUrl={typeof model.globalComponents.header.props.logoImageUrl === 'string' ? model.globalComponents.header.props.logoImageUrl : undefined} onApplyPalette={(tokens) => commit(applySitePalette(latestModel.current, tokens.palette))} onUpload={(url) => {
+            <ThemePanel websiteColors={siteColors(model)} onReplaceColor={(source, replacement) => commit(replaceSiteColor(latestModel.current, source, replacement))} logoUpload={<ThemeLogoUpload projectId={projectId} logoUrl={typeof model.globalComponents.header.props.logoImageUrl === 'string' ? model.globalComponents.header.props.logoImageUrl : undefined} canRevertPalette={!!paletteBaseline} onRevertPalette={() => { if (paletteBaseline) { commit(restoreSitePalette(latestModel.current, paletteBaseline)); setPaletteBaseline(undefined) } }} onApplyPalette={(tokens) => { setPaletteBaseline(current => current ?? latestModel.current); commit(applySitePalette(latestModel.current, tokens.palette)) }} onUpload={(url) => {
               setUploadedImageUrls(current => ({ ...current, [url]: `/api/projects/${projectId}/editor-image?url=${encodeURIComponent(url)}` }))
               let next = latestModel.current
               for (const slot of ['header', 'footer'] as const) {
@@ -809,6 +844,7 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
         </aside>
       </div>
     </div>
+    </EditorImageTargetContext.Provider>
   )
 }
 
@@ -819,11 +855,16 @@ function PanelToggle({ side, label, open, onClick }: { side: 'left' | 'right'; l
   </button>
 }
 
-function ThemePanel({ tokens, onChange, headerProps, onHeaderChange, logoUpload }: { headerProps: Record<string, unknown>; onHeaderChange: (props: Record<string, unknown>) => void; tokens: DesignTokens; onChange: (tokens: DesignTokens) => void; logoUpload: React.ReactNode }) {
+function ThemePanel({ websiteColors, onReplaceColor, tokens, onChange, headerProps, onHeaderChange, logoUpload }: { websiteColors: string[]; onReplaceColor: (source: string, replacement: string) => void; headerProps: Record<string, unknown>; onHeaderChange: (props: Record<string, unknown>) => void; tokens: DesignTokens; onChange: (tokens: DesignTokens) => void; logoUpload: React.ReactNode }) {
   const buttons = tokens.buttons ?? { background: tokens.palette.primary, text: tokens.palette.primaryForeground, outline: tokens.palette.primary }
   return (
     <div className="grid gap-4 overflow-y-auto p-4">
       {logoUpload}
+      <fieldset className="grid gap-3 rounded-lg border border-neutral-200 p-3">
+        <legend className="px-1 text-sm font-semibold">Website colours ({websiteColors.length})</legend>
+        <p className="text-xs text-neutral-500">All saved theme, button and custom section colours across every page. Changing a colour updates every use of that colour. Colours inside photos and logos stay in their images.</p>
+        {websiteColors.map(color => <ColorInput key={color} label={`Website colour ${color}`} value={color} onChange={value => onReplaceColor(color, value)} />)}
+      </fieldset>
       <HeaderThemeControls props={headerProps} tokens={tokens} onChange={onHeaderChange} />
       <fieldset className="grid gap-3 rounded-lg border border-neutral-200 p-3">
         <legend className="px-1 text-sm font-semibold">Buttons</legend>

@@ -94,18 +94,23 @@ export function readableForeground(background: string): string {
 /// Builds a full token palette from colours extracted from an uploaded logo.
 /// The result is a *suggestion*: the user can accept, tweak or replace it.
 export function paletteFromLogoColors(colors: string[], base: DesignTokens): DesignTokens {
-  const [primaryHex, secondaryHex] = colors
+  const [primaryHex] = colors
   if (!primaryHex) {
     return base
   }
 
   const primary = hexToHsl(primaryHex)
+  const secondaryHex = colors.slice(1).find(color => {
+    const candidate = hexToHsl(color)
+    const distance = Math.abs(candidate.h - primary.h)
+    return candidate.s >= 20 && Math.min(distance, 360 - distance) >= 35
+  }) ?? colors[1]
   const accentSource = secondaryHex ? hexToHsl(secondaryHex) : { ...primary, h: (primary.h + 32) % 360 }
   const neutral: Hsl = { h: primary.h, s: Math.min(primary.s * 0.14, 12), l: 97 }
   const surface: Hsl = { h: primary.h, s: Math.min(primary.s * 0.2, 16), l: 94 }
   const foreground: Hsl = { h: primary.h, s: Math.min(primary.s * 0.3, 22), l: 12 }
 
-  const primaryHexNormalized = hslToHex({ ...primary, l: Math.min(Math.max(primary.l, 18), 46) })
+  const primaryHexNormalized = primaryHex.toLowerCase()
 
   return {
     ...base,
@@ -116,7 +121,7 @@ export function paletteFromLogoColors(colors: string[], base: DesignTokens): Des
       muted: hslToHex({ ...foreground, l: 46, s: Math.min(foreground.s, 14) }),
       primary: primaryHexNormalized,
       primaryForeground: readableForeground(primaryHexNormalized),
-      accent: hslToHex({ ...accentSource, l: Math.min(Math.max(accentSource.l, 38), 62) }),
+      accent: secondaryHex?.toLowerCase() ?? hslToHex({ ...accentSource, l: 50 }),
       border: hslToHex({ ...surface, l: 86 }),
     },
   }

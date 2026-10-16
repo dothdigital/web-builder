@@ -9,6 +9,8 @@ export const seoSchema = z.object({
   index: z.boolean().default(true),
   canonical: z.string().optional(),
   ogImageAssetId: z.string().optional(),
+  targetKeyword: z.string().max(200).optional(),
+  secondaryKeywords: z.string().max(500).optional(),
 })
 
 export const sectionSchema = z.object({

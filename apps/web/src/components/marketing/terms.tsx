@@ -1,168 +1,86 @@
-// Adapted from Terms.dc.html in the uploaded Webtummy.zip.
 import Link from 'next/link'
 import styles from './marketing.module.css'
 
 export function MarketingTerms() {
   return (
-    <>
-    <div data-screen-label="Terms of Use">
+    <div data-screen-label="Terms of Service">
       <section className={styles.s1}>
         <div className={styles.s402}>
-          <div className={styles.s168}>
-            {"DotH Digital Inc. · Ontario, Canada"}
-          </div>
-          <h1 className={styles.s391}>
-            {"Terms of Use"}
-          </h1>
-          <div className={styles.s403}>
-            {"Effective October 5, 2026"}
-          </div>
-          <p className={styles.s392}>
-            {"These terms govern Webtummy’s website, builder, and related services, operated by DotH digital Inc., Ontario, Canada (“we”, “us”). By creating an account or using the service, you agree to these terms. If you do not agree, do not use the service."}
-          </p>
-          <div className={styles.s404}>
-            <Link className={styles.s405} href="/privacy">
-              {"Privacy Policy"}
-            </Link>
-            <Link className={styles.s406} href="/terms">
-              {"Terms of Use"}
-            </Link>
-          </div>
+          <div className={styles.s168}>WebTummy</div>
+          <h1 className={styles.s391}>Terms of Service</h1>
+          <div className={styles.s403}>Effective 15 October 2026</div>
+          <p className={styles.s392}>{"These Terms govern webtummy.com and the WebTummy website builder, hosting and related services (the 'Service'). References to 'WebTummy', 'we' and 'us' refer to the contracting operator identified in section 12."}</p>
+          <p className={styles.s392}>{"By creating an account or using the Service you accept these Terms and the pricing and plan terms shown at checkout. If you do not agree, do not use the Service. These Terms do not remove consumer protections that applicable law makes non-waivable."}</p>
+          <nav className={styles.s404} aria-label="Legal documents">
+            <Link className={styles.s405} href="/privacy">Privacy Policy</Link>
+            <Link className={styles.s406} href="/terms">Terms of Service</Link>
+          </nav>
         </div>
       </section>
       <section className={styles.s407}>
-        <div className={styles.s408}>
-          <h2 className={styles.s409}>
-            {"1. Accounts and eligibility"}
-          </h2>
-          <p className={styles.s410}>
-            {"You must have reached the age of majority where you live and have authority to accept these terms for yourself or your organization. Provide accurate account details, protect your credentials, and promptly report unauthorized access. You are responsible for activity you authorize through your account and for permissions granted to workspace members."}
-          </p>
-        </div>
-        <div className={styles.s408}>
-          <h2 className={styles.s409}>
-            {"2. The service and your plan"}
-          </h2>
-          <p className={styles.s410}>
-            {"Webtummy helps you create, edit, and manage websites. Features, website limits, AI usage, storage, and publishing access depend on the plan and availability shown in the service. A draft or preview is not a published website. Domain ownership, DNS configuration, third-party services, and any required subscriptions remain your responsibility. Do not use Webtummy as your only copy of important content."}
-          </p>
-        </div>
-        <div className={styles.s408}>
-          <h2 className={styles.s409}>
-            {"3. Fees, renewals, and cancellation"}
-          </h2>
-          <p className={styles.s410}>
-            {"The checkout identifies the price, currency, billing interval, applicable taxes, and any recurring charges before purchase. Recurring plans renew until cancelled as disclosed at checkout. Cancel through Plans & billing, if available, or contact support@webtummy.com before renewal. Cancellation generally ends renewal and takes effect at the end of the paid period unless the checkout terms or applicable law require otherwise. Refunds follow the policy disclosed at purchase and mandatory legal rights. Account deletion alone does not replace subscription cancellation. We notify you of material price changes before they apply to a renewal; you may cancel before the new charge."}
-          </p>
-        </div>
-        <div className={styles.s408}>
-          <h2 className={styles.s409}>
-            {"4. Your content, your website and our platform"}
-          </h2>
-          <p className={styles.s410}>
-            {"Webtummy is a fully managed hosted platform. For these terms, we distinguish three things:"}
-          </p>
-          <div className={styles.s411}>
-            <div className={styles.s282}>
-              {"Customer Content"}
-            </div>
-            <p className={styles.s412}>
-              {"Your logo, text, photos, business information, uploaded files and other materials you provide. You retain the rights you hold in your Customer Content, subject to applicable third-party rights."}
-            </p>
-          </div>
-          <div className={styles.s411}>
-            <div className={styles.s282}>
-              {"Generated Website"}
-            </div>
-            <p className={styles.s412}>
-              {"The assembled website experience produced using Webtummy, including its pages, layout, structure and design, which is provided and operated within the Webtummy platform."}
-            </p>
-          </div>
-          <div className={styles.s411}>
-            <div className={styles.s282}>
-              {"Webtummy Platform"}
-            </div>
-            <p className={styles.s412}>
-              {"The editor, templates, components, software, AI workflows, website-generation and rendering systems, hosting infrastructure, design system and other proprietary technology. These remain owned by us or our licensors."}
-            </p>
-          </div>
-          <p className={styles.s410}>
-            {"Websites created using Webtummy are provided as part of a hosted software service. Subscription fees do not constitute the purchase of website source code, platform software, templates, components, rendering technology or other underlying Webtummy technology. Webtummy does not provide website source-code downloads or exports upon cancellation or termination unless expressly agreed otherwise in writing."}
-          </p>
-          <p className={styles.s410}>
-            {"You grant us a non-exclusive licence to store, copy, process, transmit, and display your Customer Content only to provide, secure, and support the service, including publication you request and processing by necessary providers. You must have permission to upload and use all text, images, trademarks, data, and reference material. Third-party assets remain subject to their licences."}
-          </p>
-        </div>
-        <div className={styles.s408}>
-          <h2 className={styles.s409}>
-            {"5. AI-generated material"}
-          </h2>
-          <p className={styles.s410}>
-            {"AI output can be inaccurate, incomplete, similar to other output, or unsuitable for your business. You must review facts, rights, accessibility, security, and legal compliance before relying on or publishing it. We do not guarantee originality, copyright protection, search rankings, traffic, or business results. Use of AI output is subject to applicable law, third-party rights, and relevant provider terms."}
-          </p>
-        </div>
-        <div className={styles.s408}>
-          <h2 className={styles.s409}>
-            {"6. Acceptable use"}
-          </h2>
-          <p className={styles.s410}>
-            {"Do not use the service for unlawful content, infringement, harassment, exploitation, discrimination prohibited by law, phishing, malware, fraud, or unsolicited messaging. Do not access others’ accounts, bypass usage limits, interfere with the platform, or conduct unauthorized security testing. You are responsible for your website’s claims, customer dealings, privacy notices, tracking permissions, and marketing consent, including compliance with Canada’s anti-spam law where applicable."}
-          </p>
-        </div>
-        <div className={styles.s408}>
-          <h2 className={styles.s409}>
-            {"7. Privacy and third-party services"}
-          </h2>
-          <p className={styles.s410}>
-            {"Our "}
-            <Link className={styles.s291} href="/privacy">
-              {"Privacy Policy"}
-            </Link>
-            {" explains our handling of personal information. Customer website owners determine how they collect and use visitor information and must have a lawful basis and any required permissions. Optional authentication, AI, payment, hosting, and other integrations have their own terms and privacy practices. We do not control their availability or content. Primary application hosting in Canada does not guarantee that every integrated service processes information only in Canada."}
-          </p>
-        </div>
-        <div className={styles.s408}>
-          <h2 className={styles.s409}>
-            {"8. Payment Access, Hosting, Suspension and Website Retention"}
-          </h2>
-          <p className={styles.s410}>
-            {"The Individual plan includes one 7-day free trial for eligible new customers, followed by US$29 per month. Card details are required at checkout, and the trial begins only after Stripe confirms the subscription. During the trial, website creation, editing, AI generation and hosting are available. The saved payment method is automatically charged when the trial ends unless the customer cancels beforehand. Cancellation during the trial preserves access until the original trial end and avoids the first subscription charge. A failed first charge does not receive the grace period for previously paid renewals: access and hosting may be suspended until payment is confirmed. Reactivation does not grant another free trial. Outside a confirmed trial, subscription payment is required before website creation, editing or AI generation, unless a platform administrator grants a payment exemption. Admin and support accounts do not require payment. After a failed renewal, previously paid customers receive 7 days of full website and editor access. From day 8 through day 30 after the failed payment, the website remains live while editing and AI features are restricted. After 30 days unpaid, or when cancellation takes effect at the end of the paid period, hosting may be suspended with a neutral temporary page. Saved website content and data are preserved for at least 90 days after suspension so the subscription can be reactivated. We send multiple warning notices before any permanent deletion review after retention expires. Legal holds and mandatory legal retention requirements take priority. Suspension does not immediately delete a website or its data. Account and billing notices are sent separately from optional marketing emails. Contact support@webtummy.com for payment or recovery assistance."}
-          </p>
-        </div>
-        <div className={styles.s408}>
-          <h2 className={styles.s409}>
-            {"9. Availability and liability"}
-          </h2>
-          <p className={styles.s410}>
-            {"To the extent permitted by law, the service is provided “as is” and “as available,” without promises of uninterrupted access, error-free output, or suitability for a particular purpose. To that same extent, we are not liable for indirect or consequential losses, and our total liability arising from the service is limited to the fees you paid us for it in the 12 months before the event giving rise to the claim. These limits do not apply to fraud, wilful misconduct, or liability and warranties that applicable law does not allow us to exclude or limit."}
-          </p>
-        </div>
-        <div className={styles.s408}>
-          <h2 className={styles.s409}>
-            {"10. Business claims and disputes"}
-          </h2>
-          <p className={styles.s410}>
-            {"If you use Webtummy for a business, you agree, to the extent permitted by law, to cover reasonable third-party claims and costs caused by your unlawful content, infringement, or material breach of these terms, excluding amounts caused by our own misconduct. We will notify you and allow reasonable participation in the defence. Contact info@dothdigital.com first so we can try to resolve a dispute. Ontario law and applicable Canadian federal law govern these terms; Ontario courts have jurisdiction except where mandatory law gives you rights elsewhere. No mandatory consumer or privacy right is waived."}
-          </p>
-        </div>
-        <div className={styles.s408}>
-          <h2 className={styles.s409}>
-            {"11. General terms and contact"}
-          </h2>
-          <p className={styles.s410}>
-            {"These terms and the plan terms disclosed at purchase form our agreement for the service. If a provision is unenforceable, the remaining provisions continue to apply. A failure to enforce a term does not waive it. Questions, cancellation requests, and content or rights complaints may be sent to DotH digital Inc. at info@dothdigital.com."}
-          </p>
-        </div>
-        <div className={styles.s413}>
-          <span className={styles.s196}>
-            {"Questions? Contact DotH Digital Inc."}
-          </span>
-          <a className={styles.s414} href="mailto:info@dothdigital.com">
-            {"info@dothdigital.com"}
-          </a>
-        </div>
+        <section className={styles.s408} aria-labelledby="terms-section-1">
+          <h2 className={styles.s409} id="terms-section-1">{"1. Accounts and eligibility"}</h2>
+          <p className={styles.s410}>{"You must have reached the age of majority where you live and have authority to agree on behalf of your business if relevant. Give accurate account information, safeguard login credentials and report suspected unauthorized access promptly. You are responsible for activities you authorize and workspace-member permissions."}</p>
+        </section>
+        <section className={styles.s408} aria-labelledby="terms-section-2">
+          <h2 className={styles.s409} id="terms-section-2">{"2. The Service and your plan"}</h2>
+          <p className={styles.s410}>{"WebTummy helps you create, edit and manage websites. Features, website limits, AI usage, storage and publishing depend on your plan and the capabilities actually made available. A draft or preview is not a live published website. Domain ownership, DNS, third-party services and separate subscriptions remain your responsibility. Keep independent copies of important original materials."}</p>
+        </section>
+        <section className={styles.s408} aria-labelledby="terms-section-3">
+          <h2 className={styles.s409} id="terms-section-3">{"3. Fees, renewals and cancellation"}</h2>
+          <p className={styles.s410}>{"Checkout presents the price, currency, billing period, taxes, any trial terms and recurring charges before purchase. Subscriptions renew until cancelled as disclosed at checkout. You may cancel through Plans & Billing when available or contact "}<a className={styles.s291} href="mailto:billing@webtummy.com">{"billing@webtummy.com"}</a>{" before renewal. Cancellation generally stops future renewals and takes effect at the close of the paid term unless applicable law or checkout terms require otherwise. Refunds are governed by the refund terms disclosed at purchase and mandatory legal rights."}</p>
+          <p className={styles.s410}>{"Deleting an account does not by itself cancel a subscription. We will provide legally required notice of material price changes before they affect your renewal, and you may cancel before the new fee applies."}</p>
+        </section>
+        <section className={styles.s408} aria-labelledby="terms-section-4">
+          <h2 className={styles.s409} id="terms-section-4">{"4. Customer Content, generated websites and platform rights"}</h2>
+          <p className={styles.s410}>{"Customer Content is material you provide, including logos, text, photographs, business details and uploaded files. You retain your existing rights in Customer Content, subject to others' rights."}</p>
+          <p className={styles.s410}>{"A Generated Website is the assembled website experience produced using WebTummy, including pages, layout, structure and design, provided and operated within the hosted Service. The WebTummy Platform is our editor, templates, components, software, AI workflows, rendering and generation systems, hosting infrastructure and other proprietary technology, which remain owned by us or our licensors."}</p>
+          <p className={styles.s410}>{"WebTummy is a fully managed hosted platform. Subscription fees are not a purchase of underlying source code, platform software, templates, components or rendering systems. Unless we expressly agree otherwise in writing, source-code downloads or exports of the generated hosted website are not provided on cancellation or termination."}</p>
+          <p className={styles.s410}>{"You give us a non-exclusive permission to host, store, reproduce, process, transmit and display Customer Content solely as reasonably required to provide, secure and support the Service and publication you request, including through necessary service providers. You warrant that you have the rights needed for uploaded and published materials. Third-party assets are subject to their own licences."}</p>
+        </section>
+        <section className={styles.s408} aria-labelledby="terms-section-5">
+          <h2 className={styles.s409} id="terms-section-5">{"5. AI-generated material"}</h2>
+          <p className={styles.s410}>{"AI output may be inaccurate, incomplete, non-unique or unsuitable for your needs. You are responsible for reviewing claims, intellectual-property rights, accessibility, security and legal compliance before publishing. We do not guarantee originality, copyright protection, traffic, SEO rankings or commercial outcomes. AI use remains subject to applicable law, third-party rights and any relevant provider terms."}</p>
+        </section>
+        <section className={styles.s408} aria-labelledby="terms-section-6">
+          <h2 className={styles.s409} id="terms-section-6">{"6. Acceptable use and platform protection"}</h2>
+          <p className={styles.s410}>{"Do not use the Service for illegal content, infringement, harassment, exploitation, unlawful discrimination, phishing, malware, fraud or unsolicited messages. Do not access other users' accounts, evade usage limits, disrupt infrastructure or conduct unauthorized security tests. You are responsible for your website's claims, transactions, privacy notices, tracking permissions and marketing consent."}</p>
+          <p className={styles.s410}>{"We may investigate suspected misuse and take proportionate protective measures, including restriction, suspension or removal of clearly unlawful or dangerous content, as reasonably necessary to protect users, third parties and the Service. Where practical and lawful, we will provide notice and an opportunity to remedy violations; urgent security or legal risks may require earlier intervention."}</p>
+        </section>
+        <section className={styles.s408} aria-labelledby="terms-section-7">
+          <h2 className={styles.s409} id="terms-section-7">{"7. Privacy and integrations"}</h2>
+          <p className={styles.s410}>{"Our Privacy Policy at "}<a className={styles.s291} href="/privacy">{"https://webtummy.com/privacy"}</a>{" explains our handling of personal information. You determine the legal purposes and permissions for information collected from visitors to your websites. Optional sign-in, AI, payment and other integrations are subject to their own terms and privacy practices. Hosting primary application systems in Canada does not imply that every service provider processes data only in Canada."}</p>
+        </section>
+        <section className={styles.s408} aria-labelledby="terms-section-8">
+          <h2 className={styles.s409} id="terms-section-8">{"8. Trial, payment access, hosting, suspension and retention"}</h2>
+          <p className={styles.s410}>{"The Individual plan includes one 7-day free trial for eligible new customers, followed by US$29 per month. Payment-card details are required at checkout; a trial starts only once Stripe confirms the subscription. During the trial, website creation, editing, AI generation and hosting are available. The saved payment method is charged automatically when the trial ends unless you cancel beforehand."}</p>
+          <p className={styles.s410}>{"Cancelling during the trial preserves access until its scheduled end and avoids the first subscription charge. If the first post-trial payment fails, the grace period provided to previously paid subscribers does not apply: access and hosting may be suspended until payment succeeds. Reactivation does not create another trial. Outside a confirmed trial, payment is required before creation, editing or AI generation unless a platform administrator grants an exemption."}</p>
+          <p className={styles.s410}>{"Administrative and support accounts are not subject to subscription-payment requirements. After a failed renewal, previously paid customers retain seven days of full website and editor access. From day 8 through day 30 following the failed payment, the website remains live while editing and AI features are restricted. After 30 unpaid days, or when a paid-term cancellation takes effect, hosting may be suspended and a neutral temporary page displayed."}</p>
+          <p className={styles.s410}>{"Saved website content and data are retained for at least 90 days after suspension to permit reactivation. We send multiple warnings before reviewing data for permanent deletion after that period. Legal holds and mandatory retention requirements take precedence. Suspension does not immediately delete content. Necessary billing and account notices are distinct from optional marketing. For payment or recovery help contact "}<a className={styles.s291} href="mailto:billing@webtummy.com">{"billing@webtummy.com"}</a>{"."}</p>
+        </section>
+        <section className={styles.s408} aria-labelledby="terms-section-9">
+          <h2 className={styles.s409} id="terms-section-9">{"9. Availability, disclaimers and liability"}</h2>
+          <p className={styles.s410}>{"To the extent permitted by applicable law, the Service is provided 'as is' and 'as available', without a guarantee of uninterrupted operation, error-free results or fitness for a particular business objective. We are not liable for indirect, special or consequential damages to the extent their exclusion is legally permitted. Our total monetary liability arising from or relating to the Service is limited to the fees you paid us for the Service in the 12 months preceding the event giving rise to the claim."}</p>
+          <p className={styles.s410}>{"These limits do not exclude or reduce liability for fraud, wilful misconduct, or any right, guarantee, remedy or liability that cannot be excluded or limited under applicable law. Nothing limits a consumer's non-waivable statutory remedies."}</p>
+        </section>
+        <section className={styles.s408} aria-labelledby="terms-section-10">
+          <h2 className={styles.s409} id="terms-section-10">{"10. Business claims and disputes"}</h2>
+          <p className={styles.s410}>{"If you use WebTummy for business, you agree, to the extent permitted by law, to indemnify us against reasonable third-party claims and related costs arising from your unlawful content, infringement of third-party rights, or material breach of these Terms, excluding losses attributable to our own misconduct. We will provide reasonably prompt notice and an opportunity to participate in the defence."}</p>
+          <p className={styles.s410}>{"You may first contact "}<a className={styles.s291} href="mailto:legal@webtummy.com">{"legal@webtummy.com"}</a>{" to attempt informal resolution. Ontario law and applicable Canadian federal law govern these Terms, with Ontario courts having jurisdiction except where mandatory consumer or other laws provide otherwise. Nothing in this clause requires you to waive mandatory statutory procedures or rights."}</p>
+        </section>
+        <section className={styles.s408} aria-labelledby="terms-section-11">
+          <h2 className={styles.s409} id="terms-section-11">{"11. Changes, notices and assignment"}</h2>
+          <p className={styles.s410}>{"We may update these Terms prospectively to reflect changes in law, security, product operations or business needs. Material changes will be notified through reasonable customer channels and will take effect as stated in the notice, subject to applicable law and any required affirmative consent. Continued use only constitutes acceptance where legally effective."}</p>
+          <p className={styles.s410}>{"To the extent permitted by law, we may assign or transfer our rights and obligations under these Terms to an affiliate, successor or purchaser in connection with a corporate reorganization, establishment of an independent WebTummy company, merger, or sale of all or substantially all of the WebTummy business. Such transfer is subject to applicable notices, consents, third-party contractual restrictions and assumption of obligations by the successor. Privacy transfers remain subject to the Privacy Policy and applicable privacy law. This clause does not itself transfer payment mandates or subscriptions where payment-provider approval or customer authorization is required."}</p>
+          <p className={styles.s410}>{"You may not assign your account or these Terms without our consent except where law requires otherwise. If one provision is invalid, the remainder remains effective. A failure to enforce a term does not waive it. These Terms plus purchase-specific disclosures form the agreement for the Service."}</p>
+        </section>
+        <section className={styles.s408} aria-labelledby="terms-section-12">
+          <h2 className={styles.s409} id="terms-section-12">{"12. Contact and legal identity"}</h2>
+          <p className={styles.s410}>{"General support: "}<a className={styles.s291} href="mailto:support@webtummy.com">{"support@webtummy.com"}</a>{". Billing, cancellation and recovery: "}<a className={styles.s291} href="mailto:billing@webtummy.com">{"billing@webtummy.com"}</a>{". Privacy: "}<a className={styles.s291} href="mailto:privacy@webtummy.com">{"privacy@webtummy.com"}</a>{". Legal notices, disputes and content rights complaints: "}<a className={styles.s291} href="mailto:legal@webtummy.com">{"legal@webtummy.com"}</a>{"."}</p>
+          <p className={styles.s410}>{"WebTummy is presently operated by Dot H Digital Inc., an Ontario corporation, doing business under the WebTummy brand. Dot H Digital Inc. is the contracting supplier until any legally effective transfer or replacement is communicated."}</p>
+          <p className={styles.s410}>{"Current contracting operator: Dot H Digital Inc., doing business as WebTummy, Ontario, Canada. A dedicated, working WebTummy telephone number and applicable business/postal address must be provided wherever required by consumer law or other applicable legal-disclosure rules. Do not substitute a generic development-agency support line for WebTummy's public product-support channel."}</p>
+        </section>
       </section>
     </div>
-    </>
   )
 }

@@ -1,0 +1,33 @@
+WEBVTT
+
+1
+00:00:02.729 --> 00:00:07.676
+Replace, resize, or generate an image
+
+2
+00:00:07.676 --> 00:00:13.187
+Select the exact image you want to change.
+
+3
+00:00:13.187 --> 00:00:18.309
+Use width and height to resize. Fill / crop fills the box; Fit whole image shows the full picture.
+
+4
+00:00:18.309 --> 00:00:23.566
+Replace image offers a file upload, your project image library, or an image URL.
+
+5
+00:00:23.566 --> 00:00:32.050
+Choose an existing project image from the library. These are demo assets, not customer photos.
+
+6
+00:00:32.050 --> 00:00:34.914
+For an AI replacement, describe what the image should show and choose the visual direction.
+
+7
+00:00:34.914 --> 00:00:38.937
+Generate only when the instructions are ready. This demo does not submit a generation request.
+
+8
+00:00:38.937 --> 00:00:42.447
+Review your changes, then Save. Publish separately when you are ready to go live.

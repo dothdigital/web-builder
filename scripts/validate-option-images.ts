@@ -25,3 +25,18 @@ const linkedItems = resolveSectionMedia(model as any, page as any, linked as any
 assert.equal(linkedItems[0].imageUrl, 'hero.png', 'A linked product may use its own destination cover')
 assert.deepEqual(linkedItems.slice(1).map(item => item.imageUrl), ['hot.png', 'cold.png'])
 console.log('Passed option slot discovery, generation priority, budget, and media fallback checks.')
+
+const portraitHero = { ...hero, props: { imageUrl: 'owner-portrait.png', imageAlt: 'Business owner' } }
+const home = { ...page, id: 'home', path: '/', sections: [portraitHero] }
+const homeModel = { pages: [home] }
+for (const componentId of ['AboutSplitOverlap', 'ContactSplit', 'HeroEditorial']) {
+  for (const imageUrl of ['', undefined]) {
+    const section = { id: 'other', componentId, props: { imageUrl } }
+    const result = resolveSectionMedia(homeModel as any, home as any, section as any)
+    assert.equal(result.imageUrl, imageUrl, 'Missing or cleared images must not repeat the owner portrait')
+  }
+}
+const detached = { id: 'frame', componentId: 'AboutSplitOverlap', props: { freeElements: [{ componentId: 'AboutSplitOverlap', content: { imageUrl: '' } }] } }
+assert.equal((resolveSectionMedia(homeModel as any, home as any, detached as any).freeElements as any[])[0].content.imageUrl, '')
+assert.equal(resolveSectionMedia(homeModel as any, home as any, { id: 'explicit', componentId: 'AboutSplitOverlap', props: { imageUrl: 'chosen.png' } } as any).imageUrl, 'chosen.png')
+console.log('PASS: owner portraits do not propagate to empty/missing section or detached image fields; explicit choices remain intact.')

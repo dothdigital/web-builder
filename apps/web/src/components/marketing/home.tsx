@@ -11,36 +11,37 @@ export function MarketingHome() {
           <div className={styles.s3}>
             <div className={styles.s4}>
               <span className={styles.s5}>
-                {"Design."}
+                {"DESIGN."}
               </span>
               <span className={styles.s6}>
-                {"Build."}
+                {"BUILD."}
               </span>
               <span className={styles.s7}>
-                {"Optimize."}
+                {"OPTIMIZE."}
               </span>
               <span className={styles.s8}>
-                {"Deploy."}
+                {"DEPLOY."}
               </span>
               <span className={styles.s9}>
-                {"Run."}
+                {"RUN."}
               </span>
               <span className={styles.s10}>
-                {"Grow."}
+                {"GROW."}
               </span>
             </div>
             <h1 className={styles.s11}>
               {"Your Entire AI Growth Team."}
             </h1>
-            <h2 className={styles.s12}>
-              {"7 Days Free. Then US$29/Month."}
-            </h2>
             <p className={styles.s13}>
-              {"Build your website. Create your content. Get found. Host it. Secure it. Manage it. Grow it."}
+              <strong>{"Build your website. Create content. Get found. Host it. Secure it. Manage it. Grow it."}</strong>
             </p>
             <p className={styles.s14}>
-              {"Everything your business needs to build and grow its online presence — together in one platform."}
+              {"Everything you need to build, manage, and grow your online presence — all in one AI-powered platform."}
             </p>
+            <div className={styles.heroCta}>
+              <Link className={styles.s35} href="/signup">Start Your 7-Day Free Trial</Link>
+              <p className={styles.heroTrust}>No Coding Required · One Platform · Simple Pricing</p>
+            </div>
           </div>
           <div className={styles.s15}>
             <div className={styles.s16}>
@@ -107,7 +108,7 @@ export function MarketingHome() {
               </div>
             </div>
             <Link className={styles.s35} href="/signup">
-              {"Start 7-day free trial"}
+              {"Start Your 7-Day Free Trial"}
             </Link>
             <div className={styles.s36}>
               {"Full access free for 7 days for eligible new customers. Card required. Automatic US$29/month billing afterward unless you cancel before the trial ends."}

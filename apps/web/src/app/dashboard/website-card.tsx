@@ -1,3 +1,4 @@
+import { intakeMediaSchema } from '@awb/shared/intake-media'
 import Link from 'next/link'
 import type { GenerationProgress } from '@awb/pipeline'
 import { RerunAi } from './rerun-ai'
@@ -5,7 +6,7 @@ import type { AnalyticsReport } from '@/lib/analytics-reports'
 import { TestLink } from './test-link'
 
 export function WebsiteCard({ project, index, canEdit, canShare = canEdit, built, correlationId, progress, analytics }: {
-  project: { id: string; name: string; status: string; updatedAt: Date; domains?: { hostname: string }[]; hosting?: { publicHost: string | null; deployedReleaseId: string | null; billingGateApplied: boolean; status: string; previewHost: string | null; previewDeployedReleaseId: string | null; previewPendingReleaseId: string | null; previewStatus: string } | null }
+  project: { intakeMedia?: unknown; id: string; name: string; status: string; updatedAt: Date; domains?: { hostname: string }[]; hosting?: { publicHost: string | null; deployedReleaseId: string | null; billingGateApplied: boolean; status: string; previewHost: string | null; previewDeployedReleaseId: string | null; previewPendingReleaseId: string | null; previewStatus: string } | null }
   analytics?: AnalyticsReport | null
   index: number
   canEdit: boolean
@@ -14,6 +15,7 @@ export function WebsiteCard({ project, index, canEdit, canShare = canEdit, built
   correlationId?: string
   progress?: GenerationProgress
 }) {
+  const media = intakeMediaSchema.safeParse(project.intakeMedia)
   const live = !!(project.hosting?.deployedReleaseId && project.hosting.publicHost && !project.hosting.billingGateApplied && project.hosting.status !== 'SUSPENDED')
   const liveHost = project.domains?.[0]?.hostname ?? project.hosting?.publicHost
   const generating = project.status === 'GENERATING'
@@ -51,7 +53,7 @@ export function WebsiteCard({ project, index, canEdit, canShare = canEdit, built
         </> : progressHref && <Link href={progressHref} className="wt-button">View progress →</Link>}
 
         {available && canShare && <TestLink projectId={project.id} name={project.name} initialUrl={project.hosting?.previewDeployedReleaseId && project.hosting.previewHost && project.hosting.previewStatus !== 'SUSPENDED' ? `https://${project.hosting.previewHost}` : null} pending={!!project.hosting?.previewPendingReleaseId} />}
-        {canEdit && <RerunAi projectId={project.id} generating={generating} built={built} />}
+        {canEdit && <RerunAi initialImageDirection={media.success ? media.data.imageDirection : undefined} projectId={project.id} generating={generating} built={built} />}
       </div>
 
     </div>

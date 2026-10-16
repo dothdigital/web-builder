@@ -1,6 +1,7 @@
 import { imageSizing } from '../image-sizing'
 import { elementColor } from '../element-colors'
 import { z } from 'zod'
+import type { RenderContext } from '../types'
 import { defineComponent } from '../types'
 import { Container, Cta, Heading, Media, Prose, Section } from '../primitives'
 
@@ -46,19 +47,22 @@ const heroEditorFields = [
   { path: '/imageAlt', label: 'Hero image alt text', type: 'text' as const },
 ]
 
-function BackgroundHero({ props }: { props: z.infer<typeof heroPropsSchema> & { panelTitle?: string; panelLines?: string[]; keywords?: string[] } }) {
+const innerPage = (context: RenderContext) => Boolean(context.pagePath && context.pagePath !== '/')
+const compactImage = (context: RenderContext) => innerPage(context) ? { height: 'clamp(220px, 28vw, 360px)', minHeight: 0, maxHeight: '360px' } : {}
+
+function BackgroundHero({ props, compact }: { compact: boolean; props: z.infer<typeof heroPropsSchema> & { panelTitle?: string; panelLines?: string[]; keywords?: string[] } }) {
   const direction = props.textAlignment === 'right' ? 'to left' : 'to right'
   const overlay = props.overlayStyle === 'solid' ? props.overlayColor : props.textAlignment === 'center'
     ? `radial-gradient(ellipse at center, ${props.overlayColor} 15%, transparent 130%)`
     : `linear-gradient(${direction}, ${props.overlayColor} 15%, transparent 130%)`
   return (
-    <Section style={{ position: 'relative', isolation: 'isolate', overflow: 'hidden', background: props.overlayColor, color: props.textColor, minHeight: 'min(720px, 80svh)', display: 'grid', alignItems: 'center', paddingBlock: 'clamp(4rem, 9vw, 9rem)' }}>
+    <Section style={{ position: 'relative', isolation: 'isolate', overflow: 'hidden', background: props.overlayColor, color: props.textColor, minHeight: compact ? 'clamp(280px, 32vw, 420px)' : 'min(720px, 80svh)', display: 'grid', alignItems: 'center', paddingBlock: compact ? 'clamp(2rem, 4vw, 3.5rem)' : 'clamp(4rem, 9vw, 9rem)' }}>
       {props.imageUrl && <img data-awb-element="/imageUrl" className="awb-native-background" src={props.imageUrl} alt={props.imageAlt} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: props.imagePosition, opacity: props.imageOpacity / 100, mixBlendMode: props.imageBlend, zIndex: -2, ...imageSizing(props, '/imageUrl', true) }} />}
       <div className="awb-native-background" aria-hidden="true" style={{ position: 'absolute', inset: 0, background: overlay, opacity: props.overlayOpacity / 100, zIndex: -1, pointerEvents: 'none' }} />
       <Container style={{ width: '100%', boxSizing: 'border-box' }}>
         <div style={{ maxWidth: '780px', marginLeft: props.textAlignment === 'left' ? 0 : 'auto', marginRight: props.textAlignment === 'right' ? 0 : 'auto', textAlign: props.textAlignment, display: 'grid', gap: '1.5rem', overflowWrap: 'break-word' }}>
           {props.eyebrow && <p style={{ margin: 0, textTransform: 'uppercase', letterSpacing: '0.16em', fontSize: '0.8rem' , ...elementColor(props, '/eyebrow')}} data-awb-element={'/eyebrow'}>{props.eyebrow}</p>}
-          <Heading level={1} style={{ fontSize: 'clamp(2.5rem, 5.5vw, 5.5rem)' , ...elementColor(props, '/heading')}} data-awb-element={'/heading'}>{props.heading}</Heading>
+          <Heading level={1} style={{ fontSize: compact ? 'clamp(2rem, 4vw, 3.5rem)' : 'clamp(2.5rem, 5.5vw, 5.5rem)' , ...elementColor(props, '/heading')}} data-awb-element={'/heading'}>{props.heading}</Heading>
           {props.body && <Prose style={{ color: 'inherit', margin: 0, maxWidth: 'none' , ...elementColor(props, '/body')}} data-awb-element={'/body'}>{props.body}</Prose>}
           {props.panelTitle && <div style={{ borderTop: '1px solid currentColor', paddingTop: '1rem' }}><p>{props.panelTitle}</p>{props.panelLines?.map((line) => <p key={line}>{line}</p>)}</div>}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', justifyContent: props.textAlignment === 'center' ? 'center' : props.textAlignment === 'right' ? 'flex-end' : 'flex-start' }}>
@@ -91,19 +95,19 @@ export const heroEditorial = defineComponent({
   editorFields: heroEditorFields,
   tokenDeps: ['typography.headingFamily', 'palette.foreground'],
   fixture,
-  render: ({ props }) => props.imageLayout === 'background' ? <BackgroundHero props={props} /> : (
-    <Section style={{ paddingTop: 'clamp(2.5rem, 5vw, 5rem)', paddingBottom: 'clamp(2.5rem, 5vw, 5rem)' }}>
+  render: ({ props, context }) => props.imageLayout === 'background' ? <BackgroundHero props={props} compact={innerPage(context)} /> : (
+    <Section style={{ paddingTop: innerPage(context) ? 'clamp(1.5rem, 3vw, 3rem)' : 'clamp(2.5rem, 5vw, 5rem)', paddingBottom: innerPage(context) ? 'clamp(1.5rem, 3vw, 3rem)' : 'clamp(2.5rem, 5vw, 5rem)' }}>
       <Container style={{ display: 'grid', gridTemplateColumns: props.imageUrl ? 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))' : '1fr', alignItems: 'center', gap: 'clamp(2rem, 4vw, 4rem)' }}>
         <div style={{ display: 'grid', gap: '1.5rem', minWidth: 0 }}>
           {props.eyebrow && <p style={{ margin: 0, textTransform: 'uppercase', letterSpacing: '0.14em', fontSize: '0.8rem', color: 'var(--awb-primary)', fontWeight: 600 , ...elementColor(props, '/eyebrow')}} data-awb-element={'/eyebrow'}>{props.eyebrow}</p>}
-          <Heading level={1} style={{ fontSize: 'clamp(2.4rem, 4.3vw, 4.5rem)', maxWidth: '18ch', overflowWrap: 'break-word' , ...elementColor(props, '/heading')}} data-awb-element={'/heading'}>{props.heading}</Heading>
+          <Heading level={1} style={{ fontSize: innerPage(context) ? 'clamp(2rem, 3.3vw, 3.5rem)' : 'clamp(2.4rem, 4.3vw, 4.5rem)', maxWidth: '18ch', overflowWrap: 'break-word' , ...elementColor(props, '/heading')}} data-awb-element={'/heading'}>{props.heading}</Heading>
           {props.body && <Prose style={{ margin: 0, maxWidth: '52ch' , ...elementColor(props, '/body')}} data-awb-element={'/body'}>{props.body}</Prose>}
           <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
             {props.primaryCta && <Cta data-awb-element="/primaryCta" style={elementColor(props, '/primaryCta')} {...props.primaryCta} />}
             {props.secondaryCta && <Cta data-awb-element="/secondaryCta" style={elementColor(props, '/secondaryCta')} {...props.secondaryCta} variant="text-link" />}
           </div>
         </div>
-        {props.imageUrl && <div style={{ minWidth: 0, overflow: 'hidden', borderRadius: 'max(var(--awb-radius), 18px)', boxShadow: '0 18px 45px rgba(0,0,0,0.1)' }}><Media sizeStyle={imageSizing(props, '/imageUrl')} data-awb-element="/imageUrl" src={props.imageUrl} alt={props.imageAlt || props.heading} ratio="6 / 5" /></div>}
+        {props.imageUrl && <div style={{ minWidth: 0 }}><Media sizeStyle={imageSizing(props, '/imageUrl')} data-awb-element="/imageUrl" src={props.imageUrl} alt={props.imageAlt || props.heading} ratio="auto" style={{ objectFit: 'contain', ...compactImage(context) }} /></div>}
       </Container>
     </Section>
   ),
@@ -127,11 +131,11 @@ export const heroSplitBooking = defineComponent({
   ],
   tokenDeps: ['palette.surface', 'palette.primary'],
   fixture: { ...fixture, panelTitle: 'Book a visit', panelLines: ['Tue – Sat, 9am – 7pm', '2450 Hurontario St'] },
-  render: ({ props }) => props.imageLayout === 'background' ? <BackgroundHero props={props} /> : (
+  render: ({ props, context }) => props.imageLayout === 'background' ? <BackgroundHero props={props} compact={innerPage(context)} /> : (
     <Section style={{ paddingTop: 0, paddingBottom: 0 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', minHeight: '70vh' }}>
-        <Media sizeStyle={imageSizing(props, '/imageUrl')} data-awb-element="/imageUrl" src={props.imageUrl} alt={props.imageAlt} ratio="auto" style={{ height: '100%', minHeight: '60vh' }} />
-        <div style={{ background: 'var(--awb-surface)', display: 'grid', alignContent: 'center', gap: '1.5rem', padding: 'clamp(2rem, 5vw, 5rem)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', minHeight: innerPage(context) ? 0 : '70vh' }}>
+        <Media sizeStyle={imageSizing(props, '/imageUrl')} data-awb-element="/imageUrl" src={props.imageUrl} alt={props.imageAlt} ratio="auto" style={{ height: '100%', minHeight: '60vh', objectFit: 'contain', ...compactImage(context) }} />
+        <div style={{ background: 'var(--awb-surface)', display: 'grid', alignContent: 'center', gap: '1.5rem', padding: innerPage(context) ? 'clamp(1.5rem, 3vw, 3rem)' : 'clamp(2rem, 5vw, 5rem)' }}>
           {props.eyebrow && (
             <p style={{ textTransform: 'uppercase', letterSpacing: '0.24em', fontSize: '0.75rem', color: 'var(--awb-muted)', margin: 0 , ...elementColor(props, '/eyebrow')}} data-awb-element={'/eyebrow'}>{props.eyebrow}</p>
           )}
@@ -166,12 +170,12 @@ export const heroTypographic = defineComponent({
   editorFields: [...heroEditorFields, { path: '/keywords', label: 'Keyword strip', type: 'list' as const }],
   tokenDeps: ['typography.headingFamily', 'palette.border'],
   fixture: { ...fixture, keywords: ['Cutting', 'Colour', 'Brows', 'Facials'] },
-  render: ({ props }) => props.imageLayout === 'background' ? <BackgroundHero props={props} /> : (
-    <Section background="inverted" style={{ paddingTop: 'clamp(2.5rem, 5vw, 5rem)', paddingBottom: 'clamp(2.5rem, 5vw, 5rem)' }}>
+  render: ({ props, context }) => props.imageLayout === 'background' ? <BackgroundHero props={props} compact={innerPage(context)} /> : (
+    <Section background="inverted" style={{ paddingTop: innerPage(context) ? 'clamp(1.5rem, 3vw, 3rem)' : 'clamp(2.5rem, 5vw, 5rem)', paddingBottom: innerPage(context) ? 'clamp(1.5rem, 3vw, 3rem)' : 'clamp(2.5rem, 5vw, 5rem)' }}>
       <Container style={{ display: 'grid', gridTemplateColumns: props.imageUrl ? 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))' : '1fr', gap: 'clamp(2rem, 4vw, 4rem)', alignItems: 'center' }}>
         <div style={{ display: 'grid', gap: '1.5rem', minWidth: 0 }}>
           {props.eyebrow && <p style={{ margin: 0, fontSize: '0.8rem', letterSpacing: '0.14em', textTransform: 'uppercase', opacity: 0.9 , ...elementColor(props, '/eyebrow')}} data-awb-element={'/eyebrow'}>{props.eyebrow}</p>}
-          <Heading level={1} style={{ maxWidth: '17ch', fontSize: 'clamp(2.4rem, 4.7vw, 5rem)', lineHeight: 1.1 , ...elementColor(props, '/heading')}} data-awb-element={'/heading'}>
+          <Heading level={1} style={{ maxWidth: '17ch', fontSize: innerPage(context) ? 'clamp(2rem, 3.3vw, 3.5rem)' : 'clamp(2.4rem, 4.7vw, 5rem)', lineHeight: 1.1 , ...elementColor(props, '/heading')}} data-awb-element={'/heading'}>
             {props.heading}
           </Heading>
           {props.body && <Prose style={{ margin: 0, color: 'inherit', maxWidth: '48ch', opacity: 0.95 , ...elementColor(props, '/body')}} data-awb-element={'/body'}>{props.body}</Prose>}
@@ -185,7 +189,7 @@ export const heroTypographic = defineComponent({
             </ul>
           )}
         </div>
-        {props.imageUrl && <div style={{ minWidth: 0, overflow: 'hidden', borderRadius: 'max(var(--awb-radius), 16px)', boxShadow: '0 20px 50px rgba(0,0,0,0.16)', border: '1px solid rgba(255,255,255,0.2)' }}><Media sizeStyle={imageSizing(props, '/imageUrl')} data-awb-element="/imageUrl" src={props.imageUrl} alt={props.imageAlt || props.heading} ratio="6 / 5" style={{ display: 'block' }} /></div>}
+        {props.imageUrl && <div style={{ minWidth: 0 }}><Media sizeStyle={imageSizing(props, '/imageUrl')} data-awb-element="/imageUrl" src={props.imageUrl} alt={props.imageAlt || props.heading} ratio="auto" style={{ display: 'block', objectFit: 'contain', ...compactImage(context) }} /></div>}
       </Container>
     </Section>
   ),

@@ -15,7 +15,7 @@ function absolute(baseUrl: string, path: string): string {
 /// Generated from published state only; draft pages never appear.
 export function buildSitemapXml(model: WebsiteModel, baseUrl: string, lastModified = new Date()): string {
   const urls = model.pages
-    .filter((page) => page.seo.index !== false)
+    .filter((page) => model.publishSettings.robotsAllowIndexing !== false && page.seo.index !== false)
     .map(
       (page) => `  <url>
     <loc>${escapeXml(absolute(baseUrl, page.path))}</loc>
@@ -46,7 +46,7 @@ Sitemap: ${absolute(baseUrl, '/sitemap.xml')}
 /// convention with no effect on traditional search rankings.
 export function buildLlmsTxt(model: WebsiteModel, baseUrl: string): string {
   const pages = model.pages
-    .filter((page) => page.seo.index !== false)
+    .filter((page) => model.publishSettings.robotsAllowIndexing !== false && page.seo.index !== false)
     .map((page) => `- [${page.title}](${absolute(baseUrl, page.path)}): ${page.seo.description ?? page.h1}`)
     .join('\n')
 
@@ -92,6 +92,7 @@ export function buildLocalBusinessJsonLd(facts: LocalBusinessFacts, url: string)
   return prune({
     '@context': 'https://schema.org',
     '@type': 'LocalBusiness',
+    '@id': `${url.replace(/\/$/, '')}/#organization`,
     name: facts.name,
     description: facts.description,
     url,
@@ -184,8 +185,8 @@ export function buildPageJsonLd(model: WebsiteModel, page: WebsitePage, siteUrl:
   return {
     '@context': 'https://schema.org',
     '@graph': [
-      { '@type': 'WebSite', '@id': `${base}/#website`, url: `${base}/`, name: model.site.name },
-      { '@type': type, '@id': `${url}#webpage`, url, name: page.seo.title, description: page.seo.description, inLanguage: model.site.locale, isPartOf: { '@id': `${base}/#website` }, breadcrumb: { '@id': `${url}#breadcrumb` } },
+      { '@type': 'WebSite', '@id': `${base}/#website`, url: `${base}/`, name: model.site.name, inLanguage: model.site.locale },
+      { '@type': type, '@id': `${url}#webpage`, url, name: page.seo.title, description: page.seo.description, ...(page.seo.targetKeyword ? { keywords: [page.seo.targetKeyword, page.seo.secondaryKeywords].filter(Boolean).join(', ') } : {}), inLanguage: model.site.locale, isPartOf: { '@id': `${base}/#website` }, breadcrumb: { '@id': `${url}#breadcrumb` } },
       { '@type': 'BreadcrumbList', '@id': `${url}#breadcrumb`, itemListElement: crumbs.map((entry, index) => ({ '@type': 'ListItem', position: index + 1, name: entry.navLabel || entry.title, item: new URL(entry.path, `${base}/`).href })) },
     ],
   }

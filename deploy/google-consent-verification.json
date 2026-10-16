@@ -1,0 +1,15 @@
+{
+  "url": "https://webtummy.com",
+  "measurementId": "G-Z5M0FPHR6M",
+  "metaPixelId": "3004331693237487",
+  "consentMode": "v2 basic; SDKs blocked before acceptance",
+  "checks": [
+    "production build and TypeScript passed",
+    "Google consent ordering and withdrawal passed",
+    "custom banner Google and Meta integration passed",
+    "live HTML contains all four denied consent defaults",
+    "live JavaScript contains both tracker IDs and banner",
+    "live health passed"
+  ],
+  "tagAssistant": "Pending user test"
+}

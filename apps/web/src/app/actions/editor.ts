@@ -1,5 +1,7 @@
 'use server'
 
+import { getAtPointer } from '@awb/pipeline/json-pointer'
+import { editorImageTargetSchema } from '@awb/shared/image-direction'
 import { revalidatePath } from 'next/cache'
 import { WorkspaceRole, prisma } from '@awb/database'
 import { validateSectionProps } from '@awb/component-registry'
@@ -38,7 +40,15 @@ export async function saveModel(projectId: string, model: unknown, note = 'Edito
   for (const job of ready) {
     const output = job.result as Record<string, unknown> | null
     const generatedPage = output?.page as WebsiteModel['pages'][number] | undefined
-    const included = job.kind === 'PATCH' ? parsed.pages.some((page) => page.sections.some((section) => JSON.stringify(section) === JSON.stringify(output))) : job.kind === 'SECTION' ? parsed.pages.some((page) => page.sections.some((section) => section.id === output?.id)) : generatedPage && parsed.pages.some((page) => page.id === generatedPage.id && (job.kind === 'CREATE' || JSON.stringify(page) === JSON.stringify(generatedPage)))
+    const target = editorImageTargetSchema.safeParse((job.input as Record<string, unknown> | null)?.editorTarget)
+    let imageIncluded = false
+    if (job.kind === 'COVER' && target.success && typeof output?.url === 'string') {
+      const pageIndex = parsed.pages.findIndex(page => page.id === target.data.pageId)
+      const sectionIndex = parsed.pages[pageIndex]?.sections.findIndex(section => section.id === target.data.sectionId) ?? -1
+      const root = target.data.globalSlot ? `/globalComponents/${target.data.globalSlot}/props` : pageIndex >= 0 && sectionIndex >= 0 ? `/pages/${pageIndex}/sections/${sectionIndex}/props` : undefined
+      imageIncluded = Boolean(root && getAtPointer(parsed, root + target.data.pointer) === output.url)
+    }
+    const included = imageIncluded || (job.kind === 'PATCH' ? parsed.pages.some((page) => page.sections.some((section) => JSON.stringify(section) === JSON.stringify(output))) : job.kind === 'SECTION' ? parsed.pages.some((page) => page.sections.some((section) => section.id === output?.id)) : generatedPage && parsed.pages.some((page) => page.id === generatedPage.id && (job.kind === 'CREATE' || JSON.stringify(page) === JSON.stringify(generatedPage))))
     if (included) await prisma.contentJob.updateMany({ where: { id: job.id, status: 'READY' }, data: { status: 'APPLIED', dedupeKey: null } })
   }
 

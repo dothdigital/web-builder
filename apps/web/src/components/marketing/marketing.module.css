@@ -53,6 +53,8 @@
 .s12 { margin:0;font-size:clamp(24px,2.6vw,32px);line-height:1.2;letter-spacing:-0.02em;font-weight:700;color:#6B4EE6 }
 .s13 { margin:0;font-size:19px;line-height:1.6;color:#3E4A63;max-width:540px;text-wrap:pretty }
 .s14 { margin:0;font-size:16px;line-height:1.6;color:#55607A;max-width:520px;text-wrap:pretty }
+.heroCta { display:flex;flex-direction:column;align-items:flex-start;gap:12px }
+.heroTrust { margin:0;font-size:13px;line-height:1.6;color:#55607A }
 .s15 { background:#fff;border:1px solid #E7E5EF;border-radius:20px;padding:36px;box-shadow:0 30px 60px -30px rgba(20,36,58,0.25);display:flex;flex-direction:column;gap:20px }
 .s16 { display:flex;gap:4px;height:8px }
 .s17 { flex:1;border-radius:999px;background:#6B4EE6 }
@@ -368,7 +370,6 @@
 .s316 { margin:0;font-size:clamp(38px,5.2vw,60px);line-height:1.04;letter-spacing:-0.04em;font-weight:800;text-wrap:balance }
 .s317 { display:flex;flex-direction:column;gap:16px;font-size:18px;line-height:1.65;color:#3E4A63 }
 .s318 { max-width:1200px;margin:0 auto;padding:56px 24px 0 }
-.s319 { aspect-ratio:21/9;border-radius:20px;background-color:#F8F7FC;background-image:url(https://dothdigital.com/images/banner-img-1.webp);background-size:cover;background-position:center }
 .s320 { margin:0;font-size:clamp(30px,4vw,46px);line-height:1.06;letter-spacing:-0.035em;font-weight:800;text-wrap:balance }
 .s321 { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-content:start }
 .s322 { background:#F1EDFF;border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:6px }
@@ -388,17 +389,13 @@
 .s336 { margin:0;font-size:clamp(28px,3.6vw,42px);line-height:1.08;letter-spacing:-0.03em;font-weight:800 }
 .s337 { display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:1px;background:#26344D;border:1px solid #26344D;border-radius:16px;overflow:hidden }
 .s338 { background:#0F1B2D;border-top:4px solid #A995FF;padding:26px;display:flex;flex-direction:column;gap:8px }
-.s339 { height:84px;width:140px;background-image:url(https://dothdigital.com/images/clutch-award-1.webp);background-size:contain;background-repeat:no-repeat;background-position:left center }
 .s340 { font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;letter-spacing:0.08em;color:#A995FF }
 .s341 { font-size:18px;font-weight:800;line-height:1.3 }
 .s342 { background:#0F1B2D;border-top:4px solid #FF8A7E;padding:26px;display:flex;flex-direction:column;gap:8px }
-.s343 { height:84px;width:140px;background-image:url(https://dothdigital.com/images/clutch-award-2.webp);background-size:contain;background-repeat:no-repeat;background-position:left center }
 .s344 { font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;letter-spacing:0.08em;color:#FF8A7E }
 .s345 { background:#0F1B2D;border-top:4px solid #FFC24D;padding:26px;display:flex;flex-direction:column;gap:8px }
-.s346 { height:84px;width:140px;background-image:url(https://dothdigital.com/images/clutch-award-3.webp);background-size:contain;background-repeat:no-repeat;background-position:left center }
 .s347 { font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;letter-spacing:0.08em;color:#FFC24D }
 .s348 { background:#0F1B2D;border-top:4px solid #4FD6C6;padding:26px;display:flex;flex-direction:column;gap:8px }
-.s349 { height:84px;width:140px;background-image:url(https://dothdigital.com/images/marrdd-logo.webp);background-size:contain;background-repeat:no-repeat;background-position:left center }
 .s350 { font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;letter-spacing:0.08em;color:#4FD6C6 }
 .s351 { max-width:1200px;margin:0 auto;padding:96px 24px;display:flex;flex-direction:column;gap:36px }
 .s352 { display:flex;flex-direction:column;gap:12px;max-width:720px }

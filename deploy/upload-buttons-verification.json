@@ -1,0 +1,29 @@
+{
+  "release": "upload-buttons-20261016",
+  "scope": "all image and logo file upload controls",
+  "locations": [
+    "Onboarding logo and photos",
+    "Theme logo",
+    "Rerun logo and photos",
+    "Shared editor ImageField (including hero, background, gallery, cover, and logo fields)",
+    "Email designer image blocks"
+  ],
+  "labels": [
+    "Upload image",
+    "Upload images",
+    "Upload logo"
+  ],
+  "checks": {
+    "webTypecheck": "passed",
+    "lintSharedButtonAndUploadFlows": "passed",
+    "emailDesignerImageUpload": "passed",
+    "nativeImageFileInputAudit": "all image inputs use hidden inputs behind shared buttons; analytics JSON upload is separate",
+    "productionBuild": "passed",
+    "browserNativeFilePickers": "passed: Theme logo, rerun logo and multiple images, editor image, onboarding logo and multiple images",
+    "publicHealth": "ok; database up"
+  },
+  "deployment": {
+    "webRelease": "upload-buttons-20261016",
+    "port": 3003
+  }
+}

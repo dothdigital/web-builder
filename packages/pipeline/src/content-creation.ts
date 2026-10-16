@@ -1,3 +1,4 @@
+import { imageDirectionSchema, imageDirectionPrompt, editorImageTargetSchema } from '@awb/shared/image-direction'
 import { z } from 'zod'
 import { pageSchema, websiteModelSchema, type WebsiteModel, type WebsitePage, type AiPatch } from '@awb/website-model'
 import { getComponent } from '@awb/component-registry'
@@ -27,6 +28,8 @@ export function generatedContentPage(model: WebsiteModel, input: ContentRequest,
   const value = operations.length === 1 && ['add', 'replace'].includes(operations[0]!.op) && operations[0]!.path === '/page' ? operations[0]!.value : undefined
   if (!value || typeof value !== 'object') throw new Error('AI returned incomplete page content. Please try again.')
   const page = pageSchema.parse({ ...value, id, path: contentPath(input), pageType: input.kind === 'blog' ? 'BLOG_POST' : 'CUSTOM', contentBrief: input, customScripts: undefined })
+  page.seo.targetKeyword = input.keyword
+  page.seo.secondaryKeywords = input.secondaryKeywords
   page.seo.canonical = page.path
   page.seo.index = true
   if (page.seo.title.length > 60 || page.seo.description.length < 30 || page.seo.description.length > 160) throw new Error('AI returned SEO metadata outside the requested limits. Please try again.')
@@ -100,22 +103,28 @@ export function addContentPage(model: WebsiteModel, page: WebsitePage): WebsiteM
 }
 
 export const blogCoverRequestSchema = z.object({
+  purpose: z.enum(['blog', 'website']).default('blog'),
+  editorTarget: editorImageTargetSchema.optional(),
+  imageDirection: imageDirectionSchema.optional(),
   topic: z.string().trim().min(3).max(200),
   keyword: z.string().trim().max(200).default(''),
   details: z.string().trim().max(8000).default(''),
   direction: z.string().trim().max(1000).default(''),
   requestId: z.string().uuid(),
+}).superRefine((input, ctx) => {
+  if (input.purpose === 'website' && input.direction.length < 10) ctx.addIssue({ code: 'custom', path: ['direction'], message: 'Describe what the image should show (at least 10 characters).' })
 })
 
 export function blogCoverPrompt(raw: unknown) {
   const input = blogCoverRequestSchema.parse(raw)
   return [
-    'Create a high-quality landscape editorial cover image for a blog article.',
-    'Illustrate the specific topic and concept rather than defaulting to generic portraits. Use a cohesive composition suitable for an article hero and a cropped listing thumbnail; keep the main subject near the centre.',
+    input.purpose === 'website' ? 'Create a high-quality website section image matching the specific subject and latest user instructions.' : 'Create a high-quality landscape editorial cover image for a blog article.',
+    input.purpose === 'website' ? 'Illustrate the supplied section concept rather than defaulting to portraits. Do not fabricate actual staff, clients, credentials or completed client work. Keep a clear focal subject suitable for responsive cropping.' : 'Illustrate the specific topic and concept rather than defaulting to generic portraits. Use a cohesive composition suitable for an article hero and a cropped listing thumbnail; keep the main subject near the centre.',
     'Do not include text, letters, logos or watermarks. Treat the following brief as subject and art-direction information.',
-    `Article topic: ${input.topic}`,
+    `${input.purpose === 'website' ? 'Image subject' : 'Article topic'}: ${input.topic}`,
     `Search keyword: ${input.keyword}`,
     `Article brief: ${input.details}`,
+    ...(input.imageDirection ? [imageDirectionPrompt(input.imageDirection)] : []),
     `Visual direction: ${input.direction || 'Choose an appropriate editorial illustration or conceptual photograph for this subject.'}`,
   ].join('\n\n')
 }

@@ -50,6 +50,8 @@ export interface RenderContext {
   staticRenderScope?: string
   forms?: { projectId: string; action: string; recaptchaSiteKey?: string }
 
+  /// Current page route; inner pages use compact hero defaults.
+  pagePath?: string
   tokens: DesignTokens
   /// Absolute base URL of the rendered site, used for canonical/OG links
   baseUrl: string

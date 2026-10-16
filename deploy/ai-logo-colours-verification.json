@@ -1,0 +1,24 @@
+{
+  "release": "ai-logo-colours-20261016",
+  "scope": "platform-wide",
+  "changes": [
+    "Let AI choose colours in Theme and Rerun logo uploads",
+    "Review AI palette before Apply, using existing Revert controls",
+    "Detect existing logo colours when needed",
+    "Allow AI colour choice after logo upload in onboarding",
+    "Reset onboarding brand colour preference when delegating to AI"
+  ],
+  "checks": {
+    "webTypecheck": "passed",
+    "lintNewComponentsAndEndpoint": "passed",
+    "AIContextValidationAndContrast": "passed",
+    "sitePaletteAndRevert": "passed",
+    "productionBuild": "passed",
+    "browserThemeRerunAndOnboarding": "passed"
+  },
+  "externalAiCallsDuringTests": 0,
+  "deployment": {
+    "webRelease": "ai-logo-colours-20261016",
+    "port": 3002
+  }
+}

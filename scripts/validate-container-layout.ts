@@ -12,7 +12,9 @@ for (const definition of listComponents()) {
   const path = nodes[0].path
   const props = definition.propsSchema.parse(editObjectProps(fixture, path, { type: 'style', value: { layoutColumns: 1, layoutGap: 32 } }))
   const tree = React.createElement(definition.render, { props, context: { tokens: defaultTokens, baseUrl: '' } })
-  assert.match(renderToStaticMarkup(tree), /grid-template-columns:minmax\(0, 1fr\)/, definition.componentId)
+  const html = renderToStaticMarkup(tree)
+  if (!html.includes('data-awb-element=')) continue // Empty optional collections render no editable layout.
+  assert.match(html, /grid-template-columns:minmax\(0, 1fr\)/, definition.componentId)
 }
 const definition = getComponent('AboutSplitOverlap')!
 const props = definition.propsSchema.parse({ ...definition.fixture as object, imageUrl: 'https://example.com/image.jpg', layout: 'steps', points: Array.from({ length: 4 }, (_, i) => ({ title: `Step ${i + 1}`, body: 'Details' })) }) as Record<string, unknown>
@@ -63,16 +65,16 @@ const mediaPage = { id: 'home', path: '/', title: 'Home', pageType: 'home', h1: 
 const mediaModel = { pages: [mediaPage] } as WebsiteModel
 const unresolvedMove = moveObject([emptySource], section.id, image.path, section.id, { x: 0, y: 0, width: 100, height: 300 })!
 const resolvedMoveProps = resolveSectionMedia(mediaModel, mediaPage, unresolvedMove.sections[0]!)
-assert.equal((resolvedMoveProps.freeElements as Array<{ content: Record<string, unknown> }>)[0]!.content.imageUrl, fallbackUrl, 'Previously detached snapshots recover page fallback')
-assert.match(renderToStaticMarkup(render(resolvedMoveProps)), /src="https:\/\/example.com\/canonical-fallback.jpg"/)
-const canonicalSource = { ...emptySource, props: resolveSectionMedia(mediaModel, mediaPage, emptySource) }
+assert.equal((resolvedMoveProps.freeElements as Array<{ content: Record<string, unknown> }>)[0]!.content.imageUrl, undefined, 'An empty detached image must not borrow an unrelated page hero')
+assert.ok(!renderToStaticMarkup(render(resolvedMoveProps)).includes(fallbackUrl))
+const canonicalSource = { ...emptySource, props: { ...resolveSectionMedia(mediaModel, mediaPage, emptySource), imageUrl: fallbackUrl } }
 const captured = moveObject([canonicalSource], section.id, image.path, section.id, { x: 0, y: 0, width: 100, height: 300 })!
 const snapshot = (captured.sections[0]!.props.freeElements as Array<{ content: Record<string, unknown> }>)[0]!.content
 assert.equal(snapshot.imageUrl, fallbackUrl, 'New detach stores original canonical image')
 assert.equal(emptySource.props.imageUrl, undefined, 'Source history is immutable')
 const restored = JSON.parse(JSON.stringify(captured.sections[0]!.props))
 assert.match(renderToStaticMarkup(render(restored)), /canonical-fallback.jpg/)
-console.log('PASS: inherited image survives full-width detach, JSON save/reload, and old snapshots recover missing image references.')
+console.log('PASS: explicit image survives full-width detach and JSON save/reload; empty snapshots do not borrow unrelated page images.')
 const stripProps = { ...detached.sections[0]!.props, sectionBackgroundMode: 'colour', sectionBackgroundColor: '#fcd9ae', freeLayoutMinHeight: 0 }
 const stripHtml = renderToStaticMarkup(render(stripProps))
 assert.match(stripHtml, /data-awb-free-base="true" style="min-height:300px"/, 'Moved section ends at its content, with no automatic 24px strip')

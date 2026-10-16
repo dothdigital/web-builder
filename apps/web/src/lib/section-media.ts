@@ -6,16 +6,13 @@ const imageFor = (page: WebsitePage | undefined) => page?.sections.find((section
 
 function resolveBaseMedia(model: WebsiteModel, page: WebsitePage, section: WebsiteSection): Record<string, unknown> {
   const definition = getComponent(section.componentId)
-  const pageImage = imageFor(page)
   const props = { ...section.props }
   if (section.componentId === 'BlogListing') return { ...props, items: model.pages.filter((entry) => entry.pageType === 'BLOG_POST').map((entry) => {
     const cover = imageFor(entry)
     return { title: entry.title, description: entry.seo.description, href: entry.path, imageUrl: cover?.imageUrl, imageAlt: cover?.imageAlt || entry.title }
   }).reverse() }
-  if (definition?.editorFields.some((field) => field.path === '/imageUrl' && field.type === 'image') && !props.imageUrl && pageImage) {
-    props.imageUrl = pageImage.imageUrl
-    props.imageAlt = pageImage.imageAlt || page.title
-  }
+  // Empty images are intentional. Borrowing a page hero repeats owner photos
+  // across unrelated sections and resurrects images removed during generation.
   if (definition?.family !== 'SERVICES' || !Array.isArray(props.items)) return props
 
   props.items = props.items.map((item: Record<string, unknown>) => {
@@ -44,7 +41,7 @@ function resolveBaseMedia(model: WebsiteModel, page: WebsitePage, section: Websi
   return props
 }
 
-// Detached objects need the same image fallbacks as their original section.
+// Detached objects retain their own image references and destination links.
 // Resolve canonical asset references here; signing/proxying is render-only.
 export function resolveSectionMedia(model: WebsiteModel, page: WebsitePage, section: WebsiteSection): Record<string, unknown> {
   const props = resolveBaseMedia(model, page, section)

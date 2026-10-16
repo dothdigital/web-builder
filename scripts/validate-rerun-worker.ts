@@ -55,8 +55,8 @@ async function main() {
     const photos = await execute({ scope: 'UPLOADS', instruction: '', imageAssetIds: [photo.id] })
     assert.equal(photos.pages[0]!.sections[0]!.props.imageUrl, photo.url)
     assert.equal(photos.pages[0]!.sections[0]!.props.heading, 'Original heading')
-    const images = await execute({ scope: 'IMAGES', instruction: 'Modern office photos', imageAssetIds: [] })
-    assert.notEqual(images.pages[0]!.sections[0]!.props.imageUrl, photo.url)
+    const images = await execute({ scope: 'IMAGES', instruction: 'Modern office photos', imageAssetIds: [], logoAssetId: logo.id })
+    assert.equal(images.pages[0]!.sections[0]!.props.imageUrl, photo.url)
     assert.deepEqual(images.tokens, model.tokens)
     assert.deepEqual(images.globalComponents, photos.globalComponents)
     assert.equal(images.pages[0]!.sections[0]!.props.body, 'Original copy')
@@ -81,6 +81,14 @@ async function main() {
     }
     await execute({ scope: 'FULL', instruction: 'Focus on home renovation services.', imageAssetIds: [] })
     assert.equal(fullInstruction, 'Focus on home renovation services.')
+    const palette = { ...defaultTokens.palette, primary: '#01481d', accent: '#f8b900' }
+    const recolored = await execute({ scope: 'UPLOADS', instruction: '', imageAssetIds: [], logoAssetId: logo.id, palette })
+    assert.deepEqual(recolored.tokens.palette, palette)
+    assert.equal(recolored.globalComponents.header.props.logoImageUrl, logo.url)
+    assert.equal(recolored.globalComponents.footer.props.logoImageUrl, logo.url)
+    const fullPalette = await execute({ scope: 'FULL', instruction: 'Use our green and gold brand.', imageAssetIds: [], logoAssetId: logo.id, palette })
+    assert.deepEqual(fullPalette.tokens.palette, palette)
+    console.log('PASS: logo palette survives worker request parsing and applies to the saved draft.')
     console.log('PASS: worker/database integration for all rerun scopes including full-build instructions; new drafts, stage selection and 100% progress verified with no external AI calls.')
   } finally {
     await prisma.workspace.delete({ where: { id: workspace.id } })
