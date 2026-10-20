@@ -23,9 +23,9 @@ export function siteChrome(model: WebsiteModel) {
     footer: {
       ...footer,
       logoImageUrl: footer.logoImageUrl || header.logoImageUrl,
-      columns: existingColumns.length === 2 ? existingColumns : [
+      columns: footer.layoutManaged || existingColumns.length > 0 ? existingColumns : [
         { title: 'Main links', items: mainLinks },
-        { title: 'Information', items: [...infoLinks, ...(Array.isArray(footer.legalLinks) ? footer.legalLinks : [])] },
+        { title: 'Information', items: [...infoLinks.slice(0, 6), ...(Array.isArray(footer.legalLinks) ? footer.legalLinks : [])] },
       ],
       address: footer.address || address,
       phone: footer.phone || contact.phone,

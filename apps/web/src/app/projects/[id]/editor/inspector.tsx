@@ -1,4 +1,5 @@
 'use client'
+import { MenuManagement } from './menu-management'
 import { UploadButton } from '@/components/upload-button'
 import { AiImageUpdate } from './ai-image-update'
 import { ErrorNotice } from '@/components/error-notice'
@@ -21,6 +22,8 @@ import { setAtPointer } from '@/lib/json-pointer'
 import { getAtPointer } from '@/lib/json-pointer'
 
 export interface InspectorProps {
+  menuProps?: Record<string, unknown>
+  menuPages?: Array<{ title: string; path: string; navLabel?: string }>
   renderedPathPrefix?: string
   onDeleteSection?: () => void
   selectedElement?: string
@@ -69,11 +72,14 @@ function InspectorFields({
   onSwitchVariant,
   hidden,
   onToggleHidden,
+  menuProps,
+  menuPages = [],
   kind = 'Section',
 }: InspectorProps) {
   const parsedProps = getComponent(currentComponentId)?.propsSchema.safeParse(props)
   const effectiveProps = parsedProps?.success ? parsedProps.data as Record<string, unknown> : props
   const isHero = getComponent(currentComponentId)?.family === 'HERO'
+  const isFooter = getComponent(currentComponentId)?.family === 'FOOTER'
   const isHeader = getComponent(currentComponentId)?.family === 'HEADER'
   const displayedProps = isHero ? normalizeHeroSettings(effectiveProps) : isHeader && effectiveProps.customBackground && effectiveProps.sectionBackgroundMode === 'original' ? { ...effectiveProps, sectionBackgroundMode: 'colour', sectionBackgroundColor: effectiveProps.backgroundColor } : effectiveProps
   const [sectionColour, setSectionColour] = useState<string>()
@@ -160,6 +166,7 @@ function InspectorFields({
         </div>
       )}
 
+      {(isHeader || isFooter) && <MenuManagement footer={isFooter} props={{ ...props, ...(menuProps ?? {}) }} pages={menuPages} onChange={onChange} />}
       {currentComponentId === 'ContactSplit' && <div className="m-4"><ContactFieldsEditor value={displayedProps.formFields} onChange={value => onChange('', updateContactFormFields(displayedProps, value))} /><label className="mt-4 grid gap-1 text-xs">Custom submission URL (HTTPS)<input type="url" className="rounded border p-2" placeholder="https://your-provider.com/form-endpoint" value={String(displayedProps.submissionUrl ?? '')} onChange={event => onChange('/submissionUrl', event.target.value)} /></label><p className="mt-2 text-xs text-neutral-500">Leave blank to save leads in Webtummy. A custom URL sends standard form POST data directly to that provider instead. It must accept browser form submissions and handle validation and spam protection. Never enter a secret API key here.</p></div>}
       {selectedContactField?.type === 'textarea' && <label className="m-4 grid gap-2 text-xs">Textarea lines<input aria-label="Textarea lines" type="number" min={1} max={30} className="rounded border p-2" value={selectedContactField.rows ?? 5} onChange={event => { const rows = Number(event.target.value); if (Number.isInteger(rows) && rows >= 1 && rows <= 30) onChange('', updateContactFormFields(displayedProps, contactFields.map((field, index) => index === Number(contactFieldIndex) ? { ...field, rows } : field))) }} /><span className="text-neutral-500">Sets the visible rows and resets a manually resized height.</span></label>}
       {selectedElement && <SpacingProperties paths={[selectedElement]} props={displayedProps} prefix={renderedPathPrefix} onChange={(patch) => {
@@ -171,7 +178,7 @@ function InspectorFields({
       ))}
       <ElementColorsPanel renderedPathPrefix={renderedPathPrefix} key={selectedElement ?? currentComponentId} componentId={currentComponentId} props={displayedProps} onChange={onChange} selectedPath={selectedElement} onSelect={onSelectElement} />
       <div className="grid gap-4 p-4">
-        {selectedFields.filter((field) => !(currentComponentId === 'ContactSplit' && (field.path.startsWith('/formFields') || field.path === '/submissionUrl')) && (!isHero || !field.path.startsWith('/sectionBackground')) && (!isHeader || !['/customBackground', '/backgroundColor'].includes(field.path))).map((field) => (
+        {selectedFields.filter((field) => !(isHeader && field.path.startsWith('/items')) && !(isFooter && field.path.startsWith('/columns')) && !(currentComponentId === 'ContactSplit' && (field.path.startsWith('/formFields') || field.path === '/submissionUrl')) && (!isHero || !field.path.startsWith('/sectionBackground')) && (!isHeader || !['/customBackground', '/backgroundColor'].includes(field.path))).map((field) => (
           <FieldEditor
             key={field.path}
             field={isHeader ? { ...field, label: field.label.replace(/^Section/, 'Header') } : field}

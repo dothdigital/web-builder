@@ -24,7 +24,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import Link from 'next/link'
 import { flushSync } from 'react-dom'
 import { flushInlineTextEdits, hasActiveInlineEdit } from './inline-edit'
-import { getComponent, listComponents, normalizeHeroSettings, layoutTheme, setTemplateHeading } from '@awb/component-registry'
+import { siteChrome, getComponent, listComponents, normalizeHeroSettings, layoutTheme, setTemplateHeading } from '@awb/component-registry'
 import type { ComponentFamily } from '@awb/component-registry'
 import type { DesignTokens, WebsiteModel, WebsiteSection } from '@awb/website-model'
 import { askAiForSection, generateAiSection, saveModel } from '@/app/actions/editor'
@@ -711,6 +711,8 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
               />
             ) : globalSlot && globalComponent && definition ? (
               <Inspector key={globalSlot}
+                menuPages={model.pages}
+                menuProps={siteChrome(model)[globalSlot]}
                 imageUrls={imageUrls}
                 projectId={projectId}
                 kind={`Global ${globalSlot}`}
