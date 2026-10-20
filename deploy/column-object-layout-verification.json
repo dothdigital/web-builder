@@ -1,0 +1,12 @@
+{
+  "release": "column-object-layout-20261019",
+  "status": "deployed",
+  "checks": [
+    "production build and TypeScript",
+    "1\u20135 desktop columns at object widths 160\u20131100px",
+    "phone stacking and static export",
+    "authenticated candidate and live editor: 2/3/4/5 columns at 30/60/90 percent widths without overlap",
+    "save/reload and live health: database up"
+  ],
+  "cleanup": "Build caches removed; previous runtime scheduled to stop after 450-second drain."
+}

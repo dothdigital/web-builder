@@ -103,6 +103,7 @@ export function addContentPage(model: WebsiteModel, page: WebsitePage): WebsiteM
 }
 
 export const blogCoverRequestSchema = z.object({
+  background: z.enum(['auto', 'transparent']).default('auto'),
   purpose: z.enum(['blog', 'website']).default('blog'),
   editorTarget: editorImageTargetSchema.optional(),
   imageDirection: imageDirectionSchema.optional(),
@@ -120,6 +121,7 @@ export function blogCoverPrompt(raw: unknown) {
   return [
     input.purpose === 'website' ? 'Create a high-quality website section image matching the specific subject and latest user instructions.' : 'Create a high-quality landscape editorial cover image for a blog article.',
     input.purpose === 'website' ? 'Illustrate the supplied section concept rather than defaulting to portraits. Do not fabricate actual staff, clients, credentials or completed client work. Keep a clear focal subject suitable for responsive cropping.' : 'Illustrate the specific topic and concept rather than defaulting to generic portraits. Use a cohesive composition suitable for an article hero and a cropped listing thumbnail; keep the main subject near the centre.',
+    ...(input.background === 'transparent' ? ['Isolate the subject on a fully transparent background with clean alpha edges. No white or solid backdrop, scenery, painted checkerboard, or watermark. Preserve real PNG alpha transparency.'] : []),
     'Do not include text, letters, logos or watermarks. Treat the following brief as subject and art-direction information.',
     `${input.purpose === 'website' ? 'Image subject' : 'Article topic'}: ${input.topic}`,
     `Search keyword: ${input.keyword}`,

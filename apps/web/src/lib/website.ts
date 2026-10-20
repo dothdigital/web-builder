@@ -28,6 +28,12 @@ export async function saveDraftModel(
   /// Every edit produces a new immutable version, so undo and rollback are a
   /// query rather than a diff.
   return prisma.$transaction(async tx => {
+  if (model.businessDetails) {
+    const { hours, emails, phones, ...contact } = model.contact
+    await tx.businessProfile.update({ where: { projectId }, data: { ...model.businessDetails, ...Object.fromEntries(Object.entries(contact).map(([key, value]) => [key, value || null])), hours: JSON.parse(JSON.stringify(hours)) } })
+    await tx.socialLink.deleteMany({ where: { projectId } })
+    if (model.socials.length) await tx.socialLink.createMany({ data: model.socials.map((social, position) => ({ projectId, ...social, position })) })
+  }
   const saved = await tx.websiteVersion.create({
     data: {
       projectId,

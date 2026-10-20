@@ -6,6 +6,7 @@ import { mergeAssistantChanges, sameEditorValue } from '@/lib/assistant-merge'
 import { PageAssistantDrawer } from './page-assistant-drawer'
 import { applyMultiAction } from '@/lib/multi-object-editing'
 import { editObjectProps, moveObject, objectScope, restoreMovedSection } from '@/lib/object-editing'
+import { BusinessDetailsPanel } from './business-details-panel'
 import { IntegrationsPanel, ScriptFields } from './integrations-panel'
 import { duplicateElement, duplicableElement } from '@/lib/duplicate-element'
 import { revealEditorElement } from '@/lib/reveal-editor-element'
@@ -17,7 +18,7 @@ import { ThemeLogoUpload } from './theme-logo-upload'
 import { siteColors, replaceSiteColor, restoreSitePalette } from '@awb/website-model'
 import { applySitePalette } from '@/lib/site-palette'
 import { AddObjectDialog } from './add-object-dialog'
-import { addManualObject } from '@/lib/add-manual-object'
+import { addManualObject, selectedObjectColumn } from '@/lib/add-manual-object'
 import { ColorInput } from './color-input'
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
@@ -30,18 +31,24 @@ import type { DesignTokens, WebsiteModel, WebsiteSection } from '@awb/website-mo
 import { askAiForSection, generateAiSection, saveModel } from '@/app/actions/editor'
 import { resolveSectionMedia } from '@/lib/section-media'
 import { resolveEditorMedia } from '@/lib/editor-media'
-import { setAtPointer } from '@/lib/json-pointer'
+import { getAtPointer, setAtPointer } from '@/lib/json-pointer'
 import { EditorCanvas, type Selection, type Viewport } from './editor-canvas'
 import { PageRewritePanel } from './page-rewrite-panel'
 import { ContentJobNotifications } from '@/components/content-job-notifications'
+import { copyWebsitePage } from '@/lib/copy-page'
+import { renameWebsitePage } from '@/lib/page-address'
+import { CopyPageDialog } from './copy-page-dialog'
 import { PageSelector } from './page-selector'
 import { ContentCreatePanel } from './content-create-panel'
 import { BlogCoverPanel } from './blog-cover-panel'
+import { createBlankPage } from '@/lib/blank-page'
 import { addContentPage } from '@/lib/content-creation'
 import { sectionElementTree } from '@/lib/element-tree'
 import { ElementTree } from './element-tree'
 import { SpacingProperties } from './spacing-properties'
 import { Inspector } from './inspector'
+import { preserveColumnLayout } from '@/lib/section-columns'
+import { ContentReviewPanel } from './content-review-panel'
 
 interface History {
   past: WebsiteModel[]
@@ -71,9 +78,23 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
   const [selection, setSelection] = useState<Selection>()
   const [selectionMode, setSelectionMode] = useState(false)
   const [leftPanelOpen, setLeftPanelOpen] = useState(true)
-  const [rightPanelOpen, setRightPanelOpen] = useState(true)
+  const [rightPanelOpen, setRightPanelOpen] = useState(false)
+  const [objectPanelOpen, setObjectPanelOpen] = useState(false)
+  const [imageToolbarOpen, setImageToolbarOpen] = useState(false)
+  useEffect(() => {
+    const update = (event: Event) => setImageToolbarOpen(Boolean((event as CustomEvent<{ open: boolean }>).detail?.open))
+    window.addEventListener('awb-image-toolbar-panel', update)
+    return () => window.removeEventListener('awb-image-toolbar-panel', update)
+  }, [])
+  useEffect(() => {
+    const update = (event: Event) => { const open = !!(event as CustomEvent).detail?.open; setObjectPanelOpen(open); if (open) setLeftPanelOpen(true) }
+    window.addEventListener('awb-object-panel', update)
+    return () => window.removeEventListener('awb-object-panel', update)
+  }, [])
+  const [wideWorkspace, setWideWorkspace] = useState(false)
+  useEffect(() => { const update = () => setWideWorkspace(window.innerWidth >= 1024); update(); window.addEventListener('resize', update); return () => window.removeEventListener('resize', update) }, [])
   const [viewport, setViewport] = useState<Viewport>('desktop')
-  const [panel, setPanel] = useState<'section' | 'theme' | 'page' | 'integrations'>('section')
+  const [panel, setPanel] = useState<'section' | 'theme' | 'page' | 'integrations' | 'review' | 'business'>('section')
   const [saving, setSaving] = useState(false)
   const [createContentRequest, setCreateContentRequest] = useState(0)
   const [saveError, setSaveError] = useState<string>()
@@ -81,6 +102,8 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
   const [savedAt, setSavedAt] = useState<Date>()
   const [dirty, setDirty] = useState(false)
   const [addingObject, setAddingObject] = useState(false)
+  const [copyPageId,setCopyPageId]=useState<string>()
+  const [newSectionColumns, setNewSectionColumns] = useState(1)
   const [adding, setAdding] = useState(false)
   const [generateContent, setGenerateContent] = useState(true)
   const [sectionTopic, setSectionTopic] = useState('')
@@ -174,6 +197,7 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
+      if (document.querySelector('[data-awb-image-editor]')) return
       if (!(event.ctrlKey || event.metaKey)) {
         return
       }
@@ -228,7 +252,10 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
       const owner = selection.kind === 'section' ? section?.props : globalComponent?.props
       const scope = owner && selection.element ? objectScope(owner, selection.element) : undefined
       const prefix = scope?.entry ? scope.prefix : ''
-      return { pageId: page.id, ...(selection.kind === 'section' ? { sectionId: selection.id } : { globalSlot: selection.kind }), pointer: prefix && !pointer.startsWith(prefix) ? prefix + pointer : pointer, originalUrl }
+      const targetPointer = prefix && !pointer.startsWith(prefix) ? prefix + pointer : pointer
+      // Inherited artwork is display-only; conflict checks compare against the saved field.
+      const storedUrl = owner ? getAtPointer(owner, targetPointer) : undefined
+      return { pageId: page.id, ...(selection.kind === 'section' ? { sectionId: selection.id } : { globalSlot: selection.kind }), pointer: targetPointer, originalUrl: typeof storedUrl === 'string' ? storedUrl : '' }
     }}>
     <div data-awb-editor-root="true" className="flex h-screen flex-col bg-neutral-100">
       <header className="flex shrink-0 flex-nowrap items-center justify-between gap-3 overflow-x-auto border-b border-neutral-200 bg-white px-4 py-2">
@@ -237,7 +264,7 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
             ← Websites
           </Link>
           <span className="max-w-28 truncate text-sm font-semibold" title={model.site.name}>{model.site.name}</span>
-          <PageSelector pages={model.pages} page={page} onChange={(id) => { setPageId(id); setSelection(undefined) }} />
+          <PageSelector onCopy={id=>{flushInlineTextEdits();setCopyPageId(id)}} pages={model.pages} page={page} onChange={(id) => { setPageId(id); setSelection(undefined) }} />
           <button type="button" aria-expanded={assistantOpen} className="whitespace-nowrap rounded-md bg-violet-700 px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-violet-800" onClick={() => setAssistantOpen(!assistantOpen)}>✦ AI Assistant</button>
           <button type="button" className="whitespace-nowrap rounded-md bg-violet-700 px-3 py-1.5 text-sm font-medium text-white" onClick={() => { setCreateContentRequest((value) => value + 1) }}>+ Blog / Page</button>
         </div>
@@ -278,7 +305,8 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
         flushSync(() => flushInlineTextEdits())
         commit(mergeAssistantChanges(baseline, next, latestModel.current))
       }} onSelect={target => { setSelection(target.scope === 'page' ? { kind: 'section', id: target.sectionId, ...(target.path ? { element: target.path } : {}) } : { kind: target.scope, ...(target.path ? { element: target.path } : {}) }); revealEditorElement(target.path || undefined) }} />
-      <ContentCreatePanel dialogOnly imageUrls={imageUrls} openRequest={createContentRequest} projectId={projectId} model={model} onSelect={(id) => { setPageId(id); setSelection(undefined) }} />
+      {copyPageId && model.pages.some(entry=>entry.id===copyPageId) && <CopyPageDialog key={copyPageId} model={model} page={model.pages.find(entry=>entry.id===copyPageId)!} onClose={()=>setCopyPageId(undefined)} onCopy={request=>{flushInlineTextEdits();const result=copyWebsitePage(latestModel.current,copyPageId,request,`page-${crypto.randomUUID()}`);commit(result.model);setPageId(result.pageId);setSelection(undefined);setAdding(false);setInsertIndex(undefined);setPanel('page')}} />}
+      <ContentCreatePanel onCreateBlank={request => { flushInlineTextEdits(); const result = createBlankPage(latestModel.current, request, `page-${crypto.randomUUID()}`); commit(result.model); setPageId(result.pageId); setSelection(undefined); setAdding(false); setPanel('page') }} dialogOnly imageUrls={imageUrls} openRequest={createContentRequest} projectId={projectId} model={model} onSelect={(id) => { setPageId(id); setSelection(undefined) }} />
       <ContentJobNotifications projectId={projectId} onApply={(detail) => {
         if (detail.kind === 'COVER' && detail.editorTarget) {
           flushSync(() => flushInlineTextEdits())
@@ -297,7 +325,7 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
         } else if (detail.kind === 'PATCH') {
           const existing = model.pages.find((entry) => entry.id === detail.pageId)?.sections.find((entry) => entry.id === detail.sectionId)
           if (!existing || !sameEditorValue(existing, detail.originalSection)) throw new Error('This section changed while AI was working. Request a new edit to preserve your changes.')
-          const generated = detail.result as unknown as WebsiteSection
+          const generated = preserveColumnLayout(existing, detail.result as unknown as WebsiteSection)
           commit({ ...model, pages: model.pages.map((entry) => entry.id === detail.pageId ? { ...entry, sections: entry.sections.map((section) => section.id === detail.sectionId ? generated : section) } : entry) })
         } else if (detail.kind === 'SECTION') {
           const existing = model.pages.find((entry) => entry.id === detail.pageId)
@@ -310,12 +338,13 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
       }} />
 
       <div className="flex items-center justify-between gap-3 border-b border-neutral-200 bg-white px-4 py-1.5" role="group" aria-label="Editor workspace panels">
-        <PanelToggle side="left" label="Sections" open={leftPanelOpen} onClick={() => setLeftPanelOpen((open) => !open)} />
+        <PanelToggle side="left" label="Sections" open={leftPanelOpen} onClick={() => { if (objectPanelOpen) window.dispatchEvent(new Event('awb-close-object-panel')); else setLeftPanelOpen((open) => !open) }} />
         <button type="button" aria-pressed={selectionMode} title="Drag a rectangle around objects in one section. You can also Shift-drag." onClick={() => setSelectionMode((value) => !value)} className={`rounded-md border px-2.5 py-1.5 text-xs ${selectionMode ? 'border-sky-400 bg-sky-50 text-sky-800' : 'border-neutral-200 text-neutral-600'}`}>▧ Select area</button>
-        <button type="button" className="flex items-center gap-2 rounded-md px-2.5 py-1.5 text-xs text-neutral-600 hover:bg-neutral-100" aria-pressed={!leftPanelOpen && !rightPanelOpen} onClick={() => { const open = !leftPanelOpen && !rightPanelOpen; setLeftPanelOpen(open); setRightPanelOpen(open) }}>
+        <button type="button" className="flex items-center gap-2 rounded-md px-2.5 py-1.5 text-xs text-neutral-600 hover:bg-neutral-100" aria-pressed={!leftPanelOpen && !rightPanelOpen} onClick={() => { const open = !leftPanelOpen && !rightPanelOpen; window.dispatchEvent(new Event('awb-close-object-panel')); setLeftPanelOpen(open); setRightPanelOpen(open) }}>
           <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5" /></svg>
           {!leftPanelOpen && !rightPanelOpen ? 'Show panels' : 'Focus canvas'}
         </button>
+        <button type="button" className="rounded-md border border-sky-200 bg-sky-50 px-2.5 py-1.5 text-xs font-medium text-sky-800 hover:bg-sky-100" onClick={() => { flushInlineTextEdits(); setPanel('review'); setRightPanelOpen(true) }}>Review images & content</button>
         <PanelToggle side="right" label="Properties" open={rightPanelOpen} onClick={() => setRightPanelOpen((open) => !open)} />
       </div>
 
@@ -326,27 +355,22 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
         </p>
       )}
 
-      <div className="grid min-h-0 flex-1" style={{ gridTemplateColumns: `${leftPanelOpen ? '260px ' : ''}minmax(0,1fr)${rightPanelOpen ? ' 320px' : ''}` }}>
-        <aside id="editor-left-panel" aria-label="Sections and elements" className="flex min-h-0 flex-col overflow-y-auto border-r border-neutral-200 bg-white" style={{ display: leftPanelOpen ? undefined : 'none' }}>
+      <div className="grid min-h-0 flex-1" style={{ gridTemplateColumns: `${leftPanelOpen || objectPanelOpen ? (wideWorkspace ? '360px ' : '240px ') : ''}minmax(0,1fr)${rightPanelOpen ? ' 320px' : ''}` }}>
+        <aside id="editor-left-panel" aria-label="Sections and elements" className="flex min-h-0 flex-col overflow-y-auto border-r border-neutral-200 bg-white" style={{ display: leftPanelOpen || objectPanelOpen ? undefined : 'none' }}>
+          <div id="editor-object-controls" className="min-w-0 p-3" style={{ display: objectPanelOpen ? undefined : 'none' }} />
+          <div style={{ display: objectPanelOpen ? 'none' : undefined }}>
           <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-3">
             <button type="button" title="Collapse sections panel" aria-label="Collapse sections panel" onClick={() => setLeftPanelOpen(false)} className="flex items-center gap-2 text-xs uppercase tracking-widest text-neutral-500 hover:text-neutral-900"><span aria-hidden="true">‹</span> Sections</button>
-            <button
-              type="button"
-              className="text-xs text-sky-700 hover:underline"
-              onClick={() => {
-                setInsertIndex(undefined)
-                setAdding((value) => !value)
-              }}
-            >
-              + Add section
-            </button>
           </div>
 
-          <button type="button" className="mx-3 my-2 rounded-md border border-sky-300 bg-sky-50 px-3 py-2 text-sm font-medium text-sky-900" onClick={() => setAddingObject(true)}>+ Add object</button>
+          <div className="grid grid-cols-2 gap-2 px-3 py-2">
+            <button type="button" aria-expanded={adding} className="rounded-md border border-sky-300 bg-sky-50 px-2 py-2 text-xs font-medium text-sky-900 hover:bg-sky-100" onClick={() => { setInsertIndex(undefined); setAdding(value => !value) }}>+ Add section</button>
+            <button type="button" className="rounded-md border border-sky-300 bg-sky-50 px-2 py-2 text-xs font-medium text-sky-900 hover:bg-sky-100" onClick={() => setAddingObject(true)}>+ Add object</button>
+          </div>
 
           <div className="grid shrink-0 gap-2 border-b border-neutral-200 bg-neutral-50 px-4 py-3">
             <span className="text-xs font-semibold text-neutral-700">Editing page</span>
-            <PageSelector pages={model.pages} page={page} onChange={(id) => { setPageId(id); setSelection(undefined); setAdding(false); setInsertIndex(undefined); setPanel('section') }} />
+            <PageSelector onCopy={id=>{flushInlineTextEdits();setCopyPageId(id)}} pages={model.pages} page={page} onChange={(id) => { setPageId(id); setSelection(undefined); setAdding(false); setInsertIndex(undefined); setPanel('section') }} />
             <span className="break-all text-xs text-neutral-500">{page.path}</span>
             {page.path !== '/' && model.pages.some(entry => entry.path === '/') && <button type="button" className="text-left text-xs font-medium text-sky-700 underline" onClick={() => { setPageId(model.pages.find(entry => entry.path === '/')!.id); setSelection(undefined); setAdding(false); setInsertIndex(undefined); setPanel('section') }}>Show Home page sections</button>}
             <p className="text-xs font-semibold text-neutral-700">Sections on this page ({page.sections.length})</p>
@@ -355,8 +379,10 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
           {adding && (
             <div className="border-b border-neutral-200 p-3">
               <h3 className="text-sm font-semibold">Add a new section</h3>
+              <label className="mt-3 grid gap-1 text-xs font-semibold">Columns for a blank section<select aria-label="New section columns" value={newSectionColumns} onChange={event => setNewSectionColumns(Number(event.target.value))} className="w-full rounded border p-2">{[1,2,3,4,5].map(count => <option key={count} value={count}>{count} {count === 1 ? 'column' : 'columns'}</option>)}</select></label>
+              <p className="mt-2 text-xs text-neutral-500">Add multiple objects to each column. Adjust sizing and copy objects between columns in Properties.</p>
               <button type="button" className="mt-3 w-full rounded-md border border-violet-400 bg-violet-50 px-3 py-2 text-sm font-medium text-violet-900" onClick={() => {
-                const blank: WebsiteSection = { id: `section-${crypto.randomUUID()}`, componentId: 'ManualSection', componentVersion: '1.0.0', hidden: false, props: { items: [] } }
+                const blank: WebsiteSection = { id: `section-${crypto.randomUUID()}`, componentId: 'ManualSection', componentVersion: '1.0.0', hidden: false, props: { items: [], sectionColumns: newSectionColumns, equalColumnWidths: true, equalColumnHeights: true } }
                 const sections = [...page.sections]; sections.splice(insertIndex ?? sections.length, 0, blank)
                 commit({ ...model, pages: model.pages.map(entry => entry.id === page.id ? { ...entry, sections } : entry) })
                 setSelection({ kind: 'section', id: blank.id }); setAdding(false); setRightPanelOpen(true); setPanel('section')
@@ -475,20 +501,36 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
               </div>
             ))}
           </div>
+          </div>
         </aside>
 
-        {addingObject && <AddObjectDialog sections={page.sections.filter(entry => !entry.hidden).map(entry => ({ id: entry.id, label: String(entry.props.heading || getComponent(entry.componentId)?.name || 'Section') }))} initialSectionId={section && !section.hidden ? section.id : undefined} onClose={() => setAddingObject(false)} onAdd={(kind, targetId) => {
-          const target: WebsiteSection | undefined = targetId === 'new' ? { id: `section-${crypto.randomUUID()}`, componentId: 'ManualSection', componentVersion: '1.0.0', hidden: false, props: { items: [] } } : page.sections.find(entry => entry.id === targetId)
+        {addingObject && <AddObjectDialog sections={[
+          { id: 'global:header', label: 'Shared header' },
+          ...page.sections.filter(entry => !entry.hidden).map(entry => ({ id: entry.id, label: String(entry.props.heading || getComponent(entry.componentId)?.name || 'Section'), columnCount: entry.componentId === 'ManualSection' ? Number(entry.props.sectionColumns) || 1 : 1 })),
+          { id: 'global:footer', label: 'Shared footer' },
+        ]} initialSectionId={selection?.kind === 'header' || selection?.kind === 'footer' ? `global:${selection.kind}` : section && !section.hidden ? section.id : page.sections.find(entry => !entry.hidden)?.id ?? 'new'} initialColumn={section ? selectedObjectColumn(section.props, selection?.element) : 1} onClose={() => setAddingObject(false)} onAdd={(kind, targetId, column, columns) => {
+          const globalSlot = targetId === 'global:header' ? 'header' : targetId === 'global:footer' ? 'footer' : undefined
+          const global = globalSlot ? model.globalComponents[globalSlot] : undefined
+          const target: WebsiteSection | undefined = global ? { ...global, id: targetId, hidden: false } : targetId === 'new' ? { id: `section-${crypto.randomUUID()}`, componentId: 'ManualSection', componentVersion: '1.0.0', hidden: false, props: { items: [] } } : page.sections.find(entry => entry.id === targetId)
           if (!target || target.hidden) throw new Error('Choose a visible section.')
-          const frame = Array.from(document.querySelectorAll<HTMLElement>('[data-awb-section-id]')).find(entry => entry.dataset.awbSectionId === target.id)
-          const added = addManualObject(target, kind, crypto.randomUUID(), frame?.offsetHeight ?? 400)
-          const sections = targetId === 'new' ? [...page.sections, added.section] : page.sections.map(entry => entry.id === target.id ? added.section : entry)
-          commit({ ...model, pages: model.pages.map(entry => entry.id === page.id ? { ...entry, sections } : entry) })
-          setSelection({ kind: 'section', id: target.id, element: added.path }); setPanel('section'); setRightPanelOpen(true)
+          const frame = globalSlot ? document.querySelector<HTMLElement>(`[data-awb-global="${globalSlot}"]`) : Array.from(document.querySelectorAll<HTMLElement>('[data-awb-section-id]')).find(entry => entry.dataset.awbSectionId === target.id)
+          const added = addManualObject(target, kind, crypto.randomUUID(), frame?.offsetHeight ?? 400, { column, columns })
+          if (globalSlot) {
+            commit({ ...model, globalComponents: { ...model.globalComponents, [globalSlot]: { ...model.globalComponents[globalSlot], props: added.section.props } } })
+            setSelection({ kind: globalSlot, element: added.path })
+          } else {
+            const sections = targetId === 'new' ? [...page.sections, added.section] : page.sections.map(entry => entry.id === target.id ? added.section : entry)
+            commit({ ...model, pages: model.pages.map(entry => entry.id === page.id ? { ...entry, sections } : entry) })
+            setSelection({ kind: 'section', id: target.id, element: added.path })
+          }
+          setPanel('section')
           requestAnimationFrame(() => revealEditorElement(added.path))
         }} />}
 
         <HeaderMenuBehavior />
+        <div className="flex min-h-0 min-w-0 flex-col overflow-hidden">
+          <div id="editor-object-quick-controls" className="shrink-0 overflow-y-auto border-b border-neutral-200 bg-white" style={{ height: wideWorkspace ? imageToolbarOpen ? 'min(480px, 55vh)' : 128 : undefined }} />
+          <div className="min-h-0 flex-1">
         <EditorCanvas
           selectionMode={selectionMode}
           onAreaSelect={(id, paths) => { setSelection({ kind: 'section', id, element: paths[paths.length - 1], elements: paths }); setSelectionMode(false) }}
@@ -553,6 +595,7 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
           selection={selection}
           onSelect={(next) => {
             setSelection(next)
+
             if (next) setPanel('section')
           }}
           onResizeText={(id, path, style) => updateSections((sections) => sections.map((entry) => entry.id === id ? { ...entry, props: /^\/freeElements\/\d+$/.test(path) ? editObjectProps(entry.props, path, { type: 'placement', value: style }) : editObjectProps(entry.props, path, { type: 'style', value: style }) } : entry))}
@@ -636,25 +679,30 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
             setLeftPanelOpen(true)
           }}
         />
+          </div>
+        </div>
 
-        <aside id="editor-right-panel" aria-label="Properties" className="flex min-h-0 flex-col border-l border-neutral-200 bg-white" style={{ display: rightPanelOpen ? undefined : 'none' }}>
+        <aside id="editor-right-panel" aria-label="Properties" className="flex min-h-0 flex-col overflow-y-auto border-l border-neutral-200 bg-white" style={{ display: rightPanelOpen ? undefined : 'none' }}>
           <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-2">
             <span className="text-xs uppercase tracking-widest text-neutral-500">Properties</span>
             <button type="button" title="Collapse properties panel" aria-label="Collapse properties panel" onClick={() => setRightPanelOpen(false)} className="rounded px-2 py-1 text-neutral-500 hover:bg-neutral-100">›</button>
           </div>
-          <nav className="flex border-b border-neutral-200 text-xs">
-            {(['section', 'page', 'theme', 'integrations'] as const).map((tab) => (
+          <nav className="grid grid-cols-3 border-b border-neutral-200 text-xs">
+            {(['section', 'page', 'theme', 'business', 'integrations', 'review'] as const).map((tab) => (
               <button
-                key={tab}
+                key={tab === 'business' ? 'Business details' : tab}
                 type="button"
                 onClick={() => setPanel(tab)}
-                className={`flex-1 px-3 py-2 capitalize ${panel === tab ? 'border-b-2 border-neutral-900 font-medium' : 'text-neutral-500'}`}
+                className={`min-w-0 flex-auto px-2 py-2 capitalize ${panel === tab ? 'border-b-2 border-neutral-900 font-medium' : 'text-neutral-500'}`}
               >
-                {tab}
+                {tab === 'business' ? 'Business details' : tab}
               </button>
             ))}
           </nav>
 
+          {panel === 'review' && <ContentReviewPanel model={model} imageUrls={imageUrls} onEdit={field => {
+            flushInlineTextEdits(); setPageId(field.pageId); setSelection(field.globalSlot ? { kind: field.globalSlot, element: field.pointer } : { kind: 'section', id: field.sectionId, element: field.pointer }); setPanel('section'); setRightPanelOpen(true); window.dispatchEvent(new Event('awb-close-object-panel')); revealEditorElement(field.pointer)
+          }} />}
           {panel === 'section' && selection?.kind === 'section' && (selection.elements?.length ?? 0) > 1 && <div className="p-4 text-sm text-neutral-600"><p className="font-semibold text-neutral-900">{selection.elements!.length} objects selected</p><p className="mt-2">Use the floating toolbar to edit compatible properties together, group objects, or move the selection. Shift-click an object to add or remove it.</p></div>}
           {panel === 'section' && selection?.kind === 'section' && (selection.elements?.length ?? 0) > 1 && section && <SpacingProperties paths={selection.elements!} props={section.props} onChange={(value) => updateSections((sections) => applyMultiAction(sections, section.id, { type: 'style', paths: selection.elements!, value }))} />}
           {panel === 'section' && !(selection?.kind === 'section' && (selection.elements?.length ?? 0) > 1) &&
@@ -764,6 +812,7 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
 
           {panel === 'page' && (
             <div className="grid gap-3 overflow-y-auto p-4">
+              <button type="button" className="rounded border border-sky-300 p-2 text-sm text-sky-900" onClick={()=>{flushInlineTextEdits();setCopyPageId(page.id)}}>Copy this page</button>
               <button type="button" className="rounded bg-violet-700 p-2 text-sm text-white" onClick={() => setCreateContentRequest(value => value + 1)}>+ Create blog or page with AI</button>
               {page.pageType === 'BLOG_POST' && <BlogCoverPanel key={page.id} projectId={projectId} page={page} imageUrls={imageUrls} onChange={(url, alt) => {
                 const index = page.sections.findIndex(section => section.componentId === 'BlogArticle')
@@ -772,10 +821,11 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
               }} />}
               <PageRewritePanel key={page.id} projectId={projectId} model={model} page={page} onApply={(rewritten) => commit(setAtPointer(model, `/pages/${pageIndex}`, rewritten))} />
               <Text
-                label="Page title"
+                label="Page name"
                 value={page.title}
-                onChange={(value) => commit(setAtPointer(model, `/pages/${pageIndex}/title`, value))}
+                onChange={(value) => commit(renameWebsitePage(model, page.id, value))}
               />
+              <label className="grid gap-1 text-xs font-medium text-neutral-700">Page URL<input readOnly value={page.path} className="w-full rounded-md border border-neutral-300 px-2 py-1.5 text-sm" /><span className="font-normal text-neutral-500">{page.path === '/' ? 'The homepage uses the root URL.' : 'Updates automatically as you type the page name.'}</span></label>
               <Text
                 label="H1"
                 value={page.h1}
@@ -831,6 +881,7 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
           )}
 
           {panel === 'page' && <div className="overflow-y-auto border-t p-4"><h3 className="mb-2 text-sm font-semibold">Scripts for this page</h3><ScriptFields value={page.customScripts} onChange={(value) => commit(setAtPointer(model, `/pages/${pageIndex}/customScripts`, value))} /></div>}
+          {panel === 'business' && <BusinessDetailsPanel model={model} onChange={commit} />}
           {panel === 'integrations' && <IntegrationsPanel projectId={projectId} model={model} onChange={commit} />}
           {panel === 'theme' && (
             <ThemePanel websiteColors={siteColors(model)} onReplaceColor={(source, replacement) => commit(replaceSiteColor(latestModel.current, source, replacement))} logoUpload={<ThemeLogoUpload projectId={projectId} logoUrl={typeof model.globalComponents.header.props.logoImageUrl === 'string' ? model.globalComponents.header.props.logoImageUrl : undefined} canRevertPalette={!!paletteBaseline} onRevertPalette={() => { if (paletteBaseline) { commit(restoreSitePalette(latestModel.current, paletteBaseline)); setPaletteBaseline(undefined) } }} onApplyPalette={(tokens) => { setPaletteBaseline(current => current ?? latestModel.current); commit(applySitePalette(latestModel.current, tokens.palette)) }} onUpload={(url) => {

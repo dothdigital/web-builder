@@ -1,5 +1,14 @@
 'use client'
+import dynamic from 'next/dynamic'
 import { MenuManagement } from './menu-management'
+const ImageEditorDialog = dynamic(() => import('./image-editor-dialog'), { ssr: false })
+const InlineImageCrop = dynamic(() => import('./inline-image-crop'), { ssr: false })
+
+import { HtmlCodeEditor } from './html-code-editor'
+import { IconLibrary } from './icon-library'
+import { addColumnObject, copyColumn, copyColumnObjects, removeColumnObject, setSectionColumns } from '@/lib/section-columns'
+import { type ManualObjectKind } from '@/lib/add-manual-object'
+import { isReviewImagePointer } from '@/lib/editor-content-review'
 import { UploadButton } from '@/components/upload-button'
 import { AiImageUpdate } from './ai-image-update'
 import { ErrorNotice } from '@/components/error-notice'
@@ -13,13 +22,22 @@ import { objectScope } from '@/lib/object-editing'
 import { ColorInput } from './color-input'
 import { ElementColorsPanel } from './element-colors-panel'
 import { ImageSizeControls } from './image-size-controls'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, createContext, useContext } from 'react'
 import { useRouter } from 'next/navigation'
-import { getComponent, colorTargets, normalizeHeroSettings, type EditorField } from '@awb/component-registry'
+import { getComponent, importedBackgroundImagePaths, colorTargets, normalizeHeroSettings, type EditorField } from '@awb/component-registry'
 import { listItemTemplate } from '@/lib/list-item-template'
 import { reorderElementColors } from '@/lib/element-color-order'
 import { setAtPointer } from '@/lib/json-pointer'
 import { getAtPointer } from '@/lib/json-pointer'
+
+type ImageSizingContextValue = {
+  sizes: Parameters<typeof ImageSizeControls>[0]['sizes']
+  onChange: Parameters<typeof ImageSizeControls>[0]['onChange']
+  backgrounds: string[]
+  projectId: string
+  imageUrls: Record<string, string>
+}
+const ImageSizingContext = createContext<ImageSizingContextValue | undefined>(undefined)
 
 export interface InspectorProps {
   menuProps?: Record<string, unknown>
@@ -95,10 +113,11 @@ function InspectorFields({
     return () => { cancelAnimationFrame(raf); observer.disconnect() }
   }, [props, currentComponentId])
   let selectedElement = inputSelectedElement
+  if (currentComponentId === 'ManualSection' && selectedElement?.startsWith('/columnSlots/')) selectedElement = undefined
   if (currentComponentId === 'ManualSection' && selectedElement) {
     const root = selectedElement.match(/^\/items\/\d+/)?.[0]
     const item = root ? getAtPointer(displayedProps, root) as { kind?: string } | undefined : undefined
-    if (item?.kind === 'form') selectedElement = root
+    if (item?.kind === 'form' || item?.kind === 'embed') selectedElement = root
   }
   const selectedValue = selectedElement ? getAtPointer(displayedProps, selectedElement) : undefined
   const contactFieldIndex = currentComponentId === 'ContactSplit' ? selectedElement?.match(/^\/formFields\/(\d+)\/input$/)?.[1] : undefined
@@ -106,7 +125,7 @@ function InspectorFields({
   const selectedContactField = contactFieldIndex === undefined ? undefined : contactFields[Number(contactFieldIndex)]
   const selectedFields: EditorField[] = selectedElement ? (selectedValue && typeof selectedValue === 'object' && !Array.isArray(selectedValue)
     ? Object.keys(selectedValue).filter((key) => !['id', 'source', 'kind'].includes(key)).map((key) => ({ path: `${selectedElement}/${key}`, label: key, type: key.toLowerCase().includes('imageurl') ? 'image' : ['body', 'description', 'quote', 'answer'].includes(key) ? 'textarea' : Array.isArray((selectedValue as Record<string, unknown>)[key]) ? 'list' : 'text' }))
-    : selectedValue !== undefined || selectedElement.endsWith('/number') ? [{ path: selectedElement, label: selectedElement.split('/').pop() || 'Content', type: (selectedElement.toLowerCase().endsWith('imageurl') || /^\/images\/\d+\/url$/.test(selectedElement)) ? 'image' : Array.isArray(selectedValue) ? 'list' : 'textarea' }] : []) : fields
+    : selectedValue !== undefined || selectedElement.endsWith('/number') || isReviewImagePointer(selectedElement) || fields.some(field => field.path === selectedElement) ? [{ path: selectedElement, label: selectedElement.split('/').pop() || 'Content', type: (isReviewImagePointer(selectedElement) || fields.some(field => field.path === selectedElement && field.type === 'image')) ? 'image' : Array.isArray(selectedValue) ? 'list' : 'textarea' }] : []) : fields
   if (currentComponentId === 'ManualSection' && selectedValue && typeof selectedValue === 'object' && 'kind' in selectedValue) {
     const keys = manualKeys(String(selectedValue.kind))
     selectedFields.splice(0, selectedFields.length, ...selectedFields.filter(field => keys.includes(field.path.split('/').pop()!)))
@@ -118,8 +137,10 @@ function InspectorFields({
   const [instruction, setInstruction] = useState('')
   const [askingAi, setAskingAi] = useState(false)
   const [aiError, setAiError] = useState<string>()
+  const columnBuilder = currentComponentId === 'ManualSection' && !selectedElement && !!displayedProps.sectionColumns
 
   return (
+    <ImageSizingContext.Provider value={{ sizes: (displayedProps.imageSizes ?? {}) as ImageSizingContextValue['sizes'], onChange: sizes => onChange('/imageSizes', sizes), backgrounds: [...importedBackgroundImagePaths(currentComponentId), '/sectionBackgroundImageUrl', '/backgroundImageUrl', ...(isHero && displayedProps.imageLayout === 'background' ? ['/imageUrl'] : [])], projectId, imageUrls }}>
     <div className="flex h-full flex-col overflow-y-auto">
       <div className="border-b border-neutral-200 p-4">
         <p className="text-xs uppercase tracking-widest text-neutral-500">{kind}</p>
@@ -135,6 +156,10 @@ function InspectorFields({
           </label>
         )}
       </div>
+
+      {(isHeader || isFooter) && <MenuManagement footer={isFooter} props={{ ...props, ...(menuProps ?? {}) }} pages={menuPages} onChange={onChange} />}
+      {currentComponentId === 'ManualSection' && selectedElement && !!selectedValue && typeof selectedValue === 'object' && !Array.isArray(selectedValue) && 'kind' in selectedValue && selectedValue.kind === 'embed' && <div className="border-b p-4"><HtmlCodeEditor value={selectedValue as Record<string,unknown>} onApply={value=>onChange(selectedElement!,value)} /></div>}
+      {columnBuilder && <div className="border-b p-4"><ColumnSectionEditor props={displayedProps} projectId={projectId} imageUrls={imageUrls} onChange={next => onChange('', next)} /></div>}
 
       {!renderedPathPrefix && <div className="grid gap-2 border-b border-neutral-200 bg-sky-50/50 p-4">
         <h3 className="text-sm font-semibold">{isHeader ? 'Header' : 'Section'} background</h3>
@@ -166,7 +191,6 @@ function InspectorFields({
         </div>
       )}
 
-      {(isHeader || isFooter) && <MenuManagement footer={isFooter} props={{ ...props, ...(menuProps ?? {}) }} pages={menuPages} onChange={onChange} />}
       {currentComponentId === 'ContactSplit' && <div className="m-4"><ContactFieldsEditor value={displayedProps.formFields} onChange={value => onChange('', updateContactFormFields(displayedProps, value))} /><label className="mt-4 grid gap-1 text-xs">Custom submission URL (HTTPS)<input type="url" className="rounded border p-2" placeholder="https://your-provider.com/form-endpoint" value={String(displayedProps.submissionUrl ?? '')} onChange={event => onChange('/submissionUrl', event.target.value)} /></label><p className="mt-2 text-xs text-neutral-500">Leave blank to save leads in Webtummy. A custom URL sends standard form POST data directly to that provider instead. It must accept browser form submissions and handle validation and spam protection. Never enter a secret API key here.</p></div>}
       {selectedContactField?.type === 'textarea' && <label className="m-4 grid gap-2 text-xs">Textarea lines<input aria-label="Textarea lines" type="number" min={1} max={30} className="rounded border p-2" value={selectedContactField.rows ?? 5} onChange={event => { const rows = Number(event.target.value); if (Number.isInteger(rows) && rows >= 1 && rows <= 30) onChange('', updateContactFormFields(displayedProps, contactFields.map((field, index) => index === Number(contactFieldIndex) ? { ...field, rows } : field))) }} /><span className="text-neutral-500">Sets the visible rows and resets a manually resized height.</span></label>}
       {selectedElement && <SpacingProperties paths={[selectedElement]} props={displayedProps} prefix={renderedPathPrefix} onChange={(patch) => {
@@ -178,14 +202,14 @@ function InspectorFields({
       ))}
       <ElementColorsPanel renderedPathPrefix={renderedPathPrefix} key={selectedElement ?? currentComponentId} componentId={currentComponentId} props={displayedProps} onChange={onChange} selectedPath={selectedElement} onSelect={onSelectElement} />
       <div className="grid gap-4 p-4">
-        {selectedFields.filter((field) => !(isHeader && field.path.startsWith('/items')) && !(isFooter && field.path.startsWith('/columns')) && !(currentComponentId === 'ContactSplit' && (field.path.startsWith('/formFields') || field.path === '/submissionUrl')) && (!isHero || !field.path.startsWith('/sectionBackground')) && (!isHeader || !['/customBackground', '/backgroundColor'].includes(field.path))).map((field) => (
+        {currentComponentId === 'ManualSection' && !selectedElement && !displayedProps.sectionColumns && <button type="button" className="rounded border border-sky-300 p-2 text-sm text-sky-800" onClick={() => onChange('', setSectionColumns(displayedProps, 1))}>Arrange this section into columns</button>}
+        {selectedFields.filter((field) => !(isHeader && field.path.startsWith('/items')) && !(isFooter && field.path.startsWith('/columns')) && (!columnBuilder || field.path !== '/items') && !(currentComponentId === 'ContactSplit' && (field.path.startsWith('/formFields') || field.path === '/submissionUrl')) && (!isHero || !field.path.startsWith('/sectionBackground')) && (!isHeader || !['/customBackground', '/backgroundColor'].includes(field.path))).map((field) => (
           <FieldEditor
             key={field.path}
             field={isHeader ? { ...field, label: field.label.replace(/^Section/, 'Header') } : field}
             componentId={currentComponentId}
             aiContext={JSON.stringify({ heading: displayedProps.heading, body: displayedProps.body, imageField: field.label }).slice(0, 8000)}
             onGenerated={(url, alt) => { const parent = field.path.split('/').slice(0, -1).join('/'); const key = field.path.split('/').pop()!; const owner = parent ? getAtPointer(displayedProps, parent) : displayedProps; onChange(parent, { ...(owner as Record<string, unknown>), [key]: url, ...(key === 'imageUrl' ? { imageAlt: alt } : key === 'url' ? { alt } : {}) }) }}
-            sizeControls={field.type === 'image' ? <ImageSizeControls path={field.path} sizes={(displayedProps.imageSizes ?? {}) as Parameters<typeof ImageSizeControls>[0]['sizes']} background={field.path === '/sectionBackgroundImageUrl' || field.path === '/backgroundImageUrl' || (isHero && displayedProps.imageLayout === 'background' && field.path === '/imageUrl')} onChange={(sizes) => onChange('/imageSizes', sizes)} /> : undefined}
             imageUrls={imageUrls}
             projectId={projectId}
             value={getAtPointer(displayedProps, field.path)}
@@ -234,11 +258,11 @@ function InspectorFields({
       </div>
       )}
     </div>
+    </ImageSizingContext.Provider>
   )
 }
 
 function FieldEditor({
-  sizeControls,
   aiContext,
   onGenerated,
   componentId,
@@ -250,7 +274,6 @@ function FieldEditor({
 }: {
   aiContext?: string
   onGenerated?: (url: string, alt: string) => void
-  sizeControls?: ReactNode
   componentId: string
   imageUrls: Record<string, string>
   field: EditorField
@@ -282,7 +305,6 @@ function FieldEditor({
       <div className="grid gap-1">
         {label}
         <ImageField imagePointer={field.path} aiContext={aiContext} onGenerated={onGenerated} imageUrls={imageUrls} projectId={projectId} value={typeof value === 'string' ? value : ''} onChange={onChange} />
-        {sizeControls}
       </div>
     )
   }
@@ -384,6 +406,9 @@ function ShowcaseItemsEditor({ credentials, items, imageUrls, projectId, onChang
 }
 
 export function ImageField({
+  cropElement,
+  canvas = false,
+  toolbar = false,
   imageUrls,
   projectId,
   value,
@@ -392,6 +417,9 @@ export function ImageField({
   imagePointer,
   onGenerated,
 }: {
+  cropElement?: HTMLElement
+  toolbar?: boolean
+  canvas?: boolean
   imagePointer?: string
   aiContext?: string
   onGenerated?: (url: string, alt: string) => void
@@ -401,9 +429,18 @@ export function ImageField({
   onChange: (value: string) => void
 }) {
   const router = useRouter()
+  const sizing = useContext(ImageSizingContext)
+  const [cropTarget, setCropTarget] = useState<HTMLElement>()
+  const [imageEditor, setImageEditor] = useState<{ source: string }>()
   const [aiOpen, setAiOpen] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [libraryOpen, setLibraryOpen] = useState(false)
+  const [iconsOpen, setIconsOpen] = useState(false)
+  useEffect(() => {
+    if (!toolbar) return
+    window.dispatchEvent(new CustomEvent('awb-image-toolbar-panel', { detail: { open: libraryOpen || iconsOpen || aiOpen } }))
+    return () => { window.dispatchEvent(new CustomEvent('awb-image-toolbar-panel', { detail: { open: false } })) }
+  }, [toolbar, libraryOpen, iconsOpen, aiOpen])
   const [error, setError] = useState<string>()
   const [uploaded, setUploaded] = useState<Record<string, string>>({})
   const [notice, setNotice] = useState<string>()
@@ -416,14 +453,17 @@ export function ImageField({
   }
 
   return (
-    <div className="grid gap-2">
-      {value && (
+    <div className={toolbar ? "flex flex-wrap items-start gap-2" : "grid gap-2"}>
+      {!canvas && value && (
         <LibraryThumbnail key={images[value] ?? value} src={images[value] ?? value} name="Selected cover image" />
       )}
+      {value && <><button type="button" className="rounded-md border border-sky-300 px-3 py-2 text-xs font-medium text-sky-900" onClick={() => { const frame = document.querySelector('[data-awb-selected-frame="true"]'); const target = cropElement ?? Array.from(frame?.querySelectorAll<HTMLElement>('[data-awb-element]') ?? []).find(element => element.dataset.awbElement === imagePointer && element.matches('img,[role="img"]')); if (target) { setError(undefined); setCropTarget(target) } else { setError('Select this image on the website canvas, then choose Crop. You can also crop from Edit image.') } }}>Crop</button><button type="button" className="rounded-md border border-sky-300 bg-sky-50 px-3 py-2 text-xs font-medium text-sky-900" onClick={() => setImageEditor({ source: value })}>Edit image</button></>}
+      {cropTarget && <InlineImageCrop projectId={projectId} source={value} element={cropTarget} onClose={() => setCropTarget(undefined)} onSaved={url => { setUploaded(current => ({ ...current, [url]: `/api/projects/${projectId}/editor-image?thumbnail=1&url=${encodeURIComponent(url)}` })); onChange(url); setCropTarget(undefined); setNotice('Cropped image saved as a new library image. Your original is intact. Save the website to keep this change.'); setError(undefined); router.refresh() }} />}
+      {imageEditor && <ImageEditorDialog source={imageEditor.source} projectId={projectId} onClose={() => setImageEditor(undefined)} onSaved={url => { setUploaded(current => ({ ...current, [url]: `/api/projects/${projectId}/editor-image?thumbnail=1&url=${encodeURIComponent(url)}` })); onChange(url); setImageEditor(undefined); setNotice('Edited image saved to the library. Save the website to keep this change.'); setError(undefined); router.refresh() }} />}
       <button type="button" aria-expanded={libraryOpen} className="rounded-md border border-neutral-300 px-3 py-2 text-xs font-medium" onClick={() => setLibraryOpen((open) => !open)}>
         {libraryOpen ? 'Close image library' : `Choose from image library (${Object.keys(images).length})`}
       </button>
-      {libraryOpen && <div className="grid gap-2 rounded-md border border-neutral-200 p-2" role="region" aria-label="Project image library">
+      {libraryOpen && <div className={`${toolbar ? "order-2 basis-full max-h-80 overflow-auto " : ""}grid gap-2 rounded-md border border-neutral-200 p-2`} role="region" aria-label="Project image library">
         <p className="text-xs text-neutral-500">Uploaded and AI-generated project images. Select one to use it here.</p>
         {Object.keys(images).length === 0 ? <p className="text-xs">No images yet. Upload an image below.</p> :
           <div className="grid max-h-[28rem] grid-cols-2 content-start auto-rows-max gap-2 overflow-y-auto" style={{ gridAutoRows: 'max-content', alignContent: 'start' }}>
@@ -434,9 +474,11 @@ export function ImageField({
             </button>)}
           </div>}
       </div>}
-      <button type="button" aria-expanded={aiOpen} className="rounded-md border border-violet-300 px-3 py-2 text-xs font-medium text-violet-900" onClick={() => setAiOpen(open => !open)}>{aiOpen ? 'Close AI image update' : 'Update with AI'}</button>
-      {aiOpen && <AiImageUpdate imagePointer={imagePointer} originalUrl={value} projectId={projectId} context={aiContext} onUse={(url, alt) => { setUploaded(current => ({ ...current, [url]: `/api/projects/${projectId}/editor-image?thumbnail=1&url=${encodeURIComponent(url)}` })); if (onGenerated) onGenerated(url, alt); else onChange(url); setAiOpen(false); setNotice('AI image selected. Save the website to keep this change.'); setError(undefined) }} />}
-      <UploadButton label={/logo/i.test(imagePointer ?? '') ? 'Upload logo' : 'Upload image'} disabled={uploading}
+      <button type="button" aria-expanded={iconsOpen} className="rounded-md border border-sky-300 px-3 py-2 text-xs font-medium" onClick={() => setIconsOpen(open => !open)}>{iconsOpen ? 'Close icon library' : 'Choose from icon library'}</button>
+      {iconsOpen && <div className={toolbar ? "order-2 basis-full max-h-80 overflow-auto" : undefined}><IconLibrary onUse={(url, alt) => { if (onGenerated) onGenerated(url,alt); else onChange(url); setIconsOpen(false); setNotice('Icon selected. Save the website to keep this change.'); setError(undefined) }} /></div>}
+      <button type="button" aria-expanded={aiOpen} className="rounded-md border border-violet-300 px-3 py-2 text-xs font-medium text-violet-900" onClick={() => setAiOpen(open => !open)}>{aiOpen ? 'Close AI image update' : canvas ? 'Generate with AI' : 'Update with AI'}</button>
+      {aiOpen && <div className={toolbar ? "order-2 basis-full max-h-80 overflow-auto" : undefined}><AiImageUpdate imagePointer={imagePointer} originalUrl={value} projectId={projectId} context={aiContext} onUse={(url, alt) => { setUploaded(current => ({ ...current, [url]: `/api/projects/${projectId}/editor-image?thumbnail=1&url=${encodeURIComponent(url)}` })); if (onGenerated) onGenerated(url, alt); else onChange(url); setAiOpen(false); setNotice('AI image selected. Save the website to keep this change.'); setError(undefined) }} /></div>}
+      <UploadButton label={canvas ? 'Upload from computer' : /logo/i.test(imagePointer ?? '') ? 'Upload logo' : 'Upload image'} disabled={uploading}
           onChange={async (event) => {
             const input = event.currentTarget
             const file = input.files?.[0]
@@ -466,10 +508,11 @@ export function ImageField({
               input.value = ''
             }
           }} />
-      <details className="text-xs text-neutral-500"><summary className="cursor-pointer">Use an image URL</summary><input aria-label="Image URL" className={controlClass} value={value} onChange={(event) => onChange(event.target.value)} /></details>
-      {value && <button type="button" className="text-left text-xs text-neutral-600 underline" onClick={() => { onChange(''); setNotice('Image removed from this section. It remains in the library.') }}>Clear image selection</button>}
+      {!toolbar && <details className="text-xs text-neutral-500"><summary className="cursor-pointer">Use an image URL</summary><input aria-label="Image URL" className={controlClass} value={value} onChange={(event) => onChange(event.target.value)} /></details>}
+      {!toolbar && value && <button type="button" className="text-left text-xs text-neutral-600 underline" onClick={() => { onChange(''); setNotice('Image removed from this section. It remains in the library.') }}>Clear image selection</button>}
+      {!canvas && sizing && imagePointer && <ImageSizeControls path={imagePointer} sizes={sizing.sizes} background={sizing.backgrounds.includes(imagePointer)} onChange={sizing.onChange} />}
       {uploading && <p role="status" className="text-xs text-neutral-500">Uploading and saving image…</p>}
-      {notice && <p role="status" className="text-xs text-neutral-600">{notice}</p>}
+      {notice && <p role="status" className={toolbar ? "order-3 basis-full text-xs text-neutral-600" : "text-xs text-neutral-600"}>{notice}</p>}
       {error && <ErrorNotice code="WT-UPLOAD-001" message={error} className="text-xs text-red-700" />}
     </div>
   )
@@ -556,6 +599,8 @@ function ListField({
 }
 
 function NestedValueEditor({ componentId, path, label, value, onChange }: { componentId: string; path: string; label: string; value: unknown; onChange: (value: unknown) => void }) {
+  const sizing = useContext(ImageSizingContext)
+  if (sizing && (/imageUrl$/i.test(path) || /^\/images\/\d+\/url$/.test(path))) return <ImageField imagePointer={path} projectId={sizing.projectId} imageUrls={sizing.imageUrls} value={typeof value === 'string' ? value : ''} onChange={onChange} />
   if (componentId === 'BlogArticle' && /^\/blocks\/\d+\/body$/.test(path)) return <ListTextEditor label="Section content" value={typeof value === 'string' ? value : ''} onChange={onChange} />
   if (Array.isArray(value)) return <ListField componentId={componentId} field={{ path, label, type: 'list' }} template={listItemTemplate(componentId, path)} value={value} onChange={onChange} />
   if (value && typeof value === 'object') return <fieldset className="grid gap-2 rounded border border-neutral-200 p-2"><legend className="text-xs">{label}</legend>{Object.entries(value).map(([key, child]) => <NestedValueEditor key={key} componentId={componentId} path={`${path}/${key}`} label={key} value={child} onChange={(updated) => onChange({ ...value, [key]: updated })} />)}</fieldset>
@@ -579,4 +624,45 @@ function ManualElementsEditor({ items, imageUrls, projectId, onChange }: { items
 
 function manualKeys(kind: string): string[] {
   return kind === 'form' ? ['formFields', 'submitLabel', 'submissionUrl'] : kind === 'columns' ? ['columns'] : ['menu', 'social'].includes(kind) ? ['links'] : kind === 'embed' ? ['html', 'css', 'javascript', 'height'] : kind === 'image' ? ['imageUrl', 'imageAlt'] : kind === 'button' ? ['label', 'href'] : kind === 'spacer' ? ['height'] : kind === 'divider' ? [] : kind === 'heading' ? ['text', 'headingLevel'] : ['text']
+}
+
+function ColumnSectionEditor({ props, projectId, imageUrls, onChange }: { props: Record<string, unknown>; projectId: string; imageUrls: Record<string, string>; onChange: (props: Record<string, unknown>) => void }) {
+  const count = Number(props.sectionColumns)
+  const items = (props.items ?? []) as Record<string, unknown>[]
+  const [kinds, setKinds] = useState<Record<number, ManualObjectKind>>({})
+  const [targets, setTargets] = useState<Record<string, number>>({})
+  const [error, setError] = useState('')
+  const names: Record<ManualObjectKind, string> = { form: 'Form', heading: 'Heading', text: 'Paragraph', image: 'Image', bullets: 'Bullets', numbered: 'Numbered list', button: 'Button', quote: 'Quote', divider: 'Divider', spacer: 'Spacer', embed: 'HTML / Embed', columns: 'Nested text columns', social: 'Social links', menu: 'Menu' }
+  const options = Array.from({ length: count }, (_, i) => i + 1)
+  const act = (fn: () => Record<string, unknown>) => { try { onChange(fn()); setError('') } catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not update columns.') } }
+  const targetSelect = (key: string, defaultColumn: number, label: string) => <label className="grid gap-1 text-xs">{label}<select aria-label={label} className={controlClass} value={Math.min(targets[key] ?? defaultColumn, count)} onChange={event => setTargets(current => ({ ...current, [key]: Number(event.target.value) }))}>{options.map(column => <option key={column} value={column}>Column {column}</option>)}</select></label>
+  return <div className="grid min-w-0 gap-4" aria-label="Column section controls">
+    <label className="grid gap-1 text-xs font-semibold">Section columns<select aria-label="Section columns" className={controlClass} value={count} onChange={event => act(() => setSectionColumns(props, Number(event.target.value)))}>{[1,2,3,4,5].map(column => <option key={column} value={column}>{column} {column === 1 ? 'column' : 'columns'}</option>)}</select></label>
+    <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={props.equalColumnWidths !== false} onChange={event => onChange({ ...props, equalColumnWidths: event.target.checked })} />Equal column widths</label>
+    <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={props.equalColumnHeights !== false} onChange={event => onChange({ ...props, equalColumnHeights: event.target.checked })} />Equal column heights</label>
+    <p className="text-xs text-neutral-500">Each column holds multiple objects. Copies are added after existing objects and can be edited independently. Reducing columns moves their content into the last remaining column.</p>
+    {options.map(column => {
+      const indexes = items.flatMap((item, index) => Math.min(Number(item.column) || 1, count) === column ? [index] : [])
+      const defaultTarget = column === 1 && count > 1 ? 2 : 1
+      const copyKey = `column-${column}`
+      return <section key={column} aria-label={`Column ${column} controls`} className="grid min-w-0 gap-3 rounded-lg border border-sky-200 bg-sky-50/30 p-3">
+        <h3 className="text-sm font-semibold">Column {column}</h3>
+        <label className="grid gap-1 text-xs">Add content<select aria-label={`Object type for column ${column}`} className={controlClass} value={kinds[column] ?? 'text'} onChange={event => setKinds(current => ({ ...current, [column]: event.target.value as ManualObjectKind }))}>{Object.entries(names).map(([kind,label]) => <option key={kind} value={kind}>{label}</option>)}</select></label>
+        <button type="button" disabled={items.length >= 100} className="rounded border border-sky-300 bg-white p-2 text-xs text-sky-800 disabled:opacity-40" onClick={() => act(() => addColumnObject(props, kinds[column] ?? 'text', column))}>Add content to column {column}</button>
+        {count > 1 && indexes.length > 0 && <div className="grid gap-2 border-t pt-2">{targetSelect(copyKey, defaultTarget, `Copy column ${column} to`)}<button type="button" className="rounded border bg-white p-2 text-xs" onClick={() => act(() => copyColumn(props, column, Math.min(targets[copyKey] ?? defaultTarget, count)))}>Copy all objects from column {column}</button></div>}
+        {!indexes.length && <p className="text-xs text-neutral-500">This column has no objects yet.</p>}
+        {indexes.map(index => {
+          const item = items[index]!, key = `object-${item.id}`
+          const update = (name: string, value: unknown) => onChange({ ...props, items: items.map((entry, i) => i === index ? { ...entry, [name]: value } : entry) })
+          return <fieldset key={String(item.id)} className="grid min-w-0 gap-2 rounded border bg-white p-2"><legend className="text-xs font-semibold">{names[item.kind as ManualObjectKind] ?? 'Object'}</legend>
+            {manualKeys(String(item.kind)).map(name => <FieldEditor key={name} componentId="ManualSection" projectId={projectId} imageUrls={imageUrls} field={{ path: `/items/${index}/${name}`, label: name === 'text' ? 'Content' : name === 'href' ? 'Link URL' : name === 'imageAlt' ? 'Image description' : name, type: Array.isArray(item[name]) ? 'list' : name === 'imageUrl' ? 'image' : ['text','html','css','javascript'].includes(name) ? 'textarea' : 'text' }} value={item[name]} onChange={value => update(name,value)} onGenerated={(url,alt) => onChange({ ...props, items: items.map((entry,i) => i === index ? { ...entry,imageUrl:url,imageAlt:alt } : entry) })} />)}
+            <label className="grid gap-1 text-xs">Move object to column<select aria-label={`Move object ${index + 1} to column`} className={controlClass} value={column} onChange={event => update('column',Number(event.target.value))}>{options.map(number => <option key={number} value={number}>Column {number}</option>)}</select></label>
+            {targetSelect(key, column, `Copy object ${index + 1} to`)}
+            <div className="flex flex-wrap gap-2"><button type="button" className="rounded border p-1.5 text-xs" onClick={() => act(() => copyColumnObjects(props,[index],Math.min(targets[key] ?? column,count)))}>Copy object {index + 1}</button><button type="button" className="rounded border border-red-200 p-1.5 text-xs text-red-700" onClick={() => act(() => removeColumnObject(props,index))}>Remove object {index + 1}</button></div>
+          </fieldset>
+        })}
+      </section>
+    })}
+    {error && <p role="alert" className="text-xs text-red-700">{error}</p>}
+  </div>
 }

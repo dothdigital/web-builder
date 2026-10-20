@@ -19,6 +19,14 @@ export const elementColorsSchema = z.record(z.string().regex(/^\/[a-zA-Z0-9_/-]+
   fontFamily: z.string().max(200).regex(/^[a-zA-Z0-9 ,\-'"]+$/).optional(),
   verticalAlign: z.enum(['top', 'middle', 'bottom']).optional(),
   textAlign: z.enum(['left', 'center', 'right', 'justify']).optional(),
+  shadowMode: z.enum(['directional', 'raised']).optional(),
+  shadowAngle: z.number().min(0).max(360).optional(),
+  shadowBlur: z.number().min(0).max(100).optional(),
+  shadowOpacity: z.number().min(0).max(100).optional(),
+  shadowTarget: z.enum(['text', 'box']).optional(),
+  shadowColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  shadowDistance: z.number().min(0).max(100).optional(),
+  shadow: z.enum(['none', 'soft', 'medium', 'strong']).optional(),
   borderRadius: z.number().min(0).max(200).optional(),
   borderWidth: z.number().min(0).max(20).optional(),
   borderStyle: z.enum(['solid', 'dashed', 'dotted', 'none']).optional(),
@@ -32,10 +40,21 @@ export const elementColorsSchema = z.record(z.string().regex(/^\/[a-zA-Z0-9_/-]+
 })).default({})
 
 export function elementColor(props: unknown, path: string): CSSProperties {
-  const { widthBasis, verticalAlign, layoutColumns, layoutGap, ...styles } = (props as { elementColors?: Record<string, CSSProperties & { layoutColumns?: number; layoutGap?: number; widthBasis?: 'parent' | 'section'; verticalAlign?: 'top' | 'middle' | 'bottom' }> }).elementColors?.[path] ?? {}
+  const { shadow, shadowColor, shadowDistance, shadowMode, shadowAngle, shadowBlur, shadowOpacity, shadowTarget, widthBasis, verticalAlign, layoutColumns, layoutGap, ...styles } = (props as { elementColors?: Record<string, CSSProperties & { layoutColumns?: number; layoutGap?: number; shadowMode?: 'directional' | 'raised'; shadowAngle?: number; shadowBlur?: number; shadowOpacity?: number; shadowTarget?: 'text' | 'box'; shadowColor?: string; shadowDistance?: number; shadow?: 'none' | 'soft' | 'medium' | 'strong'; widthBasis?: 'parent' | 'section'; verticalAlign?: 'top' | 'middle' | 'bottom' }> }).elementColors?.[path] ?? {}
   const gap = layoutGap ?? 24
   const layout: CSSProperties = layoutColumns ? { display: 'grid', gridTemplateColumns: layoutColumns === 1 ? 'minmax(0, 1fr)' : `repeat(auto-fit, minmax(min(100%, max(180px, calc((100% - ${gap * (layoutColumns - 1)}px) / ${layoutColumns}))), 1fr))`, gridAutoFlow: 'row', gap, alignItems: 'start', justifyItems: 'stretch', height: 'auto', minHeight: 0 } : {}
-  return { ...styles, ...(typeof styles.zIndex === 'number' ? { position: 'relative' as const } : {}), ...(typeof styles.height === 'number' ? { boxSizing: 'border-box' as const } : {}), ...(typeof styles.width === 'number' ? { width: widthBasis === 'section' ? `${styles.width}cqw` : `${styles.width}%`, minWidth: 0, maxWidth: widthBasis === 'section' ? '100cqw' : '100%', display: 'block', overflowWrap: 'anywhere' as const } : {}), ...(verticalAlign ? { display: 'flex', flexDirection: 'column' as const, alignItems: 'stretch', justifyContent: verticalAlign === 'middle' ? 'center' : verticalAlign === 'bottom' ? 'flex-end' : 'flex-start' } : {}), ...(styles.backgroundColor ? { background: styles.backgroundColor } : {}), ...(styles.borderColor ? { borderStyle: styles.borderStyle ?? 'solid', borderWidth: styles.borderWidth ?? '1px' } : {}), ...layout }
+  const preset = shadow && shadow !== 'none' ? { soft: [2, 8, 0.12], medium: [8, 24, 0.18], strong: [16, 40, 0.28] }[shadow] : undefined
+  const rgb = (shadowColor ?? '#000000').slice(1).match(/.{2}/g)!.map(channel => parseInt(channel, 16)).join(',')
+  const distance = shadowDistance ?? preset?.[0] ?? 2
+  const blur = shadowBlur ?? preset?.[1] ?? 8
+  const alpha = shadowOpacity !== undefined ? shadowOpacity / 100 : preset?.[2] ?? 0.12
+  const colour = `rgba(${rgb},${alpha})`
+  const angle = (shadowAngle ?? 90) * Math.PI / 180
+  const x = Math.round(Math.cos(angle) * distance * 100) / 100
+  const y = Math.round(Math.sin(angle) * distance * 100) / 100
+  const raised = [[0, -distance], [distance, 0], [0, distance], [-distance, 0]].map(([dx, dy]) => `${dx}px ${dy}px ${blur}px ${colour}`).join(', ')
+  const boxShadow = preset ? shadowMode === 'raised' ? raised : `${x === 0 ? '0' : `${x}px`} ${y}px ${blur}px ${colour}` : shadow === 'none' ? 'none' : undefined
+  return { ...styles, ...(boxShadow !== undefined ? shadowTarget === 'text' ? { textShadow: boxShadow, boxShadow: 'none' } : { boxShadow } : {}), ...(typeof styles.zIndex === 'number' ? { position: 'relative' as const } : {}), ...(typeof styles.height === 'number' ? { boxSizing: 'border-box' as const } : {}), ...(typeof styles.width === 'number' ? { width: widthBasis === 'section' ? `${styles.width}cqw` : `${styles.width}%`, minWidth: 0, maxWidth: widthBasis === 'section' ? '100cqw' : '100%', display: 'block', overflowWrap: 'anywhere' as const } : {}), ...(verticalAlign ? { display: 'flex', flexDirection: 'column' as const, alignItems: 'stretch', justifyContent: verticalAlign === 'middle' ? 'center' : verticalAlign === 'bottom' ? 'flex-end' : 'flex-start' } : {}), ...(styles.backgroundColor ? { background: styles.backgroundColor } : {}), ...(styles.borderColor ? { borderStyle: styles.borderStyle ?? 'solid', borderWidth: styles.borderWidth ?? '1px' } : {}), ...layout }
 }
 
 // Cards with their own surface should use theme text, not the section overlay text.

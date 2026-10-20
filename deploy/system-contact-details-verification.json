@@ -1,0 +1,22 @@
+{
+  "release": "system-contact-details-20261020",
+  "status": "deployed",
+  "verifiedAt": "2026-10-20T01:39:27.546643+00:00",
+  "url": "https://webtummy.com",
+  "checks": [
+    "Production compilation, TypeScript and all 103 static pages passed",
+    "Contact route/button regression check passed",
+    "Standard and imported contact sections share canonical business details",
+    "Template headers with social slots use canonical profiles",
+    "Editor and published rendering tests passed including removals and immutable source models",
+    "Candidate and live authenticated Contact page checks passed",
+    "Preview displays address, multiple emails, multiple phones and matching social icons",
+    "Save, reload, primary-contact promotion and removal checks passed",
+    "No browser errors",
+    "Public health: database up"
+  ],
+  "knownBaselineTestIssue": "validate-contact-fields.tsx line 28 font-size assertion fails identically on the previous deployed release and current source; unrelated to shared contact rendering",
+  "databaseMigrations": false,
+  "previousRelease": "business-details-20261020-r2",
+  "retirement": "Previous runtime scheduled to retire after 450 seconds; build retained for rollback"
+}

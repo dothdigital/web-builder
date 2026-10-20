@@ -47,10 +47,10 @@ export const aboutSplitOverlap = defineComponent({
   },
   render: ({ props, context }) => (
     <Section background="surface">
-      <Container style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '3rem', alignItems: 'center' }}>
-        <div style={{ overflow: 'hidden', borderRadius: '18px', boxShadow: '0 18px 40px rgba(0,0,0,0.1)' }}>
-          <Media sizeStyle={imageSizing(props, '/imageUrl')} data-awb-element="/imageUrl" src={props.imageUrl} alt={props.imageAlt} ratio="5 / 4" style={{ display: 'block' }} />
-        </div>
+      <Container style={{ display: 'grid', gridTemplateColumns: props.imageUrl?.trim() || context.editing ? 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))' : '1fr', gap: '3rem', alignItems: 'center' }}>
+        {(props.imageUrl?.trim() || context.editing) && <div style={{ overflow: 'hidden', borderRadius: '18px', boxShadow: '0 18px 40px rgba(0,0,0,0.1)' }}>
+          <Media editing={context.editing} sizeStyle={imageSizing(props, '/imageUrl')} data-awb-element="/imageUrl" src={props.imageUrl} alt={props.imageAlt} ratio="5 / 4" style={{ display: 'block' }} />
+        </div>}
         <div style={{ display: 'grid', gap: '1.5rem' }}>
           {props.eyebrow && (
             <p style={{ textTransform: 'uppercase', letterSpacing: '0.22em', fontSize: '0.75rem', color: 'var(--awb-muted)', margin: 0 , ...elementColor(props, '/eyebrow')}} data-awb-element={'/eyebrow'}>{props.eyebrow}</p>
@@ -100,6 +100,8 @@ export const galleryAsymmetric = defineComponent({
   tokenDeps: ['palette.background'],
   fixture: { heading: 'Recent work', images: [{ alt: '' }, { alt: '' }, { alt: '' }, { alt: '' }] },
   render: ({ props, context }) => {
+    const images = props.images.map((image, index) => ({ image, index })).filter(({ image }) => context.editing || image.url?.trim())
+    if (!images.length) return null
     const ratios = ['3 / 4', '1 / 1', '4 / 5', '16 / 10']
     const offsets = ['0rem', '3rem', '1rem', '4rem']
 
@@ -107,10 +109,10 @@ export const galleryAsymmetric = defineComponent({
       <Section>
         <Container style={{ display: 'grid', gap: '2.5rem' }}>
           {props.heading && <Heading level={2} style={elementColor(props, '/heading')} data-awb-element={'/heading'}>{props.heading}</Heading>}
-          <BalancedGrid scope={context.staticRenderScope} count={props.images.length} minimumWidth={220} style={{ alignItems: 'start' }}>
-            {props.images.map((image, index) => (
+          <BalancedGrid scope={context.staticRenderScope} count={images.length} minimumWidth={220} style={{ alignItems: 'start' }}>
+            {images.map(({ image, index }) => (
               <div key={`${image.url ?? 'placeholder'}-${index}`} style={{ marginTop: offsets[index % offsets.length] }}>
-                <Media data-awb-element={`/images/${index}/url`} sizeStyle={imageSizing(props, `/images/${index}/url`)} src={image.url} alt={image.alt} ratio={ratios[index % ratios.length]} />
+                <Media editing={context.editing} data-awb-element={`/images/${index}/url`} sizeStyle={imageSizing(props, `/images/${index}/url`)} src={image.url} alt={image.alt} ratio={ratios[index % ratios.length]} />
               </div>
             ))}
           </BalancedGrid>
@@ -157,7 +159,7 @@ export const reviewsEditorialQuote = defineComponent({
   editorFields: reviewsEditorFields,
   tokenDeps: ['typography.headingFamily'],
   fixture: reviewsPropsSchema.parse({ testimonials: [] }),
-  render: ({ props }) => {
+  render: ({ props, context }) => {
     const testimonial = props.testimonials[0]
 
     if (!testimonial) {

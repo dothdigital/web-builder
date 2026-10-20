@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url'
+import { createRequire } from 'node:module'
 import { config as loadEnv } from 'dotenv'
 import type { NextConfig } from 'next'
 
@@ -16,6 +17,12 @@ const nextConfig: NextConfig = {
     staticGenerationMaxConcurrency: 1,
     // TypeScript 5 supports the API checker; avoid an extra CLI subprocess.
     useTypeScriptCli: false,
+  },
+  // Both Filerobot and React Konva must use the same browser Konva instance.
+  // Konva 9 otherwise resolves its Node entry and requires native node-canvas.
+  webpack(config) {
+    config.resolve.alias = { ...config.resolve.alias, 'konva$': createRequire(import.meta.url).resolve('konva/lib/index.js'), konva: fileURLToPath(new URL('./node_modules/konva', import.meta.url)) }
+    return config
   },
   poweredByHeader: false,
   async headers() {

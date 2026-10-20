@@ -1,7 +1,7 @@
 import { imageDirectionPrompt } from '@awb/shared/image-direction'
 import { prisma } from '@awb/database'
 import { createAiProvider } from '@awb/ai'
-import { assetKey, getStorage } from '@awb/shared'
+import { assertTransparentImage, assetKey, getStorage } from '@awb/shared'
 import { blogCoverPrompt, blogCoverRequestSchema } from './content-creation'
 
 export async function generateBlogCover(projectId: string, raw: unknown, jobId: string) {
@@ -13,7 +13,8 @@ export async function generateBlogCover(projectId: string, raw: unknown, jobId: 
   if (provider.name !== 'openai') throw new Error('Blog cover generation requires OpenAI.')
   const location = [project.businessProfile?.city, project.businessProfile?.region].filter(Boolean).join(', ')
   const prompt = [blogCoverPrompt(request), ...(request.purpose === 'website' && request.imageDirection && location ? [imageDirectionPrompt(request.imageDirection, location)] : [])].join('\n\n')
-  const { data: image } = await provider.generateImage(prompt, '16:9', request.purpose === 'website' ? 'editor:image' : 'blog:cover', request.topic)
+  const { data: image } = await provider.generateImage(prompt, '16:9', request.purpose === 'website' ? 'editor:image' : 'blog:cover', request.topic, request.background === 'transparent' ? { background: 'transparent' } : undefined)
+  if (request.background === 'transparent') await assertTransparentImage(image.data)
   const extension = image.contentType === 'image/png' ? 'png' : image.contentType === 'image/webp' ? 'webp' : 'jpg'
   const stored = await getStorage().put(assetKey(project.workspaceId, projectId, `${request.purpose === 'website' ? 'website-image' : 'blog-cover'}.${extension}`), image.data, image.contentType)
   const asset = await prisma.asset.upsert({ where: { id: jobId }, update: {}, create: {

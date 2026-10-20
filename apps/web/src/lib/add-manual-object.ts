@@ -4,9 +4,14 @@ export const objectChoices = [
   ['form', 'Form'], ['columns', 'Columns'], ['button', 'Button'], ['divider', 'Divider'], ['heading', 'Heading'], ['text', 'Paragraph'], ['image', 'Image'], ['social', 'Social'], ['menu', 'Menu'], ['embed', 'HTML / Embed'], ['bullets', 'Bullets'], ['numbered', 'Numbered list'], ['quote', 'Quote'], ['spacer', 'Spacer'],
 ] as const
 export type ManualObjectKind = typeof objectChoices[number][0]
-export function addManualObject(section: WebsiteSection, kind: ManualObjectKind, id: string, bottom: number) {
+export function addManualObject(section: WebsiteSection, kind: ManualObjectKind, id: string, bottom: number, options: { column?: number; columns?: number } = {}) {
   const parsed = getComponent('ManualSection')!.propsSchema.parse({ items: [{ id, kind, text: kind === 'heading' ? 'Your heading' : ['bullets', 'numbered'].includes(kind) ? 'First item\nSecond item' : 'Write your content here.', height: kind === 'embed' ? 300 : 40, links: kind === 'menu' ? [{ label: 'Home', href: '/' }] : [] }] }) as { items: Record<string, unknown>[] }
   const item = parsed.items[0]!
+  if (kind === 'columns') {
+    const count = options.columns ?? 2
+    if (!Number.isInteger(count) || count < 1 || count > 5) throw new Error('Choose between 1 and 5 columns.')
+    item.columns = Array.from({ length: count }, (_, index) => ({ title: `Column ${index + 1}`, body: 'Add your content.' }))
+  }
   if (kind === 'form') Object.assign(item, { submitLabel: 'Submit', formFields: [
     { name: 'name', label: 'Name', type: 'text', required: true },
     { name: 'email', label: 'Email', type: 'email', required: true },
@@ -15,6 +20,11 @@ export function addManualObject(section: WebsiteSection, kind: ManualObjectKind,
   ] })
   if (section.componentId === 'ManualSection') {
     const items = (section.props.items ?? []) as Record<string, unknown>[]
+    if (section.props.sectionColumns) {
+      const count = Number(section.props.sectionColumns), column = options.column ?? 1
+      if (!Number.isInteger(column) || column < 1 || column > count) throw new Error('Choose a column in the selected section.')
+      item.column = column
+    }
     if (items.length >= 100) throw new Error('This section already has 100 objects. Choose another section.')
     return { section: { ...section, props: { ...section.props, items: [...items, item] } }, path: `/items/${items.length}` }
   }
@@ -25,4 +35,14 @@ export function addManualObject(section: WebsiteSection, kind: ManualObjectKind,
   const height = kind === 'form' ? 650 : ['image', 'embed', 'columns'].includes(kind) ? 300 : kind === 'divider' ? 32 : 120
   const entry: FreeElement = { id, componentId: 'ManualSection', source: '/items/0', content: { items: [item] }, x: 5, y, width: 90, height }
   return { section: { ...section, props: { ...section.props, freeElements: [...free, entry], freeLayoutMinHeight: y + height + 16 } }, path: `/freeElements/${free.length}` }
+}
+
+/** Resolve either a selected column frame or any of its child objects. */
+export function selectedObjectColumn(props: Record<string, unknown>, path?: string): number {
+  const count = Number(props.sectionColumns)
+  if (!Number.isInteger(count) || count < 1 || count > 5) return 1
+  const slot = path?.match(/^\/columnSlots\/(\d+)(?:\/|$)/)
+  const item = path?.match(/^\/items\/(\d+)(?:\/|$)/)
+  const column = slot ? Number(slot[1]) : item ? Number(((props.items ?? []) as Record<string, unknown>[])[Number(item[1])]?.column ?? 1) : 1
+  return Math.min(count, Math.max(1, column || 1))
 }

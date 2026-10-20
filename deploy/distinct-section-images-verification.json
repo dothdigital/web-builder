@@ -1,0 +1,152 @@
+{
+  "release": "distinct-section-images-20261019",
+  "status": "deployed",
+  "projectId": "cmveaqdzq003awhpa0cwv4dxt",
+  "savedDraftVersion": 13,
+  "replacedImages": 21,
+  "auditedPages": 22,
+  "remainingWithinPageRepeats": 0,
+  "checks": [
+    "production build and TypeScript",
+    "duplicate guards including signed URLs, imported images, removed and hidden elements",
+    "candidate and live Review UI warnings",
+    "authenticated browser image loads and uniqueness across all 22 pages",
+    "generation worker running from the same release",
+    "public health: database up"
+  ],
+  "pages": [
+    {
+      "path": "/",
+      "images": 17,
+      "loaded": true,
+      "repeated": 0
+    },
+    {
+      "path": "/insurance",
+      "images": 11,
+      "loaded": true,
+      "repeated": 0
+    },
+    {
+      "path": "/savings-plans",
+      "images": 8,
+      "loaded": true,
+      "repeated": 0
+    },
+    {
+      "path": "/about",
+      "images": 8,
+      "loaded": true,
+      "repeated": 0
+    },
+    {
+      "path": "/contact",
+      "images": 15,
+      "loaded": true,
+      "repeated": 0
+    },
+    {
+      "path": "/insurance/life-insurance",
+      "images": 4,
+      "loaded": true,
+      "repeated": 0
+    },
+    {
+      "path": "/insurance/critical-illness-insurance",
+      "images": 4,
+      "loaded": true,
+      "repeated": 0
+    },
+    {
+      "path": "/insurance/disability-insurance",
+      "images": 4,
+      "loaded": true,
+      "repeated": 0
+    },
+    {
+      "path": "/insurance/health-dental-insurance",
+      "images": 4,
+      "loaded": true,
+      "repeated": 0
+    },
+    {
+      "path": "/insurance/visitor-insurance",
+      "images": 4,
+      "loaded": true,
+      "repeated": 0
+    },
+    {
+      "path": "/insurance/super-visa-insurance",
+      "images": 4,
+      "loaded": true,
+      "repeated": 0
+    },
+    {
+      "path": "/insurance/travel-insurance",
+      "images": 4,
+      "loaded": true,
+      "repeated": 0
+    },
+    {
+      "path": "/insurance/mortgage-insurance",
+      "images": 3,
+      "loaded": true,
+      "repeated": 0
+    },
+    {
+      "path": "/savings-plans/rrsp",
+      "images": 4,
+      "loaded": true,
+      "repeated": 0
+    },
+    {
+      "path": "/savings-plans/tfsa",
+      "images": 4,
+      "loaded": true,
+      "repeated": 0
+    },
+    {
+      "path": "/savings-plans/resp",
+      "images": 4,
+      "loaded": true,
+      "repeated": 0
+    },
+    {
+      "path": "/savings-plans/rdsp",
+      "images": 4,
+      "loaded": true,
+      "repeated": 0
+    },
+    {
+      "path": "/savings-plans/fhsa",
+      "images": 4,
+      "loaded": true,
+      "repeated": 0
+    },
+    {
+      "path": "/super-visa-insurance",
+      "images": 0,
+      "loaded": true,
+      "repeated": 0
+    },
+    {
+      "path": "/visitor-insurance-quote",
+      "images": 0,
+      "loaded": true,
+      "repeated": 0
+    },
+    {
+      "path": "/travel-insurance-quote",
+      "images": 0,
+      "loaded": true,
+      "repeated": 0
+    },
+    {
+      "path": "/online-quote",
+      "images": 0,
+      "loaded": true,
+      "repeated": 0
+    }
+  ],
+  "cleanup": "Unused npm/webpack caches removed; previous web runtime retires after 450-second drain."
+}

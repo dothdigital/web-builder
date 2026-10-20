@@ -1,8 +1,12 @@
 'use client'
 
+import toolbarStyles from './toolbar.module.css'
+
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { alignSelection, type Alignment, type ElementGroup, type MultiAction } from '@/lib/multi-object-editing'
+import { imageVisibleBounds } from '@/lib/image-visible-bounds'
+import { imageResizeTarget } from '@/lib/image-resize-target'
 import { objectScope } from '@/lib/object-editing'
 import { SelectedObjectInteraction, type MovePointer } from './selected-object-interaction'
 import { SelectionResize } from './selection-resize'
@@ -22,9 +26,9 @@ export function MultiObjectToolbar({ node, paths, props, onAction, onClear }: { 
     const selected = all.filter((element) => paths.includes(element.dataset.awbElement!))
     const roots = selected.filter((element) => !selected.some((other) => other !== element && other.contains(element)))
     const previous = roots.map((element) => ({ element, outline: element.style.outline, offset: element.style.outlineOffset }))
-    roots.forEach((element) => { element.style.outline = '2px solid #0284c7'; element.style.outlineOffset = '3px' })
+    roots.filter(element => !imageResizeTarget(element)).forEach((element) => { element.style.outline = '2px solid #0284c7'; element.style.outlineOffset = '3px' })
     const measure = () => {
-      const boxes = roots.map((element) => element.getBoundingClientRect())
+      const boxes = roots.map((element) => imageVisibleBounds(imageResizeTarget(element) ?? element))
       if (!boxes.length) return
       setElements(roots)
       setPosition({ top: Math.max(8, Math.min(...boxes.map((box) => box.top)) - (toolbar.current?.offsetHeight ?? 100) - 10), left: Math.max(8, Math.min(Math.min(...boxes.map((box) => box.left)), window.innerWidth - (toolbar.current?.offsetWidth ?? 550) - 8)) })
@@ -40,7 +44,7 @@ export function MultiObjectToolbar({ node, paths, props, onAction, onClear }: { 
     const bar = toolbar.current
     if (!bar || !elements.length) return
     const place = () => {
-      const boxes = elements.map((element) => element.getBoundingClientRect())
+      const boxes = elements.map((element) => imageVisibleBounds(imageResizeTarget(element) ?? element))
       bar.style.top = `${Math.max(8, Math.min(...boxes.map((box) => box.top)) - bar.offsetHeight - 10)}px`
       bar.style.left = `${Math.max(8, Math.min(Math.min(...boxes.map((box) => box.left)), window.innerWidth - bar.offsetWidth - 8))}px`
     }
@@ -83,7 +87,7 @@ export function MultiObjectToolbar({ node, paths, props, onAction, onClear }: { 
   }
   const start = (event: MovePointer) => {
     event.preventDefault(); event.stopPropagation(); event.currentTarget.focus({ preventScroll: true }); event.currentTarget.setPointerCapture(event.pointerId)
-    const boxes = elements.map((element) => element.getBoundingClientRect()), section = node.getBoundingClientRect()
+    const boxes = elements.map((element) => imageVisibleBounds(imageResizeTarget(element) ?? element)), section = node.getBoundingClientRect()
     const left = Math.min(...boxes.map((box) => box.left)), top = Math.min(...boxes.map((box) => box.top))
     const ghost = document.createElement('div')
     Object.assign(ghost.style, { position: 'fixed', pointerEvents: 'none', zIndex: '10000', border: '2px dashed #0284c7', background: 'rgba(14,165,233,.08)', left: `${left}px`, top: `${top}px`, width: `${Math.max(...boxes.map((box) => box.right)) - left}px`, height: `${Math.max(...boxes.map((box) => box.bottom)) - top}px` })
@@ -104,9 +108,10 @@ export function MultiObjectToolbar({ node, paths, props, onAction, onClear }: { 
   }
   const finish = () => { const current = drag.current; if (!current) return; const section = node.getBoundingClientRect(); const dx = current.latestX - current.x + current.sectionLeft - section.left, dy = current.latestY - current.y + current.sectionTop - section.top; cancel(); if (Math.abs(dx) + Math.abs(dy) > 3) move(dx, dy) }
   const button = 'rounded border border-neutral-200 px-2 py-1.5 hover:bg-sky-50'
-  return createPortal(<><SelectionResize elements={elements} section={node} props={props} onAction={onAction} /><div ref={toolbar} role="toolbar" aria-label="Multiple object controls" className="fixed z-[1000] max-w-[calc(100vw-16px)] rounded-lg border border-sky-200 bg-white p-2 text-xs text-neutral-900 shadow-xl" style={{ ...position, fontFamily: 'Arial, sans-serif' }} onClick={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
+  return createPortal(<><SelectionResize elements={elements} section={node} props={props} onAction={onAction} /><div ref={toolbar} role="toolbar" aria-label="Multiple object controls" className={`${toolbarStyles.toolbar} fixed z-[1000] max-w-[calc(100vw-16px)] max-h-[calc(100vh-16px)] overflow-y-auto`} style={position} onClick={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
     {elements.map((element) => <SelectedObjectInteraction key={element.dataset.awbElement} element={element} onStart={start} onMove={(x, y) => { const current = drag.current; if (current) { current.latestX = x; current.latestY = y; current.ghost.style.translate = `${x - current.x}px ${y - current.y}px` } }} onFinish={finish} onCancel={cancel} onNudge={move} />)}
-    <div className="flex flex-wrap items-center gap-1.5">
+    {elements.map(element => { const image = imageResizeTarget(element); if (!image) return null; const box = imageVisibleBounds(image); return <div key={`outline-${element.dataset.awbElement}`} aria-hidden="true" style={{ position: 'fixed', left: box.left, top: box.top, width: box.width, height: box.height, border: '1px solid #0284c7', pointerEvents: 'none' }} /> })}
+    <div className={toolbarStyles.controls}>
       <span className="px-1 font-semibold">{elements.length} selected{group ? ' · Group' : ''}</span>
       <button type="button" className={button} onClick={() => onAction({ type: group ? 'ungroup' : 'group', paths: selectedPaths })}>{group ? 'Ungroup' : 'Group'}</button>
       {imagesOnly && <select aria-label="Selected images fit" className={button} defaultValue="" onChange={(event) => onAction({ type: 'imageSize', paths: visuals.map((element) => element.dataset.awbElement!), value: { fit: event.target.value } })}><option value="">Image fit…</option><option value="cover">Fill / crop</option><option value="contain">Fit whole image</option></select>}
@@ -142,7 +147,7 @@ export function MultiObjectToolbar({ node, paths, props, onAction, onClear }: { 
       <SelectionNumber label="Selected width (%)" value={selectedPaths.every(path => appearance(path).width === appearance(selectedPaths[0]!).width) ? appearance(selectedPaths[0]!).width : undefined} min={10} max={100} onChange={width => style({ width })} />
       <SelectionNumber label="Selected height (px)" value={common('height')} min={24} max={3000} onChange={height => style({ height })} />
     </div>}
-    <p className="mt-2 text-neutral-500">Shift-click or Select area · Drag to move all · Corner handles scale all proportionally · Arrows: 1px · Shift + arrows: 10px</p>
+    <p className={toolbarStyles.hint}>Shift-click or Select area · Drag to move all · Corner handles scale all proportionally · Arrows: 1px · Shift + arrows: 10px</p>
   </div></>, document.body)
 }
 

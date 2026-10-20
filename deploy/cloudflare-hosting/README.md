@@ -17,7 +17,7 @@ project does not rename its stored releases. Each release also has an internal
 Use `platform.env.example` for the application and `server.env.example` for each
 pool server. Each server needs a unique, stable ID and a separate agent token.
 Configure all pool servers in `HOSTING_SERVERS_JSON`, including their private
-administration endpoint, traffic endpoint, site capacity and enabled state.
+administration endpoint, traffic endpoint and enabled state. Website counts have no configured cap; legacy capacity fields are ignored.
 List the gateway server IDs in `HOSTING_GATEWAY_IDS`.
 
 Configure gateway peers with the traffic endpoint and token of every origin
@@ -36,7 +36,7 @@ and live DNS/HTTPS verification are required before publishing to customers.
 
 For a new assignment, the application probes enabled servers concurrently with
 a five second timeout. Under a database advisory lock, it selects a healthy
-server with spare capacity and the lowest assigned-sites/capacity ratio. It saves
+server with the fewest assigned websites, without a website-count limit. It saves
 the assignment before publication. Existing websites keep their assigned server.
 Setting a server to disabled prevents new allocations; it does not migrate its
 existing websites.

@@ -44,7 +44,7 @@ export async function deployPreview(projectId: string, userId: string, versionId
   const version = await prisma.websiteVersion.findFirst({ where: { projectId, kind: 'DRAFT', ...(versionId ? { id: versionId } : {}) }, orderBy: { version: 'desc' } })
   if (!version) throw new Error('Save a generated website before creating a test URL.')
   const model = websiteModelSchema.parse(version.model)
-  if (!validateWebsiteModel(model).valid) throw new Error('Fix the website validation errors before creating a test URL.')
+  if (!validateWebsiteModel(model, { allowBlankPages: true }).valid) throw new Error('Fix the website validation errors before creating a test URL.')
   for (const page of model.pages) for (const section of page.sections) {
     if (!validateSectionProps(section.id, section.componentId, section.props).ok) throw new Error('Fix the invalid website sections before creating a test URL.')
   }

@@ -85,6 +85,8 @@ export const socialLinkSchema = z.object({
 
 /// Factual business details the user supplied; never AI-invented.
 export const contactSchema = z.object({
+  emails: z.array(z.string().email()).max(20).optional(),
+  phones: z.array(z.string().trim().min(1).max(100)).max(20).optional(),
   email: z.string().optional(),
   phone: z.string().optional(),
   whatsapp: z.string().optional(),
@@ -115,6 +117,7 @@ export const websiteModelSchema = z.object({
     previewHost: z.string(),
   }),
   businessProfileRef: z.string(),
+  businessDetails: z.object({ displayName: z.string().trim().min(1).max(200), description: z.string().max(10000).default(''), industry: z.string().max(200).default(''), tagline: z.string().max(500).default(''), audience: z.string().max(2000).default(''), tone: z.string().max(200).default('') }).optional(),
   designDna: designDnaSchema,
   tokens: designTokensSchema,
   navigation: navigationSchema,

@@ -1,3 +1,4 @@
+import { BusinessContactDetails, businessContactDetailsSchema } from './business-contact-details'
 import type { ReactNode } from 'react'
 import { imageSizing } from '../image-sizing'
 import { elementColor, cardColor } from '../element-colors'
@@ -24,6 +25,7 @@ function FormLabel({ field }: { field: { label: string; linkText?: string; linkU
 }
 
 export const contactPropsSchema = z.object({
+  businessContact: businessContactDetailsSchema.optional(),
   imageUrl: z.string().optional(),
   imageAlt: z.string().default(''),
   heading: z.string(),
@@ -79,10 +81,10 @@ export const contactSplit = defineComponent({
     <Section id="contact">
       <Container style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))', gap: 'clamp(1.5rem, 4vw, 4rem)', alignItems: 'start' }}>
         <div style={{ display: 'grid', gap: '1.5rem', alignContent: 'start', minWidth: 0, padding: 'clamp(1.5rem, 3vw, 2.5rem)', borderRadius: 'max(var(--awb-radius), 24px)', background: 'linear-gradient(135deg, color-mix(in srgb, var(--awb-primary) 14%, var(--awb-bg)), color-mix(in srgb, var(--awb-accent) 10%, var(--awb-bg)))', border: '1px solid var(--awb-border)', overflowWrap: 'anywhere', ...cardColor(props, '/contact-panel') }} data-awb-element={'/contact-panel'}>
-          {props.imageUrl && <div style={{ overflow: 'hidden', borderRadius: 'max(var(--awb-radius), 16px)' }}><Media sizeStyle={imageSizing(props, '/imageUrl')} data-awb-element="/imageUrl" src={props.imageUrl} alt={props.imageAlt} ratio="16 / 9" /></div>}
+          {props.imageUrl && <div style={{ overflow: 'hidden', borderRadius: 'max(var(--awb-radius), 16px)' }}><Media editing={context.editing} sizeStyle={imageSizing(props, '/imageUrl')} data-awb-element="/imageUrl" src={props.imageUrl} alt={props.imageAlt} ratio="16 / 9" /></div>}
           <Heading level={2} style={elementColor(props, '/heading')} data-awb-element={'/heading'}>{props.heading}</Heading>
           {props.intro && <Prose style={elementColor(props, '/intro')} data-awb-element={'/intro'}>{props.intro}</Prose>}
-          <address style={{ fontStyle: 'normal', display: 'grid', gap: '0.4rem', color: 'var(--awb-muted)' }}>
+          {props.businessContact ? <BusinessContactDetails details={props.businessContact} /> : <><address style={{ fontStyle: 'normal', display: 'grid', gap: '0.4rem', color: 'var(--awb-muted)' }}>
             {props.address && <span>{<span data-awb-element="/address" style={elementColor(props, '/address')}>{props.address}</span>}</span>}
             {props.phone && <a href={`tel:${props.phone}`} style={{ color: 'inherit' }}>{<span data-awb-element="/phone" style={elementColor(props, '/phone')}>{props.phone}</span>}</a>}
             {props.email && <a href={`mailto:${props.email}`} style={{ color: 'inherit' }}>{<span data-awb-element="/email" style={elementColor(props, '/email')}>{props.email}</span>}</a>}
@@ -97,6 +99,7 @@ export const contactSplit = defineComponent({
               ))}
             </dl>
           )}
+          </>}
           {props.mapEmbedUrl && (
             <iframe title="Map" src={props.mapEmbedUrl} loading="lazy" style={{ width: '100%', aspectRatio: '16 / 9', border: '1px solid var(--awb-border)' }} />
           )}
@@ -133,10 +136,10 @@ export const ctaCinematic = defineComponent({
   ],
   tokenDeps: ['palette.primary'],
   fixture: { heading: 'Ready when you are', primaryCta: { label: 'Book now', href: '/contact' }, backgroundAlt: '' },
-  render: ({ props }) => (
+  render: ({ props, context }) => (
     <Section style={{ position: 'relative', isolation: 'isolate', color: '#fff' }}>
       <div className="awb-native-background" style={{ position: 'absolute', inset: 0, zIndex: -2 }}>
-        <Media sizeStyle={imageSizing(props, '/backgroundImageUrl', true)} src={props.backgroundImageUrl} alt={props.backgroundAlt} ratio="auto" style={{ height: '100%' }} />
+        <Media editing={context.editing} sizeStyle={imageSizing(props, '/backgroundImageUrl', true)} src={props.backgroundImageUrl} alt={props.backgroundAlt} ratio="auto" style={{ height: '100%' }} />
       </div>
       <div className="awb-native-background" style={{ position: 'absolute', inset: 0, background: 'rgba(15, 12, 10, 0.55)', zIndex: -1 }} />
       <Container style={{ display: 'grid', gap: '1.5rem', justifyItems: 'center', textAlign: 'center' }}>
@@ -169,7 +172,7 @@ export const faqAccordion = defineComponent({
   ],
   tokenDeps: ['palette.border'],
   fixture: { heading: 'Frequently asked', items: [{ question: 'Do you take walk-ins?', answer: 'Walk-ins are welcome when a stylist is free.' }] },
-  render: ({ props }) => (
+  render: ({ props, context }) => (
     <Section>
       <Container style={{ display: 'grid', gap: '2rem', maxWidth: '54rem' }}>
         <Heading level={2} style={elementColor(props, '/heading')} data-awb-element={'/heading'}>{props.heading}</Heading>

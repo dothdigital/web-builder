@@ -156,6 +156,7 @@ export function Cta({
 }
 
 export function Media({
+  editing = false,
   sizeStyle,
   'data-awb-element': elementPath,
   src,
@@ -163,6 +164,7 @@ export function Media({
   ratio = '4 / 5',
   style,
 }: {
+  editing?: boolean
   sizeStyle?: CSSProperties
   'data-awb-element'?: string
   src?: string
@@ -170,9 +172,10 @@ export function Media({
   ratio?: string
   style?: CSSProperties
 }) {
-  if (!src) {
+  if (!src?.trim()) {
+    if (!editing) return null
     return (
-      <div data-awb-element={elementPath}
+      <div data-awb-element={elementPath} data-awb-image-placeholder="true"
         role="img"
         aria-label={alt}
         style={{
@@ -194,12 +197,15 @@ export function Media({
     )
   }
 
+  // Library icons carry their own size and license inside the SVG. Existing image sizes still override it.
+  const iconSize = src.match(/^data:image\/svg\+xml,%3Csvg%20data-awb-icon%3D%22lucide%22%20width%3D%22(\d+)%22/i)?.[1]
+  const iconStyle: CSSProperties = iconSize ? { width: Math.max(16, Math.min(256, Number(iconSize))), height: Math.max(16, Math.min(256, Number(iconSize))), maxWidth: '100%', aspectRatio: '1 / 1', objectFit: 'contain' } : {}
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img data-awb-element={elementPath}
       src={src}
       alt={alt}
-      style={{ width: '100%', aspectRatio: ratio, objectFit: 'cover', display: 'block', ...style, ...sizeStyle }}
+      style={{ width: '100%', aspectRatio: ratio, objectFit: 'cover', display: 'block', ...iconStyle, ...style, ...sizeStyle }}
     />
   )
 }

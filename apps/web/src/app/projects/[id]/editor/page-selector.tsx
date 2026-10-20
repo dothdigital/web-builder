@@ -3,7 +3,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { WebsitePage } from '@awb/website-model'
 
-export function PageSelector({ pages, page, onChange }: { pages: WebsitePage[]; page: WebsitePage; onChange: (id: string) => void }) {
+export function PageSelector({ pages, page, onChange, onCopy }: { pages: WebsitePage[]; page: WebsitePage; onChange: (id: string) => void; onCopy?: (id: string) => void }) {
   const pickerId = useId()
   const button = useRef<HTMLButtonElement>(null)
   const popup = useRef<HTMLDivElement>(null)
@@ -17,13 +17,14 @@ export function PageSelector({ pages, page, onChange }: { pages: WebsitePage[]; 
     window.addEventListener('resize', close)
     return () => { document.removeEventListener('pointerdown', outside); window.removeEventListener('resize', close) }
   }, [position])
-  return <>
+  return <div className="flex shrink-0 items-center gap-1.5">
     <button ref={button} type="button" aria-label={`Select page: ${page.title}, ${page.path}`} aria-expanded={!!position} aria-controls={pickerId} title={`${page.title} · ${page.path}`} className="flex w-48 shrink-0 items-center gap-2 rounded-md border border-neutral-300 px-2 py-1.5 text-left text-sm" onClick={() => {
       if (position) { setPosition(undefined); return }
       const rect = button.current!.getBoundingClientRect()
       const width = Math.min(560, window.innerWidth - 24)
       setPosition({ top: rect.bottom + 6, left: Math.max(12, Math.min(rect.left, window.innerWidth - width - 12)), width })
     }}><span className="min-w-0 flex-1 truncate">{page.title}</span><span aria-hidden="true">▾</span></button>
+    {onCopy && <button type="button" aria-label={`Copy page: ${page.title}`} title={`Copy page: ${page.title}`} className="shrink-0 rounded-md border border-neutral-300 px-2 py-1.5 text-sm text-sky-800 hover:bg-sky-50 focus-visible:outline-2 focus-visible:outline-sky-600" onClick={() => { setPosition(undefined); onCopy(page.id) }}>Copy</button>}
     {position && createPortal(<div id={pickerId} ref={popup} aria-label="Website pages" className="fixed z-[200] overflow-y-auto rounded-lg border border-neutral-200 bg-white p-1.5 shadow-xl" style={{ ...position, maxHeight: `min(65vh, calc(100vh - ${position.top + 12}px))` }} onBlur={(event) => { if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget as Node) && event.relatedTarget !== button.current) setPosition(undefined) }} onKeyDown={(event) => {
       if (event.key === 'Escape') { event.preventDefault(); setPosition(undefined); button.current?.focus() }
       if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
@@ -33,6 +34,6 @@ export function PageSelector({ pages, page, onChange }: { pages: WebsitePage[]; 
         const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 : (index + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length
         items[next]?.focus()
       }
-    }}>{pages.map((candidate) => <button key={candidate.id} type="button" aria-current={candidate.id === page.id ? 'page' : undefined} className={`block w-full rounded-md px-3 py-2 text-left hover:bg-neutral-100 focus:bg-sky-50 ${candidate.id === page.id ? 'bg-sky-50 text-sky-900' : 'text-neutral-800'}`} onClick={() => { onChange(candidate.id); setPosition(undefined); button.current?.focus() }}><span className="block whitespace-normal break-words text-sm font-medium">{candidate.title}</span><span className="block whitespace-normal break-all text-xs text-neutral-500">{candidate.path}</span></button>)}</div>, document.body)}
-  </>
+    }}>{pages.map((candidate) => <div key={candidate.id} className="flex items-center gap-1"><button type="button" aria-current={candidate.id === page.id ? 'page' : undefined} className={`block min-w-0 flex-1 rounded-md px-3 py-2 text-left hover:bg-neutral-100 focus:bg-sky-50 ${candidate.id === page.id ? 'bg-sky-50 text-sky-900' : 'text-neutral-800'}`} onClick={() => { onChange(candidate.id); setPosition(undefined); button.current?.focus() }}><span className="block whitespace-normal break-words text-sm font-medium">{candidate.title}</span><span className="block whitespace-normal break-all text-xs text-neutral-500">{candidate.path}</span></button></div>)}</div>, document.body)}
+  </div>
 }

@@ -33,6 +33,10 @@ export default async function EditorPage({ params }: { params: Promise<{ id: str
     )
   }
 
+  const profile = await prisma.businessProfile.findUnique({ where: { projectId: id } })
+  if (!model.businessDetails && profile) {
+    model.businessDetails = { displayName: profile.displayName, description: profile.description ?? '', industry: profile.industry ?? '', tagline: profile.tagline ?? '', audience: profile.audience ?? '', tone: profile.tone ?? '' }
+  }
   const assets = await prisma.asset.findMany({ where: { projectId: id }, select: { url: true } })
   const imageUrls = Object.fromEntries(assets.map(({ url }) => [url, `/api/projects/${id}/editor-image?url=${encodeURIComponent(url)}`]))
   return <EditorShell projectId={id} initialModel={model} imageUrls={imageUrls} />

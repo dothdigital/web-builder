@@ -6,3 +6,5 @@ export * from './patch'
 
 export * from './site-palette'
 export * from './site-colors'
+
+export * from './image-quality'

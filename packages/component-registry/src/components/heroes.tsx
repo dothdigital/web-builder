@@ -107,7 +107,7 @@ export const heroEditorial = defineComponent({
             {props.secondaryCta && <Cta data-awb-element="/secondaryCta" style={elementColor(props, '/secondaryCta')} {...props.secondaryCta} variant="text-link" />}
           </div>
         </div>
-        {props.imageUrl && <div style={{ minWidth: 0 }}><Media sizeStyle={imageSizing(props, '/imageUrl')} data-awb-element="/imageUrl" src={props.imageUrl} alt={props.imageAlt || props.heading} ratio="auto" style={{ objectFit: 'contain', ...compactImage(context) }} /></div>}
+        {props.imageUrl && <div style={{ minWidth: 0 }}><Media editing={context.editing} sizeStyle={imageSizing(props, '/imageUrl')} data-awb-element="/imageUrl" src={props.imageUrl} alt={props.imageAlt || props.heading} ratio="auto" style={{ objectFit: 'contain', ...compactImage(context) }} /></div>}
       </Container>
     </Section>
   ),
@@ -133,8 +133,8 @@ export const heroSplitBooking = defineComponent({
   fixture: { ...fixture, panelTitle: 'Book a visit', panelLines: ['Tue – Sat, 9am – 7pm', '2450 Hurontario St'] },
   render: ({ props, context }) => props.imageLayout === 'background' ? <BackgroundHero props={props} compact={innerPage(context)} /> : (
     <Section style={{ paddingTop: 0, paddingBottom: 0 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', minHeight: innerPage(context) ? 0 : '70vh' }}>
-        <Media sizeStyle={imageSizing(props, '/imageUrl')} data-awb-element="/imageUrl" src={props.imageUrl} alt={props.imageAlt} ratio="auto" style={{ height: '100%', minHeight: '60vh', objectFit: 'contain', ...compactImage(context) }} />
+      <div style={{ display: 'grid', gridTemplateColumns: props.imageUrl?.trim() || context.editing ? 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))' : '1fr', minHeight: innerPage(context) ? 0 : '70vh' }}>
+        <Media editing={context.editing} sizeStyle={imageSizing(props, '/imageUrl')} data-awb-element="/imageUrl" src={props.imageUrl} alt={props.imageAlt} ratio="auto" style={{ height: '100%', minHeight: '60vh', objectFit: 'contain', ...compactImage(context) }} />
         <div style={{ background: 'var(--awb-surface)', display: 'grid', alignContent: 'center', gap: '1.5rem', padding: innerPage(context) ? 'clamp(1.5rem, 3vw, 3rem)' : 'clamp(2rem, 5vw, 5rem)' }}>
           {props.eyebrow && (
             <p style={{ textTransform: 'uppercase', letterSpacing: '0.24em', fontSize: '0.75rem', color: 'var(--awb-muted)', margin: 0 , ...elementColor(props, '/eyebrow')}} data-awb-element={'/eyebrow'}>{props.eyebrow}</p>
@@ -189,7 +189,7 @@ export const heroTypographic = defineComponent({
             </ul>
           )}
         </div>
-        {props.imageUrl && <div style={{ minWidth: 0 }}><Media sizeStyle={imageSizing(props, '/imageUrl')} data-awb-element="/imageUrl" src={props.imageUrl} alt={props.imageAlt || props.heading} ratio="auto" style={{ display: 'block', objectFit: 'contain', ...compactImage(context) }} /></div>}
+        {props.imageUrl && <div style={{ minWidth: 0 }}><Media editing={context.editing} sizeStyle={imageSizing(props, '/imageUrl')} data-awb-element="/imageUrl" src={props.imageUrl} alt={props.imageAlt || props.heading} ratio="auto" style={{ display: 'block', objectFit: 'contain', ...compactImage(context) }} /></div>}
       </Container>
     </Section>
   ),

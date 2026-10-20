@@ -13,7 +13,7 @@ export function assignedServer(id: string | null) {
   return server
 }
 export function selectServer(servers: HostingServer[], counts: Record<string, number>) {
-  return servers.filter((server) => server.enabled && (counts[server.id] ?? 0) < server.capacity).sort((a, b) => (counts[a.id] ?? 0) / a.capacity - (counts[b.id] ?? 0) / b.capacity || a.id.localeCompare(b.id))[0]
+  return servers.filter((server) => server.enabled).sort((a, b) => (counts[a.id] ?? 0) - (counts[b.id] ?? 0) || a.id.localeCompare(b.id))[0]
 }
 export async function allocateServer(projectId: string) {
   const config = assertHostingConfigured()
@@ -28,7 +28,7 @@ export async function allocateServer(projectId: string) {
     } catch { return null }
   }))
   const healthy = probes.filter((server): server is HostingServer => server !== null)
-  // Serialize capacity allocation across processes and different projects.
+  // Serialize server allocation across processes and different projects.
   return prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(87120419)`
     const site = await tx.hostingSite.findUniqueOrThrow({ where: { projectId } })
@@ -36,7 +36,7 @@ export async function allocateServer(projectId: string) {
     const groups = await tx.hostingSite.groupBy({ by: ['serverId'], _count: { _all: true } })
     const counts = Object.fromEntries(groups.filter((group) => group.serverId).map((group) => [group.serverId!, group._count._all]))
     const server = selectServer(healthy, counts)
-    if (!server) throw new Error('Hosting capacity is unavailable. Contact the platform administrator.')
+    if (!server) throw new Error('No healthy hosting server is available. Contact the platform administrator.')
     await tx.hostingSite.update({ where: { projectId }, data: { serverId: server.id, publicHost: `${projectId}.${config.previewDomain}`, status: 'READY' } })
     return server
   }, { timeout: 10000, maxWait: 10000 })

@@ -3,9 +3,10 @@ import { ErrorNotice } from '@/components/error-notice'
 import { useEffect, useId, useRef, useState } from 'react'
 import type { WebsiteModel } from '@awb/website-model'
 import { createContentWithAi } from '@/app/actions/editor'
+import { blankPageRequestSchema, type BlankPageRequest } from '@/lib/blank-page'
 import { contentRequestSchema, type ContentRequest } from '@/lib/content-creation'
 
-export function ContentCreatePanel({ projectId, model, onSelect, openRequest = 0, initialKind = 'blog', dialogOnly = false }: { dialogOnly?: boolean; imageUrls: Record<string, string>; initialKind?: 'page' | 'blog'; openRequest?: number; projectId: string; model: WebsiteModel; onSelect: (id: string) => void }) {
+export function ContentCreatePanel({ projectId, model, onSelect, onCreateBlank, openRequest = 0, initialKind = 'blog', dialogOnly = false }: { onCreateBlank?: (request: BlankPageRequest) => void; dialogOnly?: boolean; imageUrls: Record<string, string>; initialKind?: 'page' | 'blog'; openRequest?: number; projectId: string; model: WebsiteModel; onSelect: (id: string) => void }) {
   const dialog = useRef<HTMLDialogElement>(null)
   const heading = useId()
   const [disclosure, setDisclosure] = useState({ request: openRequest, open: openRequest > 0 })
@@ -16,6 +17,8 @@ export function ContentCreatePanel({ projectId, model, onSelect, openRequest = 0
     if (!open && dialog.current?.open) dialog.current.close()
   }, [open])
   const [brief, setBrief] = useState<ContentRequest>({ includeCoverImage: false, imageSubject: '', imageStyle: '', coverImageUrl: '', coverImageAlt: '', includeFaq: true, kind: initialKind, topic: '', slug: '', keyword: '', secondaryKeywords: '', audience: '', goal: '', location: '', details: '', internalPaths: [] })
+  const [mode, setMode] = useState<'ai' | 'blank'>('ai')
+  const [blank, setBlank] = useState<BlankPageRequest>({title:'',slug:'',addToNavigation:true})
   const [busy, setBusy] = useState(false)
   const [queued, setQueued] = useState(false)
   const [error, setError] = useState('')
@@ -31,6 +34,14 @@ export function ContentCreatePanel({ projectId, model, onSelect, openRequest = 0
       <div className="flex max-h-[90dvh] flex-col" onClick={event => event.stopPropagation()}>
       <div className="flex shrink-0 items-center justify-between gap-4 border-b bg-violet-50 px-5 py-4"><h2 id={heading} className="text-lg font-semibold">Create a blog or website page</h2><button type="button" aria-label="Close creation form" className="rounded px-2 py-1 text-xl hover:bg-violet-100" onClick={() => dialog.current?.close()}>×</button></div>
       <div className="min-h-0 overflow-y-auto p-5">
+      {onCreateBlank && <div className="mb-4 flex flex-wrap gap-2" aria-label="Page creation mode"><button type="button" aria-pressed={mode==='ai'} className="rounded border px-3 py-2 aria-pressed:bg-violet-100" onClick={()=>{setMode('ai');setError('')}}>Generate with AI</button><button type="button" aria-pressed={mode==='blank'} className="rounded border px-3 py-2 aria-pressed:bg-sky-100" onClick={()=>{setMode('blank');setError('')}}>Blank page — design it yourself</button></div>}
+      {mode === 'blank' ? <div className="grid gap-4" aria-label="Blank page setup">
+        <p>Start with only your shared header and footer. Add your own sections, columns, images, text and other objects.</p>
+        <label className="grid gap-1">Page name<input className="rounded border p-2" maxLength={200} value={blank.title} onChange={event=>{const title=event.target.value;setBlank(previous=>({...previous,title,...(!previous.slug||previous.slug===previous.title.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')?{slug:title.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,100)}:{})}))}} /></label>
+        <label className="grid gap-1">Page URL<input className="rounded border p-2" maxLength={100} value={blank.slug} onChange={event=>setBlank(previous=>({...previous,slug:event.target.value}))} placeholder="my-page" /><span className="text-xs text-neutral-500">/{blank.slug}</span></label>
+        <label className="flex items-center gap-2"><input type="checkbox" checked={blank.addToNavigation} onChange={event=>setBlank(previous=>({...previous,addToNavigation:event.target.checked}))} />Add to navigation</label>
+      </div> : <>
+
       <fieldset disabled={busy} className="grid gap-4 md:grid-cols-2 disabled:opacity-60 [&_input]:min-w-0 [&_select]:min-w-0">
         <div className="grid content-start gap-3">
         <label className="grid gap-1">Create<select className="rounded border p-2" value={brief.kind} onChange={(event) => update({ kind: event.target.value as ContentRequest['kind'] })}><option value="blog">Blog post + automatic listing</option><option value="page">New website page</option></select></label>
@@ -56,8 +67,14 @@ export function ContentCreatePanel({ projectId, model, onSelect, openRequest = 0
         <div><p className="font-medium">Pages to link to (leave unchecked for AI to choose)</p><div className="max-h-40 overflow-auto">{model.pages.map((page) => <label key={page.id} className="flex gap-2 py-1"><input type="checkbox" checked={brief.internalPaths.includes(page.path)} onChange={(event) => update({ internalPaths: event.target.checked ? [...brief.internalPaths, page.path] : brief.internalPaths.filter((path) => path !== page.path) })} />{page.title} ({page.path})</label>)}</div></div>
         </div>
       </fieldset>
+      </>}
       </div>
       <div className="grid shrink-0 gap-2 border-t bg-white px-5 py-4">
+        {mode === 'blank' ? <button type="button" className="rounded bg-sky-700 p-2 text-white" onClick={()=>{
+          const parsed=blankPageRequestSchema.safeParse(blank)
+          if(!parsed.success){setError(parsed.error.issues.map(issue=>issue.message).join(' '));return}
+          try{onCreateBlank?.(parsed.data);setError('');setBlank({title:'',slug:'',addToNavigation:true});setOpen(false)}catch(failure){setError(failure instanceof Error?failure.message:'Could not create this page.')}
+        }}>Create blank page</button> : <>
         <p className="text-xs text-neutral-600">AI creates headings, copy, SEO and links. Review for accuracy before publishing. New content stays in your draft.</p>
         <button type="button" disabled={busy} className="rounded bg-violet-700 p-2 text-white disabled:opacity-60" onClick={async () => {
           const parsed = contentRequestSchema.safeParse(brief)
@@ -67,6 +84,7 @@ export function ContentCreatePanel({ projectId, model, onSelect, openRequest = 0
           catch (failure) { setError(failure instanceof Error ? failure.message : 'Generation failed. Please retry.') }
           finally { setBusy(false) }
         }}>{busy ? 'Queuing…' : brief.includeCoverImage ? 'Generate content and cover' : 'Generate content'}</button>
+      </>}
       {queued && <p role="status">Queued. Content and any requested cover will be ready together. You can keep working; review the draft in the notification at the top when it is ready.</p>}
       {error && <ErrorNotice code="WT-CONTENT-001" message={error} className="text-red-700" />}
       </div>

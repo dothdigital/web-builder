@@ -28,6 +28,8 @@ export function siteChrome(model: WebsiteModel) {
         { title: 'Information', items: [...infoLinks.slice(0, 6), ...(Array.isArray(footer.legalLinks) ? footer.legalLinks : [])] },
       ],
       address: footer.address || address,
+      phones: contact.phones ?? footer.phones,
+      emails: contact.emails ?? footer.emails,
       phone: footer.phone || contact.phone,
       email: footer.email || contact.email,
       socials: model.socials.length ? model.socials.map((social) => ({ platform: social.label || social.network, href: social.url })) : (Array.isArray(footer.socials) ? footer.socials.map((social: { platform?: string; network?: string; href: string }) => ({ platform: social.platform || social.network || 'Social', href: social.href })) : []),

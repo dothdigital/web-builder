@@ -1,5 +1,6 @@
 import { Children, cloneElement, isValidElement, type CSSProperties, type ReactElement, type ReactNode } from 'react'
-import { Prose } from './primitives'
+import { elementColor } from './element-colors'
+import { Prose, Media, Heading } from './primitives'
 import { z } from 'zod'
 
 export const elementOffsetsSchema = z.record(z.string().regex(/^\/[a-zA-Z0-9_/-]+$/), z.object({
@@ -32,7 +33,13 @@ export function applyElementOffsets(tree: ReactNode, props: Record<string, unkno
       const original = element.props.style as CSSProperties | undefined
       const geometry = displaced || expanded || appearance?.width !== undefined || appearance?.height !== undefined
       const spacing = Object.fromEntries(Object.entries(appearance ?? {}).filter(([key]) => /^(padding|margin)(Top|Right|Bottom|Left)$/.test(key)))
-      const style: CSSProperties = { ...original, ...spacing,
+      const frameImageStyle = imagePath ? elementColor(props, imagePath) : {}
+      const frameEffects: CSSProperties = { ...(frameImageStyle.boxShadow !== undefined ? { boxShadow: 'none', overflow: 'visible' } : {}), ...(frameImageStyle.borderRadius !== undefined ? { borderRadius: frameImageStyle.borderRadius } : {}), ...(frameImageStyle.borderWidth !== undefined || frameImageStyle.borderStyle !== undefined || frameImageStyle.borderColor !== undefined ? { border: 'none' } : {}) }
+      const imageEffects = path && (element.type === Media || element.type === 'img' || element.props.role === 'img') ? Object.fromEntries(Object.entries(elementColor(props, path)).filter(([key]) => ['borderRadius', 'borderColor', 'borderStyle', 'borderWidth', 'boxShadow'].includes(key))) : {}
+      const textTarget = element.type === Heading || element.type === Prose || (typeof element.type === 'string' && /^(h[1-6]|p|span|strong|em|blockquote|summary|legend|label)$/.test(element.type)) || element.props['data-awb-inline-text'] !== undefined
+      const shadowStyle = path ? elementColor(props, path) : {}
+      const textEffects: CSSProperties = path && textTarget && shadowStyle.boxShadow !== undefined ? { boxShadow: 'none', textShadow: shadowStyle.textShadow ?? shadowStyle.boxShadow } : {}
+      const style: CSSProperties = { ...original, ...frameEffects, ...imageEffects, ...textEffects, ...spacing,
         ...(geometry ? { '--awb-desktop-geometry': 1 } as CSSProperties : {}),
         ...(appearance?.zIndex !== undefined ? { position: original?.position ?? 'relative', zIndex: appearance.zIndex } : {}),
         ...(nested.expanded ? { minWidth: 0, position: 'static' } : {}),
@@ -49,7 +56,7 @@ export function applyElementOffsets(tree: ReactNode, props: Record<string, unkno
         // the section boundary. Editor pixels must never position preview text.
         return <div data-awb-width-slot="true" style={{ height: appearance!.height ?? '1lh', margin, width: '100%', minWidth: 0 }}>{content}</div>
       }
-      const next = geometry || nested.moved || appearance?.zIndex !== undefined || Object.keys(spacing).length > 0 ? { style } : {}
+      const next = geometry || nested.moved || appearance?.zIndex !== undefined || Object.keys(spacing).length > 0 || Object.keys(imageEffects).length > 0 || Object.keys(textEffects).length > 0 || Object.keys(frameEffects).length > 0 ? { style } : {}
       return element.props.children !== undefined ? cloneElement(element, next, nested.children) : cloneElement(element, next)
     })
     return { children, moved, expanded: expandedTree }

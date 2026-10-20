@@ -10,6 +10,7 @@ import { ensureCustomHostname, validationRecords } from './cloudflare'
 import { agent, allocateServer, assignedServer, activateRoutes, releaseIsLive, checkPublicRelease, type RouteManifest } from './pool'
 import { storeRelease, websiteStoragePrefix } from './storage'
 import { billingLifecycle } from '@awb/database/billing-policy'
+import { publishingAccess } from '../billing/access'
 import { syncPreviewBilling } from './preview'
 
 export async function withHostingLock<T>(projectId: string, fn: () => Promise<T>) {
@@ -88,6 +89,8 @@ export async function syncHosting(projectId: string) {
   }
 }
 export async function publishSite(projectId: string, userId: string) {
+  const project = await prisma.project.findUniqueOrThrow({ where: { id: projectId }, include: { workspace: true } })
+  if (!publishingAccess(project.workspace)) throw new Error('Publishing needs an active paid subscription. You can create a test link during your trial. Open Plans & billing to subscribe.')
   const config = assertHostingConfigured()
   const site = await prepareSite(projectId)
   if (site.pendingReleaseId) throw new Error('The previous release is still deploying. Check status before publishing again.')
@@ -95,7 +98,7 @@ export async function publishSite(projectId: string, userId: string) {
   const version = await prisma.websiteVersion.findFirst({ where: { projectId, kind: 'DRAFT' }, orderBy: { version: 'desc' } })
   if (!version) throw new Error('Save a generated website before publishing.')
   const model = websiteModelSchema.parse(version.model)
-  if (!validateWebsiteModel(model).valid) throw new Error('Fix the website validation errors before publishing.')
+  if (!validateWebsiteModel(model, { allowBlankPages: true }).valid) throw new Error('Fix the website validation errors before publishing.')
   for (const page of model.pages) for (const section of page.sections) {
     if (!validateSectionProps(section.id, section.componentId, section.props).ok) throw new Error('Fix the invalid website sections before publishing.')
   }
@@ -103,7 +106,6 @@ export async function publishSite(projectId: string, userId: string) {
   if (primary && (!primary.verifiedAt || !primary.dnsReady || primary.sslStatus !== 'active')) throw new Error('Complete ownership, routing and HTTPS verification for the primary domain first, or select the temporary address.')
   const canonical = primary?.hostname ?? site.publicHost!
   model.site.primaryDomain = canonical
-  const project = await prisma.project.findUniqueOrThrow({ where: { id: projectId } })
   const prefix = site.storagePrefix ?? websiteStoragePrefix(project.slug, projectId)
   if (!site.storagePrefix) await prisma.hostingSite.update({ where: { projectId }, data: { storagePrefix: prefix } })
   const integration = await prisma.integration.findUnique({ where: { projectId } })

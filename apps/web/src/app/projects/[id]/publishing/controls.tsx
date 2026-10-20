@@ -4,7 +4,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { addHostingDomain, choosePrimaryDomain, removePendingDomain, prepareHosting, checkHosting, publishHosting } from '@/app/actions/hosting'
 
-export function PublishingControls({ projectId, canEdit, configured, prepared, deploying, previewDeploying, domains, children }: { projectId: string; canEdit: boolean; configured: boolean; prepared: boolean; deploying: boolean; previewDeploying: boolean; domains: Array<{ id: string; hostname: string; isPrimary: boolean; removable: boolean; ready: boolean }>; children: ReactNode }) {
+export function PublishingControls({ projectId, canEdit, canPublish, configured, prepared, deploying, previewDeploying, domains, children }: { projectId: string; canEdit: boolean; canPublish: boolean; configured: boolean; prepared: boolean; deploying: boolean; previewDeploying: boolean; domains: Array<{ id: string; hostname: string; isPrimary: boolean; removable: boolean; ready: boolean }>; children: ReactNode }) {
   const router = useRouter()
   const [step, setStep] = useState(0)
   const [adding, setAdding] = useState(false)
@@ -38,6 +38,7 @@ export function PublishingControls({ projectId, canEdit, configured, prepared, d
   }
   return <div className="grid gap-5 rounded-xl border bg-white p-5">
     <h2 className="font-semibold">Publish your website</h2>
+    {!canPublish && <p className="text-sm">You can share a test link during your trial. Publishing requires an active paid subscription. <a className="underline" href="/billing">Choose a plan</a></p>}
     <ol aria-label="Publishing steps" className="grid grid-cols-2 gap-2 sm:grid-cols-4">{['Domain', 'DNS setup', 'Deployment', 'Publish'].map((label, index) => <li key={label}><button type="button" aria-current={step === index ? 'step' : undefined} disabled={busy || index > step} onClick={() => { setStep(index); setMessage('') }} className={`${button} w-full ${step === index ? '' : 'secondary'}`}>{index + 1}. {label}</button></li>)}</ol>
     {step === 0 && <section className="grid gap-4">
       <h3 className="font-semibold">Choose your domain</h3>
@@ -87,7 +88,7 @@ export function PublishingControls({ projectId, canEdit, configured, prepared, d
         <button disabled={busy || !canEdit || !configured} className={button} onClick={() => void run(() => checkHosting(projectId, true))}>{busy ? 'Checking deployment…' : 'Check deployment status'}</button>
       </> : <>
         <p className="text-sm">Save your editor changes, then publish your latest saved draft to this address.</p>
-        <button disabled={busy || !configured || !ready || !canEdit} className={button} onClick={() => void run(() => publishHosting(projectId))}>{busy ? 'Publishing…' : 'Publish saved website'}</button>
+        <button disabled={busy || !configured || !ready || !canEdit || !canPublish} className={button} onClick={() => void run(() => publishHosting(projectId))}>{busy ? 'Publishing…' : 'Publish saved website'}</button>
       </>}
     </section>}
     {step > 0 && <button disabled={busy} className={`${button} secondary justify-self-start`} onClick={() => { setStep(step - 1); setMessage('') }}>Back</button>}

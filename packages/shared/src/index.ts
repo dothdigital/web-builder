@@ -5,3 +5,5 @@ export * from './slug'
 export * from './public-image'
 export * from './upload-image'
 export * from './image-direction'
+
+export { assertTransparentImage } from './image-transparency'

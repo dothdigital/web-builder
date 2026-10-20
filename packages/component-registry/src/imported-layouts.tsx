@@ -1,7 +1,11 @@
+import { BusinessContactDetails, businessContactDetailsSchema } from './components/business-contact-details'
+import { Container, Section } from './primitives'
 import { createElement, type CSSProperties, type ReactNode } from 'react'
 import { z } from 'zod'
 import data from './imported/layouts.json'
 import type { ComponentDefinition, ComponentFamily, EditorField, RenderContext } from './types'
+import { imageSizing } from './image-sizing'
+import { SocialLink } from './components/social-link'
 import { elementColor } from './element-colors'
 import { contactPropsSchema, renderContactForm } from './components/conversion'
 
@@ -12,6 +16,19 @@ const sections = data.sections as unknown as ImportedSection[]
 export const importedTemplates = data.templates
 export const getLayoutTemplate = (id: string | undefined) => importedTemplates.find(template => template.id === id)
 export const importedSection = (id: string) => sections.find(section => section.componentId === id)
+export function importedBackgroundImagePaths(id: string): string[] {
+  const paths = new Set<string>()
+  const walk = (node: Tree) => {
+    if (!node || typeof node !== 'object' || !('tag' in node)) return
+    const background = (node.attrs.style as Record<string, unknown> | undefined)?.backgroundImage
+    if (background && typeof background === 'object' && 'imageSlot' in background) paths.add(`/${String(background.imageSlot)}`)
+    node.children.forEach(walk)
+  }
+  const tree = importedSection(id)?.tree
+  if (tree) walk(tree)
+  return [...paths]
+}
+
 export function templatePageComponents(id: string, pagePath: string): string[] {
   const template = getLayoutTemplate(id)
   if (!template) return []
@@ -64,14 +81,20 @@ function renderTree(tree: Tree, values: Record<string, unknown>, context: Render
     return value ? createElement('span', { key, 'data-awb-element': `/${tree.slot}`, style: elementColor(values, `/${tree.slot}`) }, value) : null
   }
   if ('kind' in tree) {
-    if (tree.kind === 'logo') return createElement('span', { key, className: 'wt-layout-logo' }, values.logoImageUrl ? createElement('img', { src: String(values.logoImageUrl), alt: String(values.logoText || values.businessName || ''), 'data-awb-element': '/logoImageUrl' }) : createElement('span', { 'data-awb-element': '/logoText', style: elementColor(values, '/logoText') }, String(values.logoText || values.businessName || '')))
+    if (tree.kind === 'logo') return createElement('span', { key, className: 'wt-layout-logo' }, values.logoImageUrl ? createElement('img', { src: String(values.logoImageUrl), alt: String(values.logoText || values.businessName || ''), 'data-awb-element': '/logoImageUrl', style: imageSizing(values, '/logoImageUrl') }) : createElement('span', { 'data-awb-element': '/logoText', style: elementColor(values, '/logoText') }, String(values.logoText || values.businessName || '')))
     if (tree.kind === 'menu') {
       const items = (values.items || []) as Array<{ label: string; href: string; children?: Array<{ label: string; href: string }> }>
       return createElement('ul', { ...tree.attrs, key }, items.map((item, index) => createElement('li', { key: index }, createElement('a', { href: route(item.href, context), 'data-awb-element': `/items/${index}/label` }, item.label), item.children?.length ? createElement('ul', { className: 'sub-menu submenu' }, item.children.map((child, j) => createElement('li', { key: j }, createElement('a', { href: route(child.href, context) }, child.label)))) : null)))
     }
-    if (tree.kind === 'form') return renderContactForm(contactPropsSchema.parse({ heading: '', formFields: [ { name:'name',label:'Name',type:'text',required:true }, { name:'email',label:'Email',type:'email',required:true }, { name:'phone',label:'Phone',type:'tel' }, { name:'message',label:'Message',type:'textarea',required:true } ], submitLabel: values.submitLabel || 'Send enquiry' }), context)
+    if (tree.kind === 'form') return createElement('div', { key, style: { display: 'grid', gap: '1.5rem' } }, businessContactDetailsSchema.safeParse(values.businessContact).success ? createElement(BusinessContactDetails, { details: businessContactDetailsSchema.parse(values.businessContact) }) : null, renderContactForm(contactPropsSchema.parse({ heading: '', formFields: [ { name:'name',label:'Name',type:'text',required:true }, { name:'email',label:'Email',type:'email',required:true }, { name:'phone',label:'Phone',type:'tel' }, { name:'message',label:'Message',type:'textarea',required:true } ], submitLabel: values.submitLabel || 'Send enquiry' }), context))
     return null
   }
+  if (family === 'HEADER' && Array.isArray(values.businessSocials) && /social/i.test(String(tree.attrs.className || ''))) {
+    const links = values.businessSocials as Array<{ platform: string; href: string }>
+    if (!links.length) return null
+    return createElement(tree.tag, { ...tree.attrs, key, style: { display: 'flex', gap: '0.5rem', alignItems: 'center' } }, links.map((social, index) => ['ul', 'ol'].includes(tree.tag) ? createElement('li', { key: index }, createElement(SocialLink, social)) : createElement(SocialLink, { key: index, ...social })))
+  }
+  if (family === 'FOOTER' && values.emails !== undefined && /social/i.test(String(tree.attrs.className || ''))) return null
   const attrs: Record<string, unknown> = { ...tree.attrs, key }
   if (attrs.style && typeof attrs.style==='object') {
     const style={...attrs.style as Record<string,unknown>}
@@ -80,6 +103,10 @@ function renderTree(tree: Tree, values: Record<string, unknown>, context: Render
       const slot=String(background.imageSlot),url=String(values[slot] || '')
       style.backgroundImage=url ? `url("${url.replaceAll('"','%22').replaceAll('\\','%5c')}")` : 'none'
       attrs['data-awb-element']=`/${slot}`
+      attrs['data-awb-background-image']='true'
+      const sizing = imageSizing(values, `/${slot}`, true)
+      if (sizing.objectFit) style.backgroundSize = sizing.objectFit
+      if (sizing.objectPosition) style.backgroundPosition = sizing.objectPosition
     }
     attrs.style=style
   }
@@ -88,7 +115,7 @@ function renderTree(tree: Tree, values: Record<string, unknown>, context: Render
       const slot = String((value as Slot).slot)
       const resolved = String(values[slot] ?? '')
       attrs[name] = name === 'href' ? route(resolved, context) : resolved
-      if (name === 'src') { attrs['data-awb-element'] = `/${slot}`; attrs.style = { ...(attrs.style as CSSProperties), ...elementColor(values, `/${slot}`) } }
+      if (name === 'src') { attrs['data-awb-element'] = `/${slot}`; attrs.style = { ...(attrs.style as CSSProperties), ...elementColor(values, `/${slot}`), ...imageSizing(values, `/${slot}`) } }
       if (name === 'href') attrs['data-awb-link'] = `/${slot}`
     }
   }
@@ -105,6 +132,14 @@ function renderTree(tree: Tree, values: Record<string, unknown>, context: Render
 const menuSchema = z.array(z.object({ label:z.string(),href:z.string(),children:z.array(z.object({label:z.string(),href:z.string()})).default([]) })).default([])
 export const importedLayoutDefinitions: ComponentDefinition[] = sections.map(section => {
   const shape: Record<string, z.ZodType> = Object.fromEntries(section.fields.map(field => [field.path.slice(1), z.string().max(field.type === 'textarea' ? 12000 : 3000).default('')]))
+  if (section.family === 'FOOTER') {
+    shape.emails = z.array(z.string()).optional()
+    shape.phones = z.array(z.string()).optional()
+    shape.address = z.string().optional()
+    shape.socials = z.array(z.object({ platform: z.string(), href: z.string() })).optional()
+  }
+  if (section.family === 'HEADER') shape.businessSocials = z.array(z.object({ platform: z.string(), href: z.string() })).optional()
+  if (section.family === 'CONTACT') shape.businessContact = businessContactDetailsSchema.optional()
   shape.imageAlt = z.string().default('')
   shape.submitLabel = z.string().default('Send enquiry')
   if (['HEADER','FOOTER'].includes(section.family)) { shape.logoText=z.string().default('');shape.businessName=z.string().default('');shape.logoImageUrl=z.string().default('');shape.items=menuSchema;shape.sticky=z.boolean().default(false) }
@@ -113,7 +148,7 @@ export const importedLayoutDefinitions: ComponentDefinition[] = sections.map(sec
     description:`Imported ${section.theme} layout section. Preserve its structure and replace demonstration copy with supplied business content.`,
     aiGuidance:'Use only when its template is selected. Fill all text slots with relevant supplied facts; omit unsupported claims and keep image slots empty for generation. Preserve the original section order.',
     propsSchema:z.object(shape),editorFields:[...section.fields,{path:'/imageAlt',label:'Image description',type:'text'},...(section.family==='HEADER'?[{path:'/logoText',label:'Business name',type:'text' as const},{path:'/logoImageUrl',label:'Logo',type:'image' as const},{path:'/items',label:'Navigation',type:'list' as const}]:[])],tokenDeps:[],fixture:section.fixture,
-    render:({props,context}) => createElement('div',{className:`wt-layout-${section.theme} ${section.bodyClass || ''}`,style:{position:'relative'}},createElement('link',{rel:'stylesheet',href:`/template-library/${section.theme}/editable.css`,precedence:`layout-${section.theme}`}),renderTree(section.tree,props as Record<string,unknown>,context,section.family),section.family==='HEADER'?createElement('details',{className:'wt-layout-mobile-menu'},createElement('summary',{},'Menu'),renderTree({kind:'menu'},props as Record<string,unknown>,context,section.family)):null),
+    render:({props: inputProps,context}) => { const props = inputProps as Record<string, unknown>; const details = businessContactDetailsSchema.safeParse(props.businessContact); if (section.family === 'CONTACT' && details.success && Object.values(section.fixture).some(value => /^(mailto:|tel:)/.test(value))) return createElement(Section, { children: createElement(Container, { children: createElement(BusinessContactDetails, { details: details.data }) }) }); return createElement('div',{className:`wt-layout-${section.theme} ${section.bodyClass || ''}`,style:{position:'relative'}},createElement('link',{rel:'stylesheet',href:`/template-library/${section.theme}/editable.css`,precedence:`layout-${section.theme}`}),renderTree(section.tree, section.family === 'FOOTER' && props.emails !== undefined ? { ...props, ...Object.fromEntries(section.fields.filter(field => /@/.test(section.fixture[field.path.slice(1)] || '') || /^(mailto:|tel:)/.test(section.fixture[field.path.slice(1)] || '') || /\d[\d ()+-]{5,}/.test(section.fixture[field.path.slice(1)] || '')).map(field => [field.path.slice(1), ''])) } : props as Record<string,unknown>,context,section.family),section.family==='FOOTER' && props.emails !== undefined ? createElement('address', { style: { padding: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', fontStyle: 'normal', background: 'var(--awb-surface)', color: 'var(--awb-fg)' } }, props.address ? createElement('span', {}, String(props.address)) : null, ...((props.emails || []) as string[]).map((email, i) => createElement('a', { key: `email-${i}`, href: `mailto:${email}` }, email)), ...((props.phones || []) as string[]).map((phone, i) => createElement('a', { key: `phone-${i}`, href: `tel:${phone}` }, phone)), ...((props.socials || []) as Array<{platform: string; href: string}>).map((social, i) => createElement(SocialLink, { key: `social-${i}`, ...social }))) : null, section.family==='HEADER'?createElement('details',{className:'wt-layout-mobile-menu'},createElement('summary',{},'Menu'),renderTree({kind:'menu'},props as Record<string,unknown>,context,section.family)):null) },
   }
 })
 

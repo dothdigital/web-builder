@@ -43,6 +43,7 @@ export function bindSelectedObjectInteraction(element: HTMLElement, getHandlers:
     }
     const cancel = () => { pointer = undefined; getHandlers().onCancel() }
     const key = (event: KeyboardEvent) => {
+      if (document.querySelector('[data-awb-image-editor]')) return
       const target = event.target as HTMLElement | null
       if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey || target?.isContentEditable || target?.closest('input,textarea,select,[contenteditable="plaintext-only"],[contenteditable="true"]')) return
       if (event.key === 'Escape') { cancel(); return }

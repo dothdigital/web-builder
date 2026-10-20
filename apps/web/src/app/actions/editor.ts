@@ -12,7 +12,7 @@ import { paidAccess } from '@/lib/billing/access'
 import { submitContentJob } from '@/lib/content-jobs'
 
 function assertRenderable(model: WebsiteModel): void {
-  const result = validateWebsiteModel(model)
+  const result = validateWebsiteModel(model, { allowBlankPages: true })
 
   if (!result.valid) {
     throw new Error(result.issues.map((issue) => issue.message).join('; '))
@@ -33,6 +33,13 @@ export async function saveModel(projectId: string, model: unknown, note = 'Edito
   const { user, project } = await requireProject(projectId, WorkspaceRole.EDITOR)
 
   const parsed = websiteModelSchema.parse(model)
+  if (parsed.businessDetails) {
+    for (const social of parsed.socials) {
+      let url: URL
+      try { url = new URL(social.url) } catch { throw new Error('Enter a full URL for each social profile, or remove the unused icon.') }
+      if (!['https:', 'http:'].includes(url.protocol)) throw new Error('Social profiles must use an HTTP or HTTPS URL.')
+    }
+  }
   assertRenderable(parsed)
 
   const saved = await saveDraftModel(projectId, parsed, note, user.isPlatformAdmin || user.isPlatformSupport ? user.id : undefined, paidAccess(project.workspace) && (!user.isPlatformSupport || user.isPlatformAdmin) ? user.id : undefined)

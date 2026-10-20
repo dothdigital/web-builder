@@ -44,3 +44,19 @@ assert.match(movedContainer, /translate:45px 40px/)
 assert.ok(!movedImg.includes('translate:'), 'Image and frame receive one combined translation, never two')
 assert.match(movedContainer, /border-radius:18px/)
 console.log('PASS: image movement carries its container border and shadow; existing image and parent offsets combine without double movement.')
+
+// Imported templates use both ordinary <img> nodes and CSS backgrounds.
+import { importedLayoutDefinitions, importedBackgroundImagePaths } from '../packages/component-registry/src/imported-layouts'
+let importedImages = 0, importedBackgrounds = 0
+for (const original of importedLayoutDefinitions) {
+  const definition = getComponent(original.componentId)!
+  const backgrounds = importedBackgroundImagePaths(definition.componentId)
+  const paths = [...new Set(definition.editorFields.filter(field => field.type === 'image').map(field => field.path))]
+  if (!paths.length) continue
+  const dimensions = Object.fromEntries(paths.map(path => [path, { width: 55, height: 180, fit: 'contain', position: 'top' }]))
+  const props = definition.propsSchema.parse({ ...definition.fixture as object, ...Object.fromEntries(paths.map(path => [path.slice(1), '/audit-image.png'])), imageSizes: dimensions })
+  const html = renderToStaticMarkup(React.createElement(definition.render, { props, context: { tokens: defaultTokens, baseUrl: '', editing: true } }))
+  if (backgrounds.length) { assert.ok(html.includes('background-size:contain'), definition.componentId + ' background fit'); assert.ok(html.includes('background-position:top'), definition.componentId + ' background focus'); importedBackgrounds += backgrounds.length }
+  if (paths.some(path => !backgrounds.includes(path) && path !== '/sectionBackgroundImageUrl')) { assert.ok(html.includes('height:180px'), definition.componentId + ' foreground image sizing'); importedImages++ }
+}
+console.log(`PASS: saved image sizes render in ${importedImages} imported templates; ${importedBackgrounds} CSS background slots keep section fit and focus controls.`)

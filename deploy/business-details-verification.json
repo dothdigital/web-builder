@@ -1,0 +1,20 @@
+{
+  "release": "business-details-20261020-r2",
+  "status": "deployed",
+  "verifiedAt": "2026-10-20T01:09:53.449535+00:00",
+  "url": "https://webtummy.com",
+  "checks": [
+    "Production build and TypeScript passed",
+    "Storage transaction round-trip and clearing passed",
+    "All 20 footer variants render multiple contacts and social icons",
+    "Candidate and live authenticated browser checks passed",
+    "Intake fields load; address and multiple emails and phones persist after reload",
+    "Social platform changes and removals persist",
+    "Primary contact moves to remaining entry after removal",
+    "No browser errors",
+    "Public health: database up"
+  ],
+  "databaseMigrations": false,
+  "previousRelease": "business-details-refresh-20261020",
+  "previousReleaseRetirement": "Scheduled after 450-second drain; prior build retained for rollback"
+}

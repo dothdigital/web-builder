@@ -18,7 +18,7 @@ async function run(projectId: string, task: () => Promise<unknown>) {
   catch (error) {
     const message = error instanceof Error ? error.message : ''
     // Avoid returning SDK request details, credentials or infrastructure internals.
-    const safe = /^(Enter |This domain|That domain|Hosting is not configured|Hosting domain activation is unavailable|A publishing|The previous|Complete ownership|Save a generated|Fix the|Publishing failed|Hosting capacity|Hosting server assignment|Publishing needs|Test deployment|Create a test|Only |Select |Remove |You can add)/.test(message)
+    const safe = /^(Enter |This domain|That domain|Hosting is not configured|Hosting domain activation is unavailable|A publishing|The previous|Complete ownership|Save a generated|Fix the|Publishing failed|No healthy hosting server|Hosting capacity|Hosting server assignment|Publishing needs|Test deployment|Create a test|Only |Select |Remove |You can add)/.test(message)
     return { ok: false, message: safe ? message : 'Could not complete this action. Check hosting configuration and try again.' }
   }
 }

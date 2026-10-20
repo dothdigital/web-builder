@@ -14,6 +14,7 @@ export function AiImageUpdate({ projectId, context = '', onUse, imagePointer, or
  const [applied, setApplied] = useState(false)
  const router = useRouter()
  const [instruction, setInstruction] = useState('')
+ const [transparent, setTransparent] = useState(false)
  const [direction, setDirection] = useState<ImageDirection>({ style: 'auto', styles: [], notes: '' })
  const [busy, setBusy] = useState(false)
  const [jobId, setJobId] = useState<string>()
@@ -53,13 +54,14 @@ export function AiImageUpdate({ projectId, context = '', onUse, imagePointer, or
  }, [jobId, router])
  return <><EditorImageProgress visible={busy || !!jobId} /><div className="grid gap-3 rounded-lg border border-violet-200 bg-white p-3 text-xs">
   <label className="grid gap-1">What should the image show?<textarea rows={3} maxLength={1000} value={instruction} disabled={busy || !!jobId} onChange={event => setInstruction(event.target.value)} placeholder="Describe the subject and changes you want for this image." className="rounded border p-2" /></label>
+  <label className="flex items-center gap-2"><input type="checkbox" checked={transparent} disabled={busy || !!jobId} onChange={event => setTransparent(event.target.checked)} />Transparent background (PNG)</label>
   <ImageDirectionFields help="Applies to the new image for this position." value={direction} onChange={setDirection} disabled={busy || !!jobId} />
   <p className="text-neutral-500">Generate a new image for this position. The new image replaces this image automatically when ready. Your original stays in the library.</p>
   <button type="button" disabled={busy || !!jobId || instruction.trim().length < 10} className="rounded bg-violet-700 px-3 py-2 text-white disabled:opacity-50" onClick={async () => {
    setBusy(true); setError(''); setApplied(false)
    try {
     const target = imagePointer ? getTarget?.(imagePointer, originalUrl) : undefined
-    const job = await createBlogCover(projectId, { purpose: 'website', ...(target ? { editorTarget: target } : {}), topic: instruction.trim().slice(0, 200), details: context.slice(0, 8000), direction: instruction, imageDirection: direction, requestId: crypto.randomUUID() })
+    const job = await createBlogCover(projectId, { purpose: 'website', background: transparent ? 'transparent' : 'auto', ...(target ? { editorTarget: target } : {}), topic: instruction.trim().slice(0, 200), details: context.slice(0, 8000), direction: instruction, imageDirection: direction, requestId: crypto.randomUUID() })
     setTargetedJob(!!target); setJobId(job.jobId); window.dispatchEvent(new Event('awb-content-queued'))
    } catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not start image generation.') }
    finally { setBusy(false) }

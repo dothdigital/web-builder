@@ -1,3 +1,4 @@
+import { repeatedPageImages } from './image-quality'
 import { websiteModelSchema, type WebsiteModel } from './model'
 
 export interface ValidationIssue {
@@ -14,7 +15,7 @@ export interface ValidationResult {
 }
 
 /// Structural validation (Zod) plus the SOW's cross-page publish rules.
-export function validateWebsiteModel(input: unknown): ValidationResult & { model?: WebsiteModel } {
+export function validateWebsiteModel(input: unknown, options: { allowBlankPages?: boolean } = {}): ValidationResult & { model?: WebsiteModel } {
   const parsed = websiteModelSchema.safeParse(input)
 
   if (!parsed.success) {
@@ -52,8 +53,12 @@ export function validateWebsiteModel(input: unknown): ValidationResult & { model
     }
 
     if (page.sections.length === 0) {
-      issues.push({ level: 'error', code: 'empty-page', message: 'Page has no sections', pagePath: page.path })
+      issues.push({ level: options.allowBlankPages ? 'warning' : 'error', code: 'empty-page', message: options.allowBlankPages ? 'Blank page has no body sections.' : 'Page has no sections', pagePath: page.path })
     }
+  }
+
+  for (const group of repeatedPageImages(model)) {
+    issues.push({ level: 'warning', code: 'repeated-page-image', message: `The same content image is used ${group.uses.length} times on this page. Review whether each section needs its own image.`, pagePath: group.pagePath, sectionId: group.uses[1]!.sectionId })
   }
 
   const duplicateTitles = findDuplicates(model.pages.filter((p) => p.seo.index).map((p) => p.seo.title.trim().toLowerCase()))

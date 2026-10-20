@@ -16,11 +16,11 @@ export const blogArticle = defineComponent({
   propsSchema: articleSchema, tokenDeps: ['typography.bodyFamily'],
   editorFields: [{ path: '/heading', label: 'Article title', type: 'text', headingLevel: 1 }, { path: '/intro', label: 'Introduction', type: 'textarea' }, { path: '/author', label: 'Author', type: 'text' }, { path: '/imageUrl', label: 'Cover image', type: 'image' }, { path: '/imageAlt', label: 'Image description', type: 'text' }, { path: '/blocks', label: 'Article sections', type: 'list' }],
   fixture: { heading: 'Insights from our team', intro: 'Practical ideas and helpful guidance.', author: '', imageAlt: '', blocks: [{ heading: 'Getting started', body: 'Introduce the topic here.', links: [] }, { heading: 'Next steps', body: 'Explain the next steps here.', links: [] }] },
-  render: ({ props }) => <Section><Container><article style={{ maxWidth: '780px', margin: '0 auto' }}>
+  render: ({ props, context }) => <Section><Container><article style={{ maxWidth: '780px', margin: '0 auto' }}>
     <Heading level={1} data-awb-element="/heading" style={elementColor(props, '/heading')}>{props.heading}</Heading>
     {props.author && <p data-awb-element="/author">By {props.author}</p>}
     <Prose data-awb-element="/intro" style={elementColor(props, '/intro')}>{props.intro}</Prose>
-    {props.imageUrl && <Media data-awb-element="/imageUrl" src={props.imageUrl} alt={props.imageAlt} ratio="16 / 9" sizeStyle={imageSizing(props, '/imageUrl')} />}
+    {props.imageUrl && <Media editing={context.editing} data-awb-element="/imageUrl" src={props.imageUrl} alt={props.imageAlt} ratio="16 / 9" sizeStyle={imageSizing(props, '/imageUrl')} />}
     {props.blocks.map((block, i) => <section key={i} data-awb-element={`/blocks/${i}`} style={{ marginTop: '2.5rem', ...elementColor(props, `/blocks/${i}`) }}>
       <Heading level={2} data-awb-element={`/blocks/${i}/heading`} style={elementColor(props, `/blocks/${i}/heading`)}>{block.heading}</Heading>
       <ArticleBody data-awb-element={`/blocks/${i}/body`} path={`/blocks/${i}/body`} text={block.body} style={elementColor(props, `/blocks/${i}/body`)} />
@@ -33,8 +33,8 @@ export const blogListing = defineComponent({
   componentId: 'BlogListing', version: '1.0.0', family: 'HERO', name: 'Blog listing', description: 'Automatically lists this website’s blog posts.', aiGuidance: 'Use once on the blog index. Entries are resolved from website pages.', propsSchema: listingSchema, tokenDeps: ['palette.primary'],
   editorFields: [{ path: '/heading', label: 'Heading', type: 'text', headingLevel: 1 }, { path: '/intro', label: 'Introduction', type: 'textarea' }], fixture: { heading: 'Blog', intro: 'Ideas and insights.', items: [] },
   render: ({ props, context }) => <Section><Container><Heading level={1} data-awb-element="/heading">{props.heading}</Heading><Prose data-awb-element="/intro">{props.intro}</Prose>
-    <BalancedGrid scope={context.staticRenderScope} count={props.items.length} minimumWidth={280}>{props.items.map((item) => <article key={item.href} style={{ border: '1px solid var(--awb-border)', borderRadius: 'var(--awb-radius)', overflow: 'hidden', background: 'var(--awb-surface)' }}>
-      {item.imageUrl && <Media src={item.imageUrl} alt={item.imageAlt} ratio="16 / 9" />}
+    <BalancedGrid scope={context.staticRenderScope} count={props.items.length} minimumWidth={280}>{props.items.map((item, index) => <article key={item.href} style={{ border: '1px solid var(--awb-border)', borderRadius: 'var(--awb-radius)', overflow: 'hidden', background: 'var(--awb-surface)' }}>
+      {item.imageUrl && <Media editing={context.editing} data-awb-element={`/items/${index}/imageUrl`} sizeStyle={imageSizing(props, `/items/${index}/imageUrl`)} src={item.imageUrl} alt={item.imageAlt} ratio="16 / 9" />}
       <div style={{ padding: '1.5rem' }}><Heading level={2}><a href={item.href} style={{ color: 'inherit', textDecoration: 'none' }}>{item.title}</a></Heading><Prose>{item.description}</Prose><a href={item.href} style={{ color: 'var(--awb-primary)' }}>Read article →</a></div>
     </article>)}</BalancedGrid>
     {!props.items.length && <p>Your articles will appear here when added to the website.</p>}

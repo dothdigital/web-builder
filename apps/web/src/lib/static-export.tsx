@@ -268,6 +268,23 @@ async function renderPage(
   return rewriteLinks(html, model, root).replaceAll('/template-library/',`${root}template-library/`).split(ROOT_TOKEN).join(root)
 }
 
+// Validate the rendered output too: schema-valid models can still resolve to
+// unbundled images through linked cards, custom HTML or template assets.
+export function assertBundledPageImages(html: string, filePath: string, exists: (assetPath: string) => boolean): void {
+  if (/data-awb-image-placeholder=["']true["']/.test(html)) {
+    throw new ExportAssetError(`Image placeholder remains on ${filePath}. Add an image or use a text layout before deploying.`)
+  }
+  for (const tag of html.matchAll(/<img\b[^>]*>/gi)) {
+    const attribute = tag[0].match(/\bsrc\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i)
+    const src = (attribute?.[1] ?? attribute?.[2] ?? attribute?.[3] ?? '').trim().replace(/&amp;/g, '&')
+    if (/^data:image\//i.test(src)) continue
+    const assetPath = path.posix.normalize(path.posix.join(path.posix.dirname(filePath), src.split(/[?#]/)[0]!))
+    if (!src || /^(?:[a-z][a-z0-9+.-]*:|\/)/i.test(src) || assetPath.startsWith('../') || !exists(assetPath)) {
+      throw new ExportAssetError(`An image on ${filePath} was not included in the release. Choose an uploaded image and retry.`)
+    }
+  }
+}
+
 export async function buildStaticExport(
   source: WebsiteModel,
   options: StaticExportOptions,
@@ -298,7 +315,10 @@ export async function buildStaticExport(
   zip.file('assets/site.css', buildStylesheet(model))
 
   for (const page of model.pages) {
-    zip.file(pageFilePath(page), await renderPage(model, page, options))
+    const filePath = pageFilePath(page)
+    const html = await renderPage(model, page, options)
+    assertBundledPageImages(html, filePath, (assetPath) => zip.file(assetPath) !== null)
+    zip.file(filePath, html)
   }
 
   const crawlerModel = options.preview ? { ...model, publishSettings: { ...model.publishSettings, robotsAllowIndexing: false } } : model

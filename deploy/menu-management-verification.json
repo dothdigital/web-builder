@@ -1,0 +1,18 @@
+{
+  "release": "menu-management-20261020",
+  "status": "deployed",
+  "verifiedAt": "2026-10-20T20:33:58.497598+00:00",
+  "checks": [
+    "Web and component registry TypeScript checks passed",
+    "Production build and 103 static pages passed",
+    "Regression checks for menu persistence and both footer variants passed",
+    "Existing mobile header and canonical business contact regressions passed",
+    "Authenticated candidate and live browser checks: five footer columns, renamed column, selected custom link, save/reload persistence, preview rendering and separate header manager",
+    "No browser errors",
+    "Public health: database up"
+  ],
+  "customerProjectModified": false,
+  "databaseMigrations": false,
+  "previousRelease": "system-contact-details-20261020",
+  "retirement": "Previous runtime scheduled to retire after 450 seconds, guarded by active release; files retained for rollback"
+}

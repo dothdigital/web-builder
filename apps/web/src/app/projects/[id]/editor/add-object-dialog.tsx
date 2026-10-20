@@ -13,20 +13,28 @@ function ObjectIcon({ kind }: { kind: ManualObjectKind }) {
   }
   return <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[kind] ? <path d={paths[kind]} /> : <text x="12" y="18" textAnchor="middle" fill="currentColor" stroke="none" fontSize={kind === 'numbered' ? '18' : '23'} fontFamily="Georgia,serif">{kind === 'heading' ? 'H' : kind === 'text' ? '¶' : kind === 'quote' ? '❞' : '1.'}</text>}</svg>
 }
-export function AddObjectDialog({ sections, initialSectionId, onAdd, onClose }: {
-  sections: Array<{ id: string; label: string }>; initialSectionId?: string
-  onAdd: (kind: ManualObjectKind, sectionId: string) => void; onClose: () => void
+export function AddObjectDialog({ sections, initialSectionId, initialColumn = 1, onAdd, onClose }: {
+  sections: Array<{ id: string; label: string; columnCount?: number }>; initialSectionId?: string; initialColumn?: number
+  onAdd: (kind: ManualObjectKind, sectionId: string, column: number, columns?: number) => void; onClose: () => void
 }) {
   const dialog = useRef<HTMLDialogElement>(null)
   const [target, setTarget] = useState(initialSectionId ?? sections[0]?.id ?? 'new')
+  const [column, setColumn] = useState(initialColumn)
+  const columnCount = sections.find(section => section.id === target)?.columnCount ?? 1
+  const [choosingColumns, setChoosingColumns] = useState(false)
+  const [columns, setColumns] = useState(2)
   const [error, setError] = useState('')
   useEffect(() => { const node = dialog.current!; node.showModal(); return () => node.close() }, [])
   return <dialog ref={dialog} aria-labelledby="add-object-title" onCancel={onClose} onClick={event => { if (event.target === event.currentTarget) onClose() }} className="fixed inset-0 m-auto max-h-[85vh] w-[min(600px,94vw)] overflow-y-auto rounded-xl border border-neutral-200 bg-white p-0 text-neutral-900 shadow-2xl backdrop:bg-black/40">
     <div className="sticky top-0 z-10 border-b bg-white p-4"><div className="flex items-center justify-between"><h2 id="add-object-title" className="text-lg font-semibold">Add object</h2><button type="button" aria-label="Close add object" className="rounded px-3 py-2 hover:bg-neutral-100" onClick={onClose}>✕</button></div>
-      <label className="mt-2 grid gap-1 text-sm">Add to section<select className="w-full rounded border p-2" value={target} onChange={event => { setTarget(event.target.value); setError('') }}>{sections.map(section => <option key={section.id} value={section.id}>{section.label}</option>)}<option value="new">+ New blank section</option></select></label>
-      <p className="mt-2 text-xs text-neutral-500">Choose an object, then edit it in Properties. No AI required.</p>
+      <label className="mt-2 grid gap-1 text-sm">Add to section<select className="w-full rounded border p-2" value={target} onChange={event => { setTarget(event.target.value); setColumn(1); setError('') }}>{sections.map(section => <option key={section.id} value={section.id}>{section.label}</option>)}<option value="new">+ New blank section</option></select></label>
+      {columnCount > 1 && <label className="mt-2 grid gap-1 text-sm">Add to column<select className="w-full rounded border p-2" value={column} onChange={event => setColumn(Number(event.target.value))}>{Array.from({length:columnCount},(_,i)=><option key={i+1} value={i+1}>Column {i+1}</option>)}</select></label>}
+      <p className="mt-2 text-xs text-neutral-500">New objects are added to the selected section and column shown above. Choose an object to continue.</p>
     </div>
-    <div className="grid grid-cols-3 gap-3 p-4">{objectChoices.map(([kind, label]) => <button key={kind} type="button" className="flex min-h-28 flex-col items-center justify-center gap-3 rounded-lg border border-neutral-300 bg-white px-2 py-4 text-sm font-medium shadow-sm hover:border-sky-500 hover:bg-sky-50 focus-visible:outline-2 focus-visible:outline-sky-600" onClick={() => { try { onAdd(kind, target); onClose() } catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not add object.') } }}><ObjectIcon kind={kind} />{label}</button>)}</div>
+    {choosingColumns ? <div className="grid gap-4 p-4">
+      <label className="grid gap-1 text-sm font-semibold">Number of columns<select autoFocus aria-label="New object columns" value={columns} onChange={event => setColumns(Number(event.target.value))} className="w-full rounded border p-2">{[1, 2, 3, 4, 5].map(count => <option key={count} value={count}>{count} {count === 1 ? 'column' : 'columns'}</option>)}</select></label>
+      <div className="flex justify-end gap-2"><button type="button" className="rounded border px-4 py-2 text-sm" onClick={() => { setChoosingColumns(false); setError('') }}>Back</button><button type="button" className="rounded bg-sky-700 px-4 py-2 text-sm text-white" onClick={() => { try { onAdd('columns', target, column, columns); onClose() } catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not add columns.') } }}>Add columns</button></div>
+    </div> : <div className="grid grid-cols-3 gap-3 p-4">{objectChoices.map(([kind, label]) => <button key={kind} type="button" className="flex min-h-28 flex-col items-center justify-center gap-3 rounded-lg border border-neutral-300 bg-white px-2 py-4 text-sm font-medium shadow-sm hover:border-sky-500 hover:bg-sky-50 focus-visible:outline-2 focus-visible:outline-sky-600" onClick={() => { if (kind === 'columns') { setChoosingColumns(true); setError(''); return } try { onAdd(kind, target, column); onClose() } catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not add object.') } }}><ObjectIcon kind={kind} />{label}</button>)}</div>}
     {error && <ErrorNotice code="WT-EDITOR-001" message={error} className="px-4 pb-4 text-sm text-red-700" />}
   </dialog>
 }

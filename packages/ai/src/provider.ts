@@ -87,7 +87,7 @@ export interface AiProvider {
     model: WebsiteModel,
     slots: ImageSlotRequest[],
   ): Promise<AiResult<ImagePlan>>
-  generateImage(prompt: string, aspectRatio: string, slot: string, alt: string): Promise<AiResult<GeneratedImage>>
+  generateImage(prompt: string, aspectRatio: string, slot: string, alt: string, options?: { background?: 'transparent' }): Promise<AiResult<GeneratedImage>>
   reviewSite(model: WebsiteModel): Promise<AiResult<ReviewReport>>
   patchSection(instruction: string, model: WebsiteModel, target: { pageId: string; sectionId: string }): Promise<AiResult<AiPatch>>
 }

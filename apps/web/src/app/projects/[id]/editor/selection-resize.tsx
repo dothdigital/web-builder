@@ -1,6 +1,8 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 import type { MultiAction } from '@/lib/multi-object-editing'
+import { imageVisibleBounds } from '@/lib/image-visible-bounds'
+import { imageResizeTarget } from '@/lib/image-resize-target'
 import { objectScope } from '@/lib/object-editing'
 
 type Bounds = { left: number; top: number; width: number; height: number }
@@ -8,7 +10,7 @@ export function SelectionResize({ elements, section, props, onAction }: { elemen
   const [ghost, setGhost] = useState<Bounds>()
   const drag = useRef<{ x: number; y: number; signX: number; signY: number; anchorX: number; anchorY: number; factor: number; original: Bounds; boxes: DOMRect[]; min: number; max: number } | null>(null)
   useEffect(() => { const key = (event: KeyboardEvent) => { if (event.key === 'Escape') { drag.current = null; setGhost(undefined) } }; window.addEventListener('keydown', key); return () => window.removeEventListener('keydown', key) }, [])
-  const boxes = elements.map((element) => element.getBoundingClientRect())
+  const boxes = elements.map((element) => imageVisibleBounds(imageResizeTarget(element) ?? element))
   const left = Math.min(...boxes.map((box) => box.left)), top = Math.min(...boxes.map((box) => box.top))
   const original = { left, top, width: Math.max(...boxes.map((box) => box.right)) - left, height: Math.max(...boxes.map((box) => box.bottom)) - top }
   const bounds = ghost ?? original

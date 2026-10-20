@@ -29,7 +29,7 @@ export function hostingConfig() {
   if (backend) { try { const url = new URL(backend); if (url.protocol !== 'https:' || url.username || url.password || url.pathname !== '/' || url.search || url.hash || ['localhost', '127.0.0.1'].includes(url.hostname)) missing.push('HOSTING_PUBLIC_API_URL must be a public HTTPS origin') } catch { missing.push('HOSTING_PUBLIC_API_URL must be a public HTTPS origin') } }
   return { bucket, region, zoneId, apiToken, cnameTarget, previewDomain, servers, gatewayIds, backend: backend.replace(/\/$/, ''), reserved, missing, configured: missing.length === 0 }
 }
-export type HostingServer = { id: string; apiUrl: string; originUrl: string; token: string; capacity: number; enabled: boolean }
+export type HostingServer = { id: string; apiUrl: string; originUrl: string; token: string; enabled: boolean }
 export function parseServerPool(value: string): HostingServer[] {
   const input: unknown = JSON.parse(value)
   if (!Array.isArray(input)) throw new Error('Invalid pool')
@@ -37,7 +37,7 @@ export function parseServerPool(value: string): HostingServer[] {
   return input.map((entry) => {
     if (!entry || typeof entry !== 'object') throw new Error('Invalid server')
     const server = entry as HostingServer
-    if (!/^[a-zA-Z0-9_-]+$/.test(server.id) || ids.has(server.id) || typeof server.token !== 'string' || server.token.length < 32 || !Number.isInteger(server.capacity) || server.capacity < 1 || typeof server.enabled !== 'boolean') throw new Error('Invalid server')
+    if (!/^[a-zA-Z0-9_-]+$/.test(server.id) || ids.has(server.id) || typeof server.token !== 'string' || server.token.length < 32 || typeof server.enabled !== 'boolean') throw new Error('Invalid server')
     ids.add(server.id)
     for (const value of [server.apiUrl, server.originUrl]) {
       const url = new URL(value)

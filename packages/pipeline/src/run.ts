@@ -1,4 +1,4 @@
-import { applySitePalette } from '@awb/website-model'
+import { repeatedPageImages, assertDistinctPageImages, applySitePalette } from '@awb/website-model'
 import { imageDirectionPrompt } from '@awb/shared/image-direction'
 import { allowsPersonalPhoto, removeMisplacedPersonalPhotos } from './personal-photo-policy'
 import { intakeMediaSchema } from '@awb/shared/intake-media'
@@ -411,6 +411,7 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
       }
       if (rerun.palette) next = applySitePalette(next, rerun.palette)
       const websiteVersionId = await runStage(projectId, correlationId, GenerationStage.VALIDATE, toJson({ scope: rerun.scope }), async () => {
+        assertDistinctPageImages(next, websiteModelSchema.parse(version.model))
         const validation = validateWebsiteModel(next)
         if (!validation.valid) throw new Error(validation.issues.filter(issue => issue.level === 'error').map(issue => issue.message).join('; '))
         const saved = await prisma.$transaction(async tx => {
@@ -745,6 +746,15 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
         filled.globalComponents.header.props.logoText = brief.businessName
         const personalUrls = new Set((brief.uploadedPhotos ?? []).filter(photo => photo.purpose === 'personal').map(photo => photo.url))
         removeMisplacedPersonalPhotos(filled, personalUrls)
+        // AI output can copy an existing image into multiple sections. Treat
+        // repeated placements as empty slots before planning distinct artwork.
+        for (const group of repeatedPageImages(filled)) for (const use of group.uses.slice(1)) {
+          const props = filled.pages.find(page => page.id === use.pageId)?.sections.find(section => section.id === use.sectionId)?.props
+          if (props) {
+            setByPointer(props, use.pointer, '')
+            if (use.pointer.endsWith('/imageUrl')) setByPointer(props, use.pointer.replace(/imageUrl$/, 'imageAlt'), '')
+          }
+        }
         const slots = collectImageSlots(filled)
 
         const resolve = (slot: string): Record<string, unknown> | undefined => {
@@ -756,7 +766,8 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
         }
 
         /// Images the user uploaded are always preferred over generated ones.
-        const uploads = [...(brief.uploadedPhotos ?? brief.uploadedImageUrls.map(url => ({ url, purpose: 'other', description: '' })))]
+        const assignedImages = JSON.stringify(filled.pages)
+        const uploads = [...(brief.uploadedPhotos ?? brief.uploadedImageUrls.map(url => ({ url, purpose: 'other', description: '' })))].filter(photo => !assignedImages.includes(JSON.stringify(photo.url)))
         const pending: ImageSlotRequest[] = []
 
         const orderedSlots = [...slots].sort((a, b) => Number(allowsPersonalPhoto(filled, b.slot)) - Number(allowsPersonalPhoto(filled, a.slot)))
@@ -778,16 +789,9 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
             continue
           }
 
-          if (brief.intakeMedia?.imageMode === 'upload') {
-            const compatible = (brief.uploadedPhotos ?? brief.uploadedImageUrls.map(url => ({ url, purpose: 'other', description: '' }))).filter(eligible)
-            const photo = compatible[0]
-            // Photos-only mode may leave a slot empty; never fill it with an unrelated portrait.
-            if (!photo) continue
-            const url = photo.url
-            setByPointer(props, pointer, url)
-            if (pointer.endsWith('/imageUrl')) setByPointer(props, pointer.replace(/\/imageUrl$/, '/imageAlt'), photo?.description ?? '')
-            continue
-          }
+          // Uploaded photos are consumed once. Insufficient uploads leave slots
+          // empty for review instead of silently repeating the first photo.
+          if (brief.intakeMedia?.imageMode === 'upload') continue
           pending.push(slot)
         }
 
@@ -852,6 +856,7 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
       GenerationStage.VALIDATE,
       toJson({ model: modelWithImages }),
       async () => {
+        assertDistinctPageImages(modelWithImages)
         const validation = validateWebsiteModel(modelWithImages)
 
         if (!validation.valid) {

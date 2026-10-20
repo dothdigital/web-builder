@@ -384,6 +384,7 @@ export class OpenAiProvider implements AiProvider {
       [
         'Write one concept-led image prompt and descriptive alt text for every image slot listed by the user. Choose editorial photography, an object-based still life, or a tasteful conceptual illustration to explain the exact service or section subject, not simply the industry.',
         'Return each slot string exactly as given — never invent, merge or omit a slot.',
+        'Every content image on a page needs a distinct section-specific subject and composition. Never fill a missing section image by copying its hero or another section. When no suitable artwork is available, leave the slot for review rather than duplicating an existing image.',
         'Use subjectContext, especially imageOwner for individual cards, to identify the specific concept. Make sibling cards visibly distinct. For education savings show learning or education-related objects; for travel protection show travel essentials; for methodology show relevant tools or a process setting. Adapt these examples to the actual business.',
         'For options or variants of one product, show the actual distinguishing preparation or use. A hot drink should show a warm cup and gentle steam; a cold drink should show a chilled glass, ice or condensation. Change composition and setting between sibling options while keeping brand art direction consistent. Do not reuse the hero composition for every option.',
         'Follow brief.imageDirection when supplied. Combine all selected imageDirection.styles coherently across relevant sections; these preferences and visual notes take priority over default image style and Design DNA. People means illustrative human interactions, never fabricated actual staff or customers. Local context uses only the supplied location, without claiming a specific premises. Image style never overrides semantic portrait-placement rules.',
@@ -411,6 +412,7 @@ export class OpenAiProvider implements AiProvider {
     aspectRatio: string,
     slot: string,
     alt: string,
+    options?: { background?: 'transparent' },
   ): Promise<AiResult<GeneratedImage>> {
     const routing = resolveRouting('image_generate', this.config.modelOverrides)
     const sizes: Record<string, string> = {
@@ -427,7 +429,7 @@ export class OpenAiProvider implements AiProvider {
         method: 'POST',
             signal: AbortSignal.timeout(180000),
         headers: { 'content-type': 'application/json', authorization: `Bearer ${this.apiKey}` },
-        body: JSON.stringify({ model, prompt, size: sizes[aspectRatio] ?? '1024x1024', n: 1 }),
+        body: JSON.stringify({ model, prompt, size: sizes[aspectRatio] ?? '1024x1024', n: 1, ...(options?.background === 'transparent' ? { background: 'transparent', output_format: 'png' } : {}) }),
       })
 
       if (!response.ok) {

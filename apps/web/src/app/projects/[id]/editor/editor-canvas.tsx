@@ -13,6 +13,8 @@ import { getComponent, tokensToCssVars } from '@awb/component-registry'
 import type { RenderContext } from '@awb/component-registry'
 import type { WebsiteModel, WebsitePage, WebsiteSection } from '@awb/website-model'
 import { ImageResizeHandle } from './image-resize-handle'
+import { renderedElement } from '@/lib/rendered-element'
+import { imageResizeTarget } from '@/lib/image-resize-target'
 import { outlinePath } from '@/lib/selection-outline'
 import { useInlineTextEditing } from './inline-edit'
 
@@ -75,7 +77,7 @@ function SectionFrame({
     if (!node || !selected || !selectedElement || (selectedElements && selectedElements.length > 1)) return
     const rendered = Array.from(node.querySelectorAll<HTMLElement>('[data-awb-element]'))
     const path = outlinePath(section.componentId, selectedElement, rendered.map(element => element.dataset.awbElement!))
-    const elements = rendered.filter(element => element.dataset.awbElement === path)
+    const elements = rendered.filter(element => element.dataset.awbElement === path && (!imageResizeTarget(element) || getComputedStyle(element).position === 'absolute' && !element.hasAttribute('data-awb-free-item')))
     const previous = elements.map((element) => ({ element, outline: element.style.outline, offset: element.style.outlineOffset }))
     for (const element of elements) { element.style.outline = '2px solid #0284c7'; element.style.outlineOffset = '3px' }
     return () => { for (const entry of previous) { entry.element.style.outline = entry.outline; entry.element.style.outlineOffset = entry.offset } }
@@ -199,7 +201,7 @@ function SectionFrame({
       {selected && !section.hidden && selectedElements && selectedElements.length > 1 && <MultiObjectToolbar node={node} paths={selectedElements} props={section.props} onAction={onMultiAction} onClear={() => onSelect()} />}
       {selected && !section.hidden && !(selectedElements && selectedElements.length > 1) && selectedElement && <ObjectToolbar key={`toolbar-${selectedElement}`} node={node} path={selectedElement} props={section.props} sectionId={section.id} {...objectControls} onSelect={onSelect} />}
       {selected && !section.hidden && !(selectedElements && selectedElements.length > 1) && selectedElement && <ImageResizeHandle sectionWideImages revision={section.props} key={selectedElement} node={node} path={selectedElement} onResize={(size) => {
-        const element = node && Array.from(node.querySelectorAll<HTMLElement>('[data-awb-element]')).find((entry) => entry.dataset.awbElement === selectedElement)
+        const element = node && renderedElement(node, selectedElement)
         if (element && node) objectControls.onAction(imagePlacementAction(element, node, section.id, size))
         else onResizeImage(selectedElement, size)
       }} onFontResize={(fontSize) => onResizeText(selectedElement, fontSize)} />}
@@ -245,7 +247,7 @@ function GlobalFrame({
   useInlineTextEditing(node, selected, props, onEditText)
   useEffect(() => {
     if (!node || !selected || !selectedElement) return
-    const targets = Array.from(node.querySelectorAll<HTMLElement>('[data-awb-element]')).filter((entry) => entry.dataset.awbElement === selectedElement)
+    const targets = Array.from(node.querySelectorAll<HTMLElement>('[data-awb-element]')).filter((entry) => entry.dataset.awbElement === selectedElement && !imageResizeTarget(entry))
     const previous = targets.map((target) => target.style.outline)
     targets.forEach((target) => { target.style.outline = '2px solid #0284c7' })
     return () => targets.forEach((target, index) => { target.style.outline = previous[index]! })
@@ -266,6 +268,7 @@ function GlobalFrame({
   return (
     <div
       style={slot === 'header' ? { position: 'relative', zIndex: 50 } : undefined}
+      data-awb-global={slot}
       data-awb-editor-canvas="true"
       data-awb-selected-frame={selected ? "true" : undefined}
       role="presentation"
@@ -282,7 +285,7 @@ function GlobalFrame({
         if (!node?.contains(event.target as Node)) onSelect()
       }}
       className={`group relative outline-offset-[-2px] ${
-        selected ? 'outline outline-2 outline-violet-500' : 'hover:outline hover:outline-1 hover:outline-violet-300'
+        selected && !selectedElement ? 'outline outline-2 outline-violet-500' : selected && selectedElement ? '' : 'hover:outline hover:outline-1 hover:outline-violet-300'
       }`}
     >
       <div
@@ -296,6 +299,7 @@ function GlobalFrame({
         <Component props={parsed.data} context={context} />
       </div>
       {selected && <ObjectToolbar key={selectedElement ?? 'global-section'} node={node} path={selectedElement ?? '/layout/0'} props={props} {...objectControls} onSelect={onSelect} />}
+      {selected && selectedElement && node && Array.from(node.querySelectorAll<HTMLElement>('[data-awb-element]')).some(element => element.dataset.awbElement === selectedElement && imageResizeTarget(element)) && <ImageResizeHandle key={`global-image-${selectedElement}`} revision={props} node={node} path={selectedElement} onResize={size => objectControls.onAction({ type: 'imageSize', value: { width: size.width, height: size.height } })} onFontResize={value => objectControls.onAction({ type: 'style', value })} />}
     </div>
   )
 }
@@ -375,7 +379,7 @@ export function EditorCanvas({
 
   return (
     <div
-      style={{ overflowAnchor: 'none' }}
+      style={{ overflowAnchor: 'none', justifyContent: 'safe center' }}
       ref={setCanvasNode}
       data-awb-canvas-scroll="true"
       className="flex h-full justify-center overflow-auto bg-neutral-200 p-6"
@@ -391,7 +395,7 @@ export function EditorCanvas({
       <MarqueeSelection node={canvasNode} enabled={selectionMode} paths={selection?.kind === 'section' ? selection.elements ?? (selection.element ? [selection.element] : []) : []} sectionId={selection?.kind === 'section' ? selection.id : undefined} onSelect={onAreaSelect} />
       <div
         className="h-fit w-full origin-top bg-white shadow-xl transition-all"
-        style={{ maxWidth: viewportWidth[viewport], ...tokensToCssVars(model.tokens) }}
+        style={{ minWidth: viewport === 'desktop' ? 768 : undefined, maxWidth: viewportWidth[viewport], ...tokensToCssVars(model.tokens) }}
       >
         {header && headerProps?.success && (
           <GlobalFrame
@@ -406,6 +410,7 @@ export function EditorCanvas({
             onEditText={(pointer, value) => onEditText({ kind: 'header' }, pointer, value)}
           />
         )}
+        {page.sections.length === 0 && <div data-awb-empty-page="true" className="grid min-h-80 place-content-center gap-2 p-8 text-center text-neutral-500"><p className="font-medium">Blank page — ready for your design</p><p className="text-sm">Use Add section or Add object to start.</p></div>}
         {page.sections.map((section, index) => (
           <SectionFrame
             key={section.id}

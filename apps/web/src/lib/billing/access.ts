@@ -2,6 +2,7 @@ import { prisma, type Prisma } from '@awb/database'
 import { billingLifecycle, type BillingAccess } from '@awb/database/billing-policy'
 export { billingLifecycle } from '@awb/database/billing-policy'
 export function paidAccess(workspace: BillingAccess) { return billingLifecycle(workspace).editing }
+export function publishingAccess(workspace: BillingAccess) { return billingLifecycle(workspace).phase === 'ACTIVE' }
 export function editingAccess(workspace: BillingAccess) { return billingLifecycle(workspace).editing }
 export function hostingAccess(workspace: BillingAccess) { return billingLifecycle(workspace).hosting }
 export class BillingAccessError extends Error { readonly status = 402 }

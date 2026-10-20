@@ -1,4 +1,7 @@
 'use client'
+import { imageVisibleBounds } from '@/lib/image-visible-bounds'
+import { renderedElement } from '@/lib/rendered-element'
+import { imageResizeTarget } from '@/lib/image-resize-target'
 import { useEffect, useRef, useState } from 'react'
 
 const handles = [
@@ -12,48 +15,70 @@ const handles = [
   { name: 'left middle', x: 0, y: 0.5, cursor: 'ew-resize' },
 ] as const
 
-function restoreSizing(start: { element: HTMLElement; originalStyle: string; container?: HTMLElement; containerStyle?: string }) {
+function restoreSizing(start: { element: HTMLElement; originalStyle: string; container?: HTMLElement; containerStyle?: string; free?: HTMLElement; freeStyle?: string }) {
   start.element.style.cssText = start.originalStyle
   if (start.container) start.container.style.cssText = start.containerStyle ?? ''
+  if (start.free) start.free.style.cssText = start.freeStyle ?? ''
 }
 
-export function ImageResizeHandle({ revision, node, path, onResize, onFontResize, sectionWideImages = false }: { sectionWideImages?: boolean; revision?: unknown; node: HTMLElement | null; path?: string; onResize: (size: { width: number; height: number }) => void; onFontResize: (style: { fontSize?: number; width?: number; height?: number; widthBasis?: 'section' }) => void }) {
+export function ImageResizeHandle({ revision, node, path, onResize, onFontResize, sectionWideImages = false }: { sectionWideImages?: boolean; revision?: unknown; node: HTMLElement | null; path?: string; onResize: (size: { width: number; height: number; offsetX?: number; offsetY?: number }) => void; onFontResize: (style: { fontSize?: number; width?: number; height?: number; widthBasis?: 'section' }) => void }) {
   const [box, setBox] = useState<{ left: number; top: number; width: number; height: number; path: string; kind: 'image' | 'text' | 'block' }>()
   const image = useRef<HTMLElement | null>(null)
-  const drag = useRef<{ x: number; y: number; width: number; height: number; parentWidth: number; originalStyle: string; container?: HTMLElement; containerStyle?: string; element: HTMLElement; kind: 'image' | 'text' | 'block'; fontSize: number; resultFont?: number; resultWidth?: number; resultHeight?: number; result?: { width: number; height: number } } | null>(null)
+  const drag = useRef<{ x: number; y: number; width: number; height: number; parentWidth: number; originalStyle: string; container?: HTMLElement; containerStyle?: string; free?: HTMLElement; freeStyle?: string; element: HTMLElement; kind: 'image' | 'text' | 'block'; fontSize: number; resultFont?: number; resultWidth?: number; resultHeight?: number; translate?: string; insetX: number; insetY: number; result?: { width: number; height: number; offsetX?: number; offsetY?: number } } | null>(null)
   useEffect(() => {
     if (!node || !path) return
-    const target = Array.from(node.querySelectorAll<HTMLElement>('[data-awb-element]')).find((entry) => entry.dataset.awbElement === path)
-    if (!target || (getComputedStyle(target).position === 'absolute' && !target.hasAttribute('data-awb-free-item') && !target.parentElement?.hasAttribute('data-awb-width-slot'))) return
-    const kind = target.hasAttribute('data-awb-inline-text') ? 'text' : target.hasAttribute('data-awb-free-item') || target.matches('div:not([role="img"]),article,ul,ol,form,details,section,nav,aside,input,textarea,select') ? 'block' : target.matches('img,[role="img"]') ? 'image' : 'text'
+    const selected = renderedElement(node, path)
+    const target = selected && (imageResizeTarget(selected) ?? selected)
+    if (!target || target.closest('.awb-native-background') || (getComputedStyle(target).position === 'absolute' && !target.matches('img,[role="img"]') && !target.hasAttribute('data-awb-free-item') && !target.parentElement?.hasAttribute('data-awb-width-slot'))) return
+    const kind = target.matches('img,[role="img"]') ? 'image' : target.hasAttribute('data-awb-inline-text') ? 'text' : target.hasAttribute('data-awb-free-item') || target.matches('div:not([role="img"]),article,ul,ol,form,details,section,nav,aside,input,textarea,select') ? 'block' : 'text'
     if (kind === 'text' && !target.hasAttribute('data-awb-inline-text') && !target.matches('h1,h2,h3,h4,h5,h6,p,span,strong,blockquote,a,button,li,summary,legend,label')) return
+    // Pause template motion while an object is selected so the grip stays under the pointer.
+    const animated: Array<{ element: HTMLElement; playState: string; transition: string }> = []
+    for (let element: HTMLElement | null = target; element && element !== node.parentElement; element = element.parentElement) {
+      animated.push({ element, playState: element.style.animationPlayState, transition: element.style.transition })
+      element.style.animationPlayState = 'paused'
+      element.style.transition = 'none'
+    }
     image.current = target
     const measure = () => {
-      const bounds = target.getBoundingClientRect()
+      const bounds = imageVisibleBounds(target)
       const parent = node.parentElement!.getBoundingClientRect()
-      setBox({ left: bounds.left - parent.left, top: bounds.top - parent.top, width: bounds.width, height: bounds.height, path, kind })
+      const next: NonNullable<typeof box> = { left: bounds.left - parent.left, top: bounds.top - parent.top, width: bounds.width, height: bounds.height, path, kind }
+      setBox(current => current && current.path === next.path && current.kind === next.kind && Math.abs(current.left - next.left) < .01 && Math.abs(current.top - next.top) < .01 && Math.abs(current.width - next.width) < .01 && Math.abs(current.height - next.height) < .01 ? current : next)
     }
     const observer = new ResizeObserver(measure)
     observer.observe(target)
+    target.addEventListener('load', measure)
     observer.observe(node)
+    if (selected && selected !== target) observer.observe(selected)
     window.addEventListener('resize', measure)
+    window.addEventListener('scroll', measure, true)
     measure()
+    // Fonts, sibling images and template positioning can move an image without
+    // resizing it. Track the selected picture's position as well as its size.
+    let animationFrame = 0
+    const trackPosition = () => { measure(); animationFrame = requestAnimationFrame(trackPosition) }
+    animationFrame = requestAnimationFrame(trackPosition)
     return () => {
-      observer.disconnect(); window.removeEventListener('resize', measure)
+      cancelAnimationFrame(animationFrame)
+      observer.disconnect(); target.removeEventListener('load', measure); window.removeEventListener('resize', measure); window.removeEventListener('scroll', measure, true)
       if (drag.current) { restoreSizing(drag.current); drag.current = null }
+      animated.forEach(({ element, playState, transition }) => { element.style.animationPlayState = playState; element.style.transition = transition })
       image.current = null
     }
   }, [node, path, revision])
   if (!box || box.path !== path) return null
-  return <>{handles.map((handle) => <button key={handle.name} type="button" aria-label={`Resize ${box.kind} from ${handle.name}`} title={box.kind === 'image' ? 'Drag an edge to adjust one dimension. Drag a corner to resize proportionally; hold Shift for free resizing.' : box.kind === 'block' ? 'Drag any edge or corner to resize the box. Its contents move with it.' : 'Drag side handles for section-wide text width, top/bottom handles for box height, and corners for font size.'} className="absolute z-30 h-[18px] w-[18px] rounded-sm border-2 border-white bg-sky-600 shadow" style={{ left: box.left + box.width * handle.x - 9, top: box.top + box.height * handle.y - 9, cursor: handle.cursor, touchAction: 'none' }}
+  return <>{box.kind === 'image' && <div aria-hidden="true" className="absolute z-20 pointer-events-none" style={{ left: box.left, top: box.top, width: box.width, height: box.height, border: '1px solid #0284c7' }} />}{handles.map((handle) => <button key={handle.name} type="button" aria-label={`Resize ${box.kind} from ${handle.name}`} title={box.kind === 'image' ? 'Drag an edge to adjust one dimension. Drag a corner to resize proportionally; hold Shift for free resizing.' : box.kind === 'block' ? 'Drag any edge or corner to resize the box. Its contents move with it.' : 'Drag side handles for section-wide text width, top/bottom handles for box height, and corners for font size.'} className="absolute z-30 h-[18px] w-[18px] rounded-sm border-2 border-white bg-sky-600 shadow" style={{ left: box.left + box.width * handle.x - 9, top: box.top + box.height * handle.y - 9, cursor: handle.cursor, touchAction: 'none' }}
     onClick={(event) => event.stopPropagation()}
     onPointerDown={(event) => {
       event.preventDefault(); event.stopPropagation(); event.currentTarget.focus()
       const target = image.current
       if (!target || event.button !== 0) return
-      const bounds = target.getBoundingClientRect()
+      const bounds = imageVisibleBounds(target)
       const container = box.kind === 'image' && target.parentElement?.hasAttribute('data-awb-image-container') ? target.parentElement : undefined
-      drag.current = { container, containerStyle: container?.style.cssText, x: event.clientX, y: event.clientY, width: bounds.width, height: bounds.height, parentWidth: box.kind === 'text' || (box.kind === 'image' && sectionWideImages) ? node!.getBoundingClientRect().width : (container?.parentElement ?? target.parentElement)!.getBoundingClientRect().width, originalStyle: target.style.cssText, element: target, kind: box.kind, fontSize: parseFloat(getComputedStyle(target).fontSize) }
+      const free = box.kind === 'image' ? target.closest<HTMLElement>('[data-awb-free-item]') ?? undefined : undefined
+      const frameBounds = (free ?? container ?? target).getBoundingClientRect()
+      drag.current = { insetX: bounds.left - frameBounds.left, insetY: bounds.top - frameBounds.top, translate: getComputedStyle(free ?? container ?? target).translate, free, freeStyle: free?.style.cssText, container, containerStyle: container?.style.cssText, x: event.clientX, y: event.clientY, width: bounds.width, height: bounds.height, parentWidth: box.kind === 'text' || (box.kind === 'image' && sectionWideImages) ? node!.getBoundingClientRect().width : (container?.parentElement ?? target.parentElement)!.getBoundingClientRect().width, originalStyle: target.style.cssText, element: target, kind: box.kind, fontSize: parseFloat(getComputedStyle(target).fontSize) }
       event.currentTarget.setPointerCapture(event.pointerId)
     }}
     onPointerMove={(event) => {
@@ -97,9 +122,27 @@ export function ImageResizeHandle({ revision, node, path, onResize, onFontResize
         width = Math.max(Math.min(minWidth, maxWidth), Math.min(maxWidth, start.width + delta))
         height = width / ratio
       }
-      start.result = { width: Math.max(10, Math.min(100, Math.round(width / parentWidth * 100))), height: Math.max(40, Math.min(1600, Math.round(height))) }
-      if (start.container) Object.assign(start.container.style, { width: `${start.result.width / 100 * start.parentWidth}px`, maxWidth: 'none', height: 'auto', minHeight: '0', maxHeight: 'none' })
-      Object.assign(start.element.style, { width: start.container ? '100%' : `${start.result.width / 100 * start.parentWidth}px`, minWidth: '0', maxWidth: 'none', height: `${start.result.height}px`, minHeight: '0', maxHeight: 'none', aspectRatio: 'auto' })
+      start.result = { width: Math.max(10, Math.min(100, width / parentWidth * 100)), height: Math.max(40, Math.min(1600, height)) }
+      const offsetX = start.insetX + (handle.x === 0 ? start.width - start.result.width / 100 * parentWidth : 0)
+      const offsetY = start.insetY + (handle.y === 0 ? start.height - start.result.height : 0)
+      start.result.offsetX = offsetX
+      start.result.offsetY = offsetY
+      const frame = start.free ?? start.container ?? start.element
+      const [tx, ty = '0px'] = start.translate && start.translate !== 'none' ? start.translate.split(' ') : ['0px', '0px']
+      frame.style.translate = `calc(${tx} + ${offsetX}px) calc(${ty} + ${offsetY}px)`
+      if (start.free) {
+        start.free.style.setProperty('--free-width', `${start.result.width}%`)
+        start.free.style.setProperty('--free-height', `${start.result.height}px`)
+        start.free.style.setProperty('width', `${start.result.width}%`)
+        start.free.style.setProperty('height', `${start.result.height}px`)
+      }
+      if (start.container && !start.free) Object.assign(start.container.style, { width: `${start.result.width / 100 * start.parentWidth}px`, maxWidth: 'none', height: 'auto', minHeight: '0', maxHeight: 'none', aspectRatio: 'auto' })
+      if (start.free) {
+        const scale = Number(getComputedStyle(start.free).getPropertyValue('--free-scale')) || 1
+        // Free-layout rules use !important; preview the same geometry without a second box.
+        start.element.style.setProperty('width', start.container ? '100%' : `${start.result.width / 100 * start.parentWidth / scale}px`, 'important')
+        start.element.style.setProperty('height', `${start.result.height / scale}px`, 'important')
+      } else Object.assign(start.element.style, { width: start.container ? '100%' : `${start.result.width / 100 * start.parentWidth}px`, minWidth: '0', maxWidth: 'none', height: `${start.result.height}px`, minHeight: '0', maxHeight: 'none', aspectRatio: 'auto' })
     }}
     onPointerUp={(event) => {
       const start = drag.current
