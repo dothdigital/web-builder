@@ -300,7 +300,7 @@ async function loadBrief(projectId: string): Promise<GenerationBrief> {
 
   return {
     businessName: business?.displayName ?? project.name,
-    ...(process.env.NEXT_PUBLIC_ENABLE_LAYOUT_TEMPLATES === 'true' && project.templateId && getLayoutTemplate(project.templateId) ? { templateId: project.templateId } : {}),
+    ...(project.templateId && getLayoutTemplate(project.templateId) ? { templateId: project.templateId } : {}),
     ...(references.success ? { designReferences: references.data } : {}),
     homepageSections: project.homepageSections,
     serviceAreaPlacement: project.homepageSections.includes('Service areas') ? 'separate_section' : 'content_only',

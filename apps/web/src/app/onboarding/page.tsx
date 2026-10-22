@@ -19,5 +19,5 @@ export default async function OnboardingPage() {
   if (!workspace.billingExempt) {
     if (await prisma.project.count({ where: { workspaceId: workspace.id } }) >= websiteCapacity(workspace)) redirect('/billing#website-slots')
   }
-  return <AppShell title="Create a website" active="/dashboard"><OnboardingWizard templatesEnabled={process.env.NEXT_PUBLIC_ENABLE_LAYOUT_TEMPLATES === 'true'} /></AppShell>
+  return <AppShell title="Create a website" active="/dashboard"><OnboardingWizard /></AppShell>
 }

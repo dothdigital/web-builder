@@ -10,14 +10,14 @@ import { submitContentJob } from '@/lib/content-jobs'
 import { slugify } from '@awb/shared'
 import { intakeMediaSchema, type IntakeMedia } from '@awb/shared/intake-media'
 import { designReferenceSchema, designReferencesSchema } from '@awb/shared/design-reference'
-import { isLayoutId } from '@awb/shared/layout-catalogue'
+import { isSelectableLayoutId } from '@awb/shared/layout-catalogue'
 import { designTokensSchema, formatServiceLabel, type DesignTokens } from '@awb/website-model'
 import { z } from 'zod'
 import { rerunRequestSchema, type RerunRequest } from '@awb/shared/rerun-request'
 import { primaryWorkspace, requireProject, requireUser } from '@/lib/tenancy'
 
 const briefSchema = z.object({
-  templateId: z.string().refine(value => process.env.NEXT_PUBLIC_ENABLE_LAYOUT_TEMPLATES === 'true' && isLayoutId(value), 'Template selection is temporarily unavailable. Use the default design option.').optional(),
+  templateId: z.string().refine(isSelectableLayoutId, 'Choose Business Classic or let AI choose the layout.').optional(),
   designReference: designReferenceSchema.optional(),
   designReferences: designReferencesSchema.optional(),
   homepageSections: z.array(z.enum(['About us / Who we are', 'Service areas', 'Our methodology / Approach', 'Why choose us'])).max(4).default([]),
