@@ -16,6 +16,10 @@ export const designReferenceSchema = z.object({
   mode: z.enum(['layout', 'style', 'both']).default('both'),
   notes: z.string().trim().max(1500).default(''),
 })
+export const MAX_DESIGN_REFERENCES = 5
+export const designReferencesSchema = z.array(designReferenceSchema).max(MAX_DESIGN_REFERENCES)
+// Existing projects stored one object in the same JSON field.
+export const storedDesignReferencesSchema = z.union([designReferencesSchema, designReferenceSchema.transform(reference => [reference])])
 export type DesignReference = z.infer<typeof designReferenceSchema>
 export interface ReferenceObservation {
   status: 'read' | 'unavailable'

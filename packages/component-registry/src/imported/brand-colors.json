@@ -1,0 +1,8 @@
+{
+  "#df0a0a":"primary", "#f64a00":"primary", "#b00f0f":"primary", "#0b4df5":"primary", "#5264f3":"primary", "#845cff":"primary", "#4a3bca":"primary", "#f9004d":"primary",
+  "#25826a":"primary", "#008eff":"primary", "#f18f20":"primary", "#e11631":"primary",
+  "#e87556":"accent", "#e57d61":"accent", "#d4ef58":"accent", "#90ff03":"accent",
+  "#003a37":"foreground", "#00214d":"foreground", "#0c2543":"foreground", "#034b5b":"foreground", "#001d21":"foreground", "#1c2539":"foreground", "#212429":"foreground", "#102a43":"foreground",
+  "#5d666f":"muted", "#516669":"muted", "#656567":"muted",
+  "#faf7f1":"surface", "#f6f6f6":"surface", "#f5f8fa":"surface", "#f7f7f7":"background"
+}

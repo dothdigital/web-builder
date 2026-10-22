@@ -14,6 +14,11 @@ export function prioritizeImageSlots(slots: ImageSlotRequest[], allowance: numbe
     if (group) groups.set(group, [...(groups.get(group) ?? []), slot])
   }
   const chosen = new Set(firstByPage.values())
+  // A complete homepage needs its main section images as well as its hero.
+  // Give these required images the same coverage guarantee as inner-page heroes.
+  for (const slot of slots) {
+    if (slot.slot.split(':')[0] === 'home' && slot.slot.endsWith(':/imageUrl') && ['ABOUT', 'CONTACT'].includes(slot.family)) chosen.add(slot)
+  }
   const limit = Math.max(chosen.size, Number.isFinite(allowance) ? Math.max(0, Math.floor(allowance)) : 10)
   const siblings = [...groups.values()].filter(group => group.length > 1)
     .sort((a, b) => Number(b.some(slot => chosen.has(slot))) - Number(a.some(slot => chosen.has(slot))))

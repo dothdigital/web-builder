@@ -1,15 +1,5 @@
 const MEASUREMENT_ID = 'G-Z5M0FPHR6M'
 
-// Runs before hydration; no Google SDK or measurement request is made here.
-export const GOOGLE_CONSENT_DEFAULT = `
-  window.dataLayer = window.dataLayer || [];
-  window.gtag = window.gtag || function(){window.dataLayer.push(arguments);};
-  window.gtag('consent', 'default', {
-    analytics_storage: 'denied', ad_storage: 'denied',
-    ad_user_data: 'denied', ad_personalization: 'denied'
-  });
-`
-
 declare global {
   interface Window {
     dataLayer?: unknown[]
@@ -18,6 +8,7 @@ declare global {
 }
 
 function googleTag() {
+  // Queue denied defaults before any consent update or Google SDK load.
   if (!window.gtag) {
     window.dataLayer = window.dataLayer || []
     window.gtag = function () { window.dataLayer!.push(arguments) }

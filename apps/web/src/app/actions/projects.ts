@@ -9,9 +9,9 @@ import { createAiProvider } from '@awb/ai'
 import { submitContentJob } from '@/lib/content-jobs'
 import { slugify } from '@awb/shared'
 import { intakeMediaSchema, type IntakeMedia } from '@awb/shared/intake-media'
-import { designReferenceSchema } from '@awb/shared/design-reference'
+import { designReferenceSchema, designReferencesSchema } from '@awb/shared/design-reference'
 import { isLayoutId } from '@awb/shared/layout-catalogue'
-import { designTokensSchema, type DesignTokens } from '@awb/website-model'
+import { designTokensSchema, formatServiceLabel, type DesignTokens } from '@awb/website-model'
 import { z } from 'zod'
 import { rerunRequestSchema, type RerunRequest } from '@awb/shared/rerun-request'
 import { primaryWorkspace, requireProject, requireUser } from '@/lib/tenancy'
@@ -19,18 +19,21 @@ import { primaryWorkspace, requireProject, requireUser } from '@/lib/tenancy'
 const briefSchema = z.object({
   templateId: z.string().refine(value => process.env.NEXT_PUBLIC_ENABLE_LAYOUT_TEMPLATES === 'true' && isLayoutId(value), 'Template selection is temporarily unavailable. Use the default design option.').optional(),
   designReference: designReferenceSchema.optional(),
+  designReferences: designReferencesSchema.optional(),
   homepageSections: z.array(z.enum(['About us / Who we are', 'Service areas', 'Our methodology / Approach', 'Why choose us'])).max(4).default([]),
   homepageLength: z.enum(['compact', 'expanded']).default('expanded'),
   businessName: z.string().min(2),
   description: z.string().min(20),
   industry: z.string().optional(),
   city: z.string().optional(),
+  serviceAreas: z.array(z.string().trim().min(1)).max(100).optional(),
   region: z.string().optional(),
   email: z.string().email().optional().or(z.literal('')),
   phone: z.string().optional(),
+  additionalPhones: z.array(z.string().trim().min(1).max(100)).max(19).default([]),
   primaryConversion: z.enum(['CALL', 'WHATSAPP', 'FORM', 'BOOKING_URL', 'QUOTE']).default('FORM'),
   tone: z.string().optional(),
-  services: z.array(z.string()).default([]),
+  services: z.array(z.string().transform(formatServiceLabel)).default([]),
   testimonials: z
     .array(z.object({ quote: z.string().min(1), author: z.string().min(1), source: z.string().optional() }))
     .default([]),
@@ -47,6 +50,7 @@ export async function createProjectFromBrief(input: BriefInput): Promise<{ proje
   }
 
   const brief = briefSchema.parse(input)
+  const phoneNumbers = [...new Set([brief.phone?.trim(), ...brief.additionalPhones].filter((phone): phone is string => Boolean(phone)))]
   const slug = `${slugify(brief.businessName)}-${randomUUID().slice(0, 6)}`
 
   await requireWorkspace(workspace.id, WorkspaceRole.EDITOR)
@@ -59,7 +63,7 @@ export async function createProjectFromBrief(input: BriefInput): Promise<{ proje
       templateId: brief.templateId,
       homepageLength: brief.homepageLength,
       homepageSections: brief.homepageSections,
-      ...(brief.designReference ? { designReference: brief.designReference } : {}),
+      ...(brief.designReferences ? { designReference: brief.designReferences } : brief.designReference ? { designReference: brief.designReference } : {}),
       slug,
       previewHost: `${slug}.preview.local`,
       businessProfile: {
@@ -68,9 +72,11 @@ export async function createProjectFromBrief(input: BriefInput): Promise<{ proje
           description: brief.description,
           ...(brief.industry ? { industry: brief.industry } : {}),
           ...(brief.city ? { city: brief.city } : {}),
+          serviceArea: brief.serviceAreas ?? [],
+          phones: phoneNumbers,
           ...(brief.region ? { region: brief.region } : {}),
           ...(brief.email ? { email: brief.email } : {}),
-          ...(brief.phone ? { phone: brief.phone } : {}),
+          ...(phoneNumbers[0] ? { phone: phoneNumbers[0] } : {}),
           ...(brief.tone ? { tone: brief.tone } : {}),
           primaryConversion: brief.primaryConversion,
           missingFacts: [],
@@ -123,6 +129,8 @@ const presenceSchema = z.object({
   gtmContainerId: z.string().optional(),
   googleVerification: z.string().optional(),
   addressLine1: z.string().optional(),
+  city: z.string().trim().optional(),
+  region: z.string().trim().optional(),
   postalCode: z.string().optional(),
   country: z.string().optional(),
   hours: z
@@ -174,6 +182,8 @@ export async function saveBusinessPresence(projectId: string, input: PresenceInp
   await prisma.businessProfile.update({
     where: { projectId },
     data: {
+      ...(presence.city !== undefined ? { city: presence.city || null } : {}),
+      ...(presence.region !== undefined ? { region: presence.region || null } : {}),
       ...(presence.addressLine1 ? { addressLine1: presence.addressLine1 } : {}),
       ...(presence.postalCode ? { postalCode: presence.postalCode } : {}),
       ...(presence.country ? { country: presence.country } : {}),

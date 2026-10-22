@@ -21,3 +21,6 @@ deploy/screenshots/
 Thumbs.db
 __pycache__/
 *.pyc
+
+# Generated release source provenance
+deploy/source-version.json

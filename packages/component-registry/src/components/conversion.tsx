@@ -189,9 +189,9 @@ export const faqAccordion = defineComponent({
   ),
 })
 
-export function renderContactForm(props: z.infer<typeof contactPropsSchema>, context: RenderContext, prefix = '') {
+export function renderContactForm(props: z.infer<typeof contactPropsSchema>, context: RenderContext, prefix = '', options: { embedded?: boolean; compact?: boolean } = {}) {
   const inputAppearance = (index: number) => elementColor(props, `${prefix}/formFields/${index}/input`)
-  return (<form data-awb-element={`${prefix}/form`} method="post" action={props.submissionUrl || context.forms?.action || "/api/leads"} style={{ display: 'grid', gap: '1.25rem', minWidth: 0, alignContent: 'start', background: 'var(--awb-surface)', padding: 'clamp(1.5rem, 3vw, 2.5rem)', borderRadius: 'max(var(--awb-radius), 24px)', border: '1px solid var(--awb-border)', boxShadow: '0 16px 48px color-mix(in srgb, var(--awb-primary) 8%, transparent)', ...cardColor(props, `${prefix}/form`) }}>
+  return (<form data-awb-element={`${prefix}/form`} method="post" action={props.submissionUrl || context.forms?.action || "/api/leads"} style={{ display: 'grid', gap: options.compact ? '0.75rem' : '1.25rem', minWidth: 0, alignContent: 'start', background: 'var(--awb-surface)', padding: 'clamp(1.5rem, 3vw, 2.5rem)', borderRadius: 'max(var(--awb-radius), 24px)', border: '1px solid var(--awb-border)', boxShadow: '0 16px 48px color-mix(in srgb, var(--awb-primary) 8%, transparent)', ...cardColor(props, `${prefix}/form`), ...(options.embedded ? { padding: 0, border: 0, boxShadow: 'none', background: 'transparent' } : {}) }}>
           {context.forms && !props.submissionUrl && <input type="hidden" name="projectId" value={context.forms.projectId} />}
           {props.formFields.map((field, index) => (
             <fieldset key={field.name} style={{ border: 0, padding: 0, margin: 0, minWidth: 0, display: 'grid', gap: '0.4rem', fontSize: '0.85rem', textTransform: field.labelCase ?? 'none', letterSpacing: 'normal', color: 'var(--awb-muted)' }}>

@@ -2,13 +2,15 @@
 
 import { useEffect, useRef, useState } from 'react'
 
-export function IntakeVoice({ label, onUseText }: { label: string; onUseText: (text: string) => void }) {
+export function IntakeVoice({ label, value, onChange }: { label: string; value: string; onChange: (text: string) => void }) {
   const [supported, setSupported] = useState(false)
   const [recording, setRecording] = useState(false)
   const [starting, setStarting] = useState(false)
   const [seconds, setSeconds] = useState(0)
   const [transcribing, setTranscribing] = useState(false)
-  const [text, setText] = useState('')
+  const initialText = useRef('')
+  const onChangeRef = useRef(onChange)
+  onChangeRef.current = onChange
   const [audio, setAudio] = useState<Blob>()
   const [error, setError] = useState('')
   const [liveAvailable, setLiveAvailable] = useState(false)
@@ -24,6 +26,11 @@ export function IntakeVoice({ label, onUseText }: { label: string; onUseText: (t
   const timer = useRef<ReturnType<typeof setInterval> | null>(null)
   const mounted = useRef(true)
   const request = useRef<AbortController | null>(null)
+
+  function updateText(text: string) {
+    transcript.current = text
+    onChangeRef.current([initialText.current, text.trim()].filter(Boolean).join('\n\n'))
+  }
 
   function releaseMicrophone() {
     if (timer.current) clearInterval(timer.current)
@@ -55,12 +62,10 @@ export function IntakeVoice({ label, onUseText }: { label: string; onUseText: (t
   function stopLive() {
     if (stopping.current) return
     stopping.current = true
-    stream.current?.getTracks().forEach(track => { track.enabled = false })
-    if (timer.current) clearInterval(timer.current)
-    timer.current = null
+    releaseMicrophone()
     setRecording(false)
     setTranscribing(true)
-    // Give the media track time to deliver the last syllable before committing.
+    // Allow already-sent audio to arrive before committing; the microphone is stopped.
     finishTimer.current = setTimeout(() => {
       if (channel.current?.readyState !== 'open') { finishLive('Connection closed. Your live text is preserved.'); return }
       channel.current.send(JSON.stringify({ type: 'input_audio_buffer.commit' }))
@@ -72,7 +77,8 @@ export function IntakeVoice({ label, onUseText }: { label: string; onUseText: (t
     if (peer.current || starting || recording || transcribing) return
     const id = ++sessionId.current
     const active = () => mounted.current && id === sessionId.current
-    setStarting(true); setError(''); setText(''); setAudio(undefined); setLive(true)
+    initialText.current = value
+    setStarting(true); setError(''); setAudio(undefined); setLive(true)
     transcript.current = ''; stopping.current = false
     const controller = new AbortController()
     request.current = controller
@@ -88,7 +94,7 @@ export function IntakeVoice({ label, onUseText }: { label: string; onUseText: (t
       const events = connection.createDataChannel('oai-events')
       channel.current = events
       const pieces = new Map<string, string>()
-      const refreshText = () => { transcript.current = [...pieces.values()].join(' ').trim(); setText(transcript.current) }
+      const refreshText = () => updateText([...pieces.values()].join(' ').trim())
       events.onmessage = message => {
         if (!active() || peer.current !== connection) return
         let event: { type?: string; item_id?: string; delta?: string; transcript?: string; error?: { code?: string } }
@@ -169,7 +175,7 @@ export function IntakeVoice({ label, onUseText }: { label: string; onUseText: (t
       const response = await fetch('/api/intake/transcribe', { method: 'POST', body, signal: request.current.signal })
       const payload = await response.json()
       if (!response.ok || typeof payload.text !== 'string') throw new Error(payload.error || 'Transcription failed. Try again or type your answer.')
-      if (mounted.current) setText(payload.text)
+      if (mounted.current) updateText(payload.text)
     } catch (caught) {
       if (mounted.current) setError(caught instanceof Error ? caught.message : 'Could not transcribe the recording.')
     } finally {
@@ -181,7 +187,7 @@ export function IntakeVoice({ label, onUseText }: { label: string; onUseText: (t
     setLive(false)
     setStarting(true)
     setError('')
-    setText('')
+    initialText.current = value
     setAudio(undefined)
     try {
       const microphone = await navigator.mediaDevices.getUserMedia({ audio: true })
@@ -209,7 +215,7 @@ export function IntakeVoice({ label, onUseText }: { label: string; onUseText: (t
       timer.current = setInterval(() => {
         const elapsed = Math.floor((Date.now() - startedAt) / 1000)
         setSeconds(elapsed)
-        if (elapsed >= 120 && next.state === 'recording') next.stop()
+        if (elapsed >= 120) stopRecording()
       }, 1000)
     } catch {
       releaseMicrophone()
@@ -219,20 +225,22 @@ export function IntakeVoice({ label, onUseText }: { label: string; onUseText: (t
     }
   }
 
+  function stopRecording() {
+    if (recorder.current?.state === 'recording') recorder.current.stop()
+    releaseMicrophone()
+    setRecording(false)
+  }
+
   if (!supported) return <p className="mt-2 text-xs font-normal text-neutral-500">Voice input requires a browser with microphone recording support. You can type your answer.</p>
   return <div className="mt-2 grid gap-2 rounded-md border border-neutral-200 bg-neutral-50 p-3 font-normal">
     <div className="flex flex-wrap items-center gap-2">
-      <button type="button" disabled={starting || transcribing} onClick={() => recording ? (live ? stopLive() : recorder.current?.stop()) : void (liveAvailable ? startLive() : start())} className="rounded-md border bg-white px-3 py-1.5 text-xs font-medium disabled:opacity-50" aria-label={`${recording ? 'Stop recording' : 'Record voice'} for ${label}`}>
+      <button type="button" disabled={starting || transcribing} onClick={() => recording ? (live ? stopLive() : stopRecording()) : void (liveAvailable ? startLive() : start())} className="rounded-md border bg-white px-3 py-1.5 text-xs font-medium disabled:opacity-50" aria-label={`${recording ? 'Stop recording' : 'Record voice'} for ${label}`}>
         {recording ? (live ? 'Stop' : 'Stop and transcribe') : starting ? 'Connecting microphone…' : transcribing ? 'Finishing transcript…' : liveAvailable ? 'Speak your answer' : 'Record voice'}
       </button>
       {recording && <span role="status" className="text-xs text-red-700">{live ? 'Listening — text appears as you speak' : 'Recording'} · {seconds}s / 120s</span>}
     </div>
-    <p className="text-xs text-neutral-500">{liveAvailable ? 'Your words appear here while you speak. Stop when finished, then review and use the text.' : 'Speak for up to 2 minutes, then review and use the transcript.'}</p>
+    <p className="text-xs text-neutral-500">{liveAvailable ? 'Your words appear in the text box above while you speak. Stop ends microphone recording immediately; you can then edit your answer.' : 'Speak for up to 2 minutes. After you stop, the transcript is added to the text box above.'}</p>
     {transcribing && <p role="status" className="text-xs">Finishing your transcript…</p>}
-    {(text || recording && live) && <>
-      <label className="grid gap-1 text-xs">{recording ? 'Live transcript' : 'Review and edit transcript'}<textarea rows={3} value={text} readOnly={recording || transcribing} onChange={event => setText(event.target.value)} placeholder="Start speaking…" className="rounded border p-2" /></label>
-      <div className="flex gap-2"><button type="button" disabled={!text.trim() || transcribing || recording} onClick={() => { onUseText(text.trim()); setText(''); setAudio(undefined) }} className="rounded bg-neutral-900 px-3 py-1.5 text-xs text-white">Use this text</button><button type="button" disabled={recording || transcribing} onClick={() => { setText(''); setAudio(undefined) }} className="rounded border px-3 py-1.5 text-xs">Discard</button></div>
-    </>}
     {error && <p role="alert" className="text-xs text-red-700">{error}</p>}
     {error && liveAvailable && !recording && !starting && !transcribing && typeof window.MediaRecorder === 'function' && <button type="button" onClick={() => void start()} className="text-left text-xs underline">Use a recording instead</button>}
     {audio && error && <button type="button" disabled={transcribing} onClick={() => void transcribe(audio)} className="text-left text-xs underline">Retry transcription</button>}

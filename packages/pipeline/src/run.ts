@@ -27,6 +27,8 @@ import {
 } from '@awb/ai'
 import {
   defaultTokens,
+  businessClassicContract,
+  normalizeServiceLabels,
   emptyImagePointers,
   getComponent,
   validateSectionProps,
@@ -52,7 +54,7 @@ import { auditHeadings } from '@awb/seo'
 import { assetKey, getStorage } from '@awb/shared'
 import { generationStages } from './stages'
 import { applyTestimonials } from './testimonials'
-import { designReferenceSchema } from '@awb/shared/design-reference'
+import { storedDesignReferencesSchema } from '@awb/shared/design-reference'
 import { inspectDesignReference } from './design-reference'
 import { prioritizeImageSlots } from './image-plan'
 import { rerunRequestSchema, type RerunRequest } from '@awb/shared/rerun-request'
@@ -114,6 +116,9 @@ function collectImageSlots(model: WebsiteModel): ImageSlotRequest[] {
           family: definition.family,
           subjectContext: JSON.stringify({
             section: props,
+            ...(model.globalComponents.header.componentId === 'Tpl_finbiz_1_0' ? {
+              templateImage: businessClassicContract(page.path).find(section => section.componentId === definition.componentId)?.imageSlots.find(image => image.path === pointer),
+            } : {}),
             imageOwner: pointer.split('/').slice(1, -1).reduce<unknown>((value, key) =>
               value && typeof value === 'object' ? (value as Record<string, unknown>)[key.replace(/~1/g, '/').replace(/~0/g, '~')] : undefined, props),
           }),
@@ -156,7 +161,7 @@ async function runStage<T>(
   correlationId: string,
   stage: GenerationStage,
   input: Prisma.InputJsonValue,
-  handler: () => Promise<{ output: Prisma.InputJsonValue; result: T; usage?: { model: string; inputTokens: number; outputTokens: number; costCents: number } }>,
+  handler: (report: (completed: number, total: number) => Promise<void>) => Promise<{ output: Prisma.InputJsonValue; result: T; usage?: { model: string; inputTokens: number; outputTokens: number; costCents: number } }>,
 ): Promise<T> {
   const existing = await prisma.generationJob.findFirst({ where: { projectId, correlationId, stage } })
   const job = existing
@@ -177,7 +182,10 @@ async function runStage<T>(
       })
 
   try {
-    const { output, result, usage } = await handler()
+    const report = async (completed: number, total: number) => {
+      await prisma.generationJob.update({ where: { id: job.id }, data: { output: toJson({ completed, total }) } })
+    }
+    const { output, result, usage } = await handler(report)
 
     await prisma.generationJob.update({
       where: { id: job.id },
@@ -244,7 +252,8 @@ async function loadPresence(projectId: string): Promise<BusinessPresence> {
     })),
     contact: {
       ...(business?.email ? { email: business.email } : {}),
-      ...(business?.phone ? { phone: business.phone } : {}),
+      ...(business?.phone ? { phone: business.phone } : business?.phones[0] ? { phone: business.phones[0] } : {}),
+      ...(business?.phones.length ? { phones: business.phones } : {}),
       ...(business?.whatsapp ? { whatsapp: business.whatsapp } : {}),
       ...(business?.addressLine1 ? { addressLine1: business.addressLine1 } : {}),
       ...(business?.addressLine2 ? { addressLine2: business.addressLine2 } : {}),
@@ -281,7 +290,7 @@ async function loadBrief(projectId: string): Promise<GenerationBrief> {
 
   const business = project.businessProfile
   const testimonialCollection = project.collections.find((collection) => collection.type === 'TESTIMONIALS')
-  const reference = designReferenceSchema.safeParse(project.designReference)
+  const references = storedDesignReferencesSchema.safeParse(project.designReference)
   const parsedMedia = intakeMediaSchema.safeParse(project.intakeMedia)
   const media = parsedMedia.success ? parsedMedia.data : undefined
   const selectedPhotos = media ? media.photos.flatMap(photo => {
@@ -292,21 +301,24 @@ async function loadBrief(projectId: string): Promise<GenerationBrief> {
   return {
     businessName: business?.displayName ?? project.name,
     ...(process.env.NEXT_PUBLIC_ENABLE_LAYOUT_TEMPLATES === 'true' && project.templateId && getLayoutTemplate(project.templateId) ? { templateId: project.templateId } : {}),
-    ...(reference.success ? { designReference: reference.data } : {}),
+    ...(references.success ? { designReferences: references.data } : {}),
     homepageSections: project.homepageSections,
+    serviceAreaPlacement: project.homepageSections.includes('Service areas') ? 'separate_section' : 'content_only',
     homepageLength: project.homepageLength === 'expanded' ? 'expanded' : 'compact',
     description: business?.description ?? '',
     ...(business?.industry ? { industry: business.industry } : {}),
-    ...(business?.city ? { location: [business.city, business.region].filter(Boolean).join(', ') } : {}),
+    ...(business?.serviceArea.length ? { location: business.serviceArea.join(', ') } : business?.city ? { location: [business.city, business.region].filter(Boolean).join(', ') } : {}),
+    serviceAreas: business?.serviceArea ?? [],
+    phoneNumbers: business?.phones.length ? business.phones : business?.phone ? [business.phone] : [],
     services: project.collections.find((collection) => collection.type === 'SERVICES')?.items.map((item) => String((item.data as { title?: string }).title ?? '')) ?? [],
     goals: business?.primaryConversion ? [business.primaryConversion] : [],
-    tonePreferences: business?.tone ? [business.tone] : [],
+    tonePreferences: business?.tone ? business.tone.split(/[,\n]/).map(tone => tone.trim()).filter(Boolean) : [],
     answers: { suppliedPhotos: JSON.stringify(selectedPhotos) },
     hasLogo: Boolean(project.brandProfile?.logoAssetId),
     logoColors: (project.brandProfile?.tokens as { logoColors?: string[] } | null)?.logoColors ?? [],
     uploadedImageUrls: media?.imageMode === 'generate' ? [] : selectedPhotos.map(photo => photo.url),
     uploadedPhotos: media?.imageMode === 'generate' ? [] : selectedPhotos,
-    ...(media ? { intakeMedia: media, imageDirection: media.imageDirection } : {}),
+    ...(media ? { intakeMedia: media, imageDirection: media.imageDirection, contentDirection: media.contentDirection } : {}),
     testimonials:
       testimonialCollection?.items.map((item) => {
         const data = item.data as { quote?: string; author?: string; source?: string }
@@ -357,18 +369,20 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
       const version = await prisma.websiteVersion.findFirstOrThrow({ where: { id: request.baseVersionId, projectId, kind: WebsiteVersionKind.DRAFT }, orderBy: { version: 'desc' } })
       let next = websiteModelSchema.parse(version.model)
       if (rerun.scope === 'CONTENT') {
-        next = await runStage(projectId, correlationId, GenerationStage.CONTENT, toJson(rerun), async () => {
+        next = await runStage(projectId, correlationId, GenerationStage.CONTENT, toJson(rerun), async report => {
           const { rewritePageWithAi } = await import('./content-generation')
           const pages: WebsitePage[] = []
+          await report(0, next.pages.length)
           for (const page of next.pages) {
             const result = await rewritePageWithAi(projectId, { model: next, pageId: page.id, instruction: rerun.instruction })
             pages.push(result.page)
+            await report(pages.length, next.pages.length)
           }
           const rewritten = { ...next, pages }
-          return { output: toJson({ scope: rerun.scope, pageCount: pages.length }), result: rewritten }
+          return { output: toJson({ scope: rerun.scope, pageCount: pages.length, completed: pages.length, total: pages.length }), result: rewritten }
         })
       } else {
-        next = await runStage(projectId, correlationId, GenerationStage.IMAGES, toJson(rerun), async () => {
+        next = await runStage(projectId, correlationId, GenerationStage.IMAGES, toJson(rerun), async report => {
           let updated = structuredClone(next)
           if (rerun.logoAssetId) {
             const logo = await prisma.asset.findFirstOrThrow({ where: { id: rerun.logoAssetId, projectId, kind: AssetKind.LOGO, source: AssetSource.UPLOAD } })
@@ -387,11 +401,15 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
           if (uploads.length > slots.length) throw new Error('There are more uploaded photos than available image positions. Use the editor to place the extra photos.')
           for (const [index, photo] of uploads.entries()) updated = replaceScopedImage(updated, slots[index]!.slot, photo.url, photo.description)
           let generated = 0
+          let total = 0
+          await report(0, 0)
           if (rerun.scope === 'IMAGES') {
             const budget = Math.max(0, Math.min(10, Number.isFinite(MAX_GENERATED_IMAGES) ? Math.floor(MAX_GENERATED_IMAGES) : 10) - uploads.length)
             const planned = prioritizeImageSlots(slots.slice(uploads.length), budget).slice(0, budget)
             if (!planned.length && !uploads.length && !rerun.logoAssetId) throw new Error('This website has no image positions available to regenerate.')
             const plan = planned.length ? (await provider.planImages(brief, updated, planned)).data : { images: [] }
+            total = plan.images.length
+            await report(0, total)
             const allowed = new Set(planned.map(slot => slot.slot))
             if (planned.length && !plan.images.length) throw new Error('AI did not return any image changes. Please try again.')
             const project = await prisma.project.findUniqueOrThrow({ where: { id: projectId } })
@@ -404,11 +422,13 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
               await prisma.asset.create({ data: { workspaceId: project.workspaceId, projectId, kind: AssetKind.IMAGE, source: AssetSource.AI_GENERATED, storageKey: stored.key, url: stored.url, mimeType: stored.contentType, bytes: stored.bytes, altText: image.alt, prompt: result.data.prompt } })
               updated = replaceScopedImage(updated, image.slot, stored.url, image.alt)
               generated++
+              await report(generated, total)
             }
           }
-          return { output: toJson({ scope: rerun.scope, generated, uploaded: uploads.length }), result: updated }
+          return { output: toJson({ scope: rerun.scope, generated, completed: generated, total, uploaded: uploads.length }), result: updated }
         })
       }
+      next = normalizeServiceLabels(next)
       if (rerun.palette) next = applySitePalette(next, rerun.palette)
       const websiteVersionId = await runStage(projectId, correlationId, GenerationStage.VALIDATE, toJson({ scope: rerun.scope }), async () => {
         assertDistinctPageImages(next, websiteModelSchema.parse(version.model))
@@ -442,10 +462,14 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
       GenerationStage.ANALYZE_BRIEF,
       toJson(brief),
       async () => {
-        if (brief.designReference) {
-          const observation = await inspectDesignReference(brief.designReference)
-          brief.designReference.observation = observation
-          await prisma.project.update({ where: { id: projectId }, data: { designReferenceObservation: toJson(observation) } })
+        if (brief.designReferences?.length) {
+          const references = await Promise.all(brief.designReferences.map(async reference => ({
+            ...reference, observation: await inspectDesignReference(reference),
+          })))
+          brief.designReferences = references
+          await prisma.project.update({ where: { id: projectId }, data: {
+            designReferenceObservation: toJson(references.map(reference => ({ url: reference.url, ...reference.observation }))),
+          } })
         }
         const { data, usage } = await provider.analyzeBrief(brief)
 
@@ -454,7 +478,7 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
           data: { missingFacts: data.missingFacts },
         })
 
-        return { output: toJson({ ...data, ...(brief.designReference ? { referenceMessage: brief.designReference.observation?.message } : {}) }), result: data, usage }
+        return { output: toJson({ ...data, ...(brief.designReferences?.length ? { referenceMessage: brief.designReferences.map(reference => reference.observation?.message).filter(Boolean).join(' ') } : {}) }), result: data, usage }
       },
     )
 
@@ -516,12 +540,11 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
       GenerationStage.SITE_PLAN,
       toJson(dna),
       async () => {
-        if (brief.templateId) {
-          const servicePages = brief.services.slice(0,8).map((service,index) => ({path:`/services/${service.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'') || `service-${index+1}`}`,title:service,purpose:`Explain the supplied ${service} service and invite enquiries.`,serviceName:service,inMainNav:false,sectionPlan:templatePageComponents(brief.templateId!, '/services/detail').map(id=>({family:getComponent(id)!.family,intent:service}))}))
-          const templatePlan: SitePlan = { pages:[{path:'/',title:'Home',purpose:brief.description,inMainNav:true},{path:'/about',title:'About',purpose:'Introduce the business using supplied facts.',inMainNav:true},{path:'/services',title:'Services',purpose:'Explain the services supplied by the business.',inMainNav:true},{path:'/contact',title:'Contact',purpose:'Contact the business and submit an enquiry.',inMainNav:true}].map(page=>({...page,sectionPlan:templatePageComponents(brief.templateId!,page.path).map(id=>({family:getComponent(id)!.family,intent:page.purpose}))})).concat(servicePages),navigation:[{label:'Home',path:'/',children:[]},{label:'About',path:'/about',children:[]},{label:'Services',path:'/services',children:servicePages.map(page=>({label:page.title,path:page.path}))},{label:'Contact',path:'/contact',children:[]}] }
-          return {output:toJson(templatePlan),result:templatePlan}
-        }
         const { data, usage } = await provider.planSite(brief, analysis, dna)
+        if (brief.templateId) {
+          // AI chooses page topics and navigation; the selected template supplies their layout.
+          data.pages = data.pages.map(page => ({ ...page, sectionPlan: templatePageComponents(brief.templateId!, page.path).map(id => ({ family: getComponent(id)!.family, intent: page.purpose })) }))
+        }
         return { output: toJson(data), result: data, usage }
       },
     )
@@ -531,8 +554,9 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
       correlationId,
       GenerationStage.CONTENT,
       toJson(plan),
-      async () => {
+      async report => {
         const written: WebsitePage[] = []
+        await report(0, plan.pages.length)
 
         for (const plannedPage of plan.pages) {
           const { data } = await provider.writePage(brief, analysis, dna, tokens, plannedPage)
@@ -552,9 +576,10 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
             },
             sections: brief.templateId ? templatePageComponents(brief.templateId, plannedPage.path).map((componentId,index) => data.sections.find(section=>section.componentId===componentId) ?? {id:`layout-unused-${index}`,componentId,componentVersion:'1.0.0',hidden:true,props:initialTemplateProps(componentId)}).concat(data.sections.filter(section => section.componentId === 'FaqAccordion' && !templatePageComponents(brief.templateId!, plannedPage.path).includes('FaqAccordion'))) : data.sections,
           })
+          await report(written.length, plan.pages.length)
         }
 
-        return { output: toJson({ pageCount: written.length, pages: written }), result: written }
+        return { output: toJson({ pageCount: written.length, pages: written, completed: written.length, total: plan.pages.length }), result: written }
       },
     )
 
@@ -695,12 +720,12 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
       },
     )
 
-    const modelWithImages = await runStage<WebsiteModel>(
+    const imageModel = await runStage<WebsiteModel>(
       projectId,
       correlationId,
       GenerationStage.IMAGES,
       toJson({ uploaded: brief.uploadedImageUrls.length }),
-      async () => {
+      async report => {
         const storage = getStorage()
         const project = await prisma.project.findUniqueOrThrow({ where: { id: projectId } })
         const filled = rerun?.palette ? applySitePalette(structuredClone(model), rerun.palette) : structuredClone(model)
@@ -783,6 +808,7 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
           const upload = preferredIndex >= 0 ? uploads.splice(preferredIndex, 1)[0] : undefined
 
           if (upload) {
+            if (upload.purpose === 'personal' && slot.componentId === 'Tpl_finbiz_1_1' && pointer === '/imageUrl') props.heroImageFit = 'contain'
             setByPointer(props, pointer, upload.url)
             if (pointer.endsWith('/imageUrl')) setByPointer(props, pointer.replace(/\/imageUrl$/, '/imageAlt'), upload.description)
             if (pointer.endsWith('/url')) setByPointer(props, pointer.replace(/\/url$/, '/alt'), upload.description)
@@ -800,6 +826,7 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
           ? (await provider.planImages(brief, filled, planned)).data
           : { images: [] }
         let generated = 0
+        await report(0, plan.images.length)
 
         for (const image of plan.images) {
           const props = resolve(image.slot)
@@ -837,6 +864,7 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
           setByPointer(props, pointer, stored.url)
           if (pointer.endsWith('/imageUrl')) setByPointer(props, pointer.replace(/\/imageUrl$/, '/imageAlt'), generatedImage.alt)
           generated += 1
+          await report(generated, plan.images.length)
         }
 
         if (brief.intakeMedia?.videos.length) {
@@ -844,12 +872,13 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
           if (homepage) homepage.sections.push({ id: `intake-videos-${projectId}`, componentId: 'IntakeVideos', componentVersion: '1.0.0', hidden: false, props: { heading: 'Our videos', videos: brief.intakeMedia.videos } })
         }
         return {
-          output: toJson({ slots: slots.length, reused: brief.uploadedImageUrls.length, generated, model: filled }),
+          output: toJson({ slots: slots.length, reused: brief.uploadedImageUrls.length, generated, completed: generated, total: plan.images.length, model: filled }),
           result: filled,
         }
       },
     )
 
+    const modelWithImages = normalizeServiceLabels(imageModel)
     const websiteVersionId = await runStage<string>(
       projectId,
       correlationId,

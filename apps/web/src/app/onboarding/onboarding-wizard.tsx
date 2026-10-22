@@ -10,9 +10,13 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { DesignTokens } from '@awb/website-model'
 import { videoLinkSchema, type IntakeMedia } from '@awb/shared/intake-media'
-import { designReferenceSchema } from '@awb/shared/design-reference'
+import { designReferencesSchema, MAX_DESIGN_REFERENCES } from '@awb/shared/design-reference'
 import { startingPalettes } from '@/lib/starting-palettes'
 import { IntakeVoice } from './intake-voice'
+import { ChipInput, mergeChipValues } from './chip-input'
+import { GoogleField } from './google-field'
+import { ContentDirectionFields } from '@/components/content-direction-fields'
+import type { ContentDirection } from '@awb/shared/content-direction'
 import {
   createProjectFromBrief,
   saveBrandColors,
@@ -53,7 +57,7 @@ const steps: Step[] = [
   { key: 'proof', title: 'Reviews', help: 'Paste real customer reviews. We will never write testimonials for you.' },
 ]
 
-const homepageSectionOptions = ['About us / Who we are', 'Service areas', 'Our methodology / Approach', 'Why choose us'] as const
+const homepageSectionOptions = ['About us / Who we are', 'Our methodology / Approach', 'Why choose us'] as const
 
 const socialNetworks = ['facebook', 'instagram', 'linkedin', 'x', 'youtube', 'tiktok'] as const
 
@@ -89,16 +93,22 @@ export function OnboardingWizard({ templatesEnabled = false }: { templatesEnable
   const [homepageSections, setHomepageSections] = useState<Array<typeof homepageSectionOptions[number]>>([])
   const [businessName, setBusinessName] = useState('')
   const [description, setDescription] = useState('')
-  const [referenceUrl, setReferenceUrl] = useState('')
-  const [referenceMode, setReferenceMode] = useState<'layout' | 'style' | 'both'>('both')
-  const [referenceNotes, setReferenceNotes] = useState('')
-  const [industry, setIndustry] = useState('')
-  const [city, setCity] = useState('')
+  const [references, setReferences] = useState<Array<{ id: string; url: string; mode: 'layout' | 'style' | 'both'; notes: string }>>([{ id: 'reference-first', url: '', mode: 'both', notes: '' }])
+  const updateReference = (id: string, patch: Partial<Omit<typeof references[number], 'id'>>) => setReferences(current => current.map(reference => reference.id === id ? { ...reference, ...patch } : reference))
+  const [industries, setIndustries] = useState<string[]>([])
+  const [industryInput, setIndustryInput] = useState('')
+  const [serviceAreas, setServiceAreas] = useState<string[]>([])
+  const [serviceAreaInput, setServiceAreaInput] = useState('')
+  const [separateServiceAreaSection, setSeparateServiceAreaSection] = useState(false)
   const [phone, setPhone] = useState('')
+  const [additionalPhones, setAdditionalPhones] = useState<Array<{ id: string; value: string }>>([])
   const [email, setEmail] = useState('')
-  const [tone, setTone] = useState('')
+  const [tones, setTones] = useState<string[]>([])
+  const [toneInput, setToneInput] = useState('')
   const [primaryConversion, setPrimaryConversion] = useState<'CALL' | 'WHATSAPP' | 'FORM' | 'BOOKING_URL' | 'QUOTE'>('FORM')
-  const [services, setServices] = useState<string[]>([''])
+  const [services, setServices] = useState<string[]>([])
+  const [serviceInput, setServiceInput] = useState('')
+
 
   const [logoColors, setLogoColors] = useState<string[]>([])
   const [suggestions, setSuggestions] = useState<PaletteSuggestion[]>(startingPalettes)
@@ -112,6 +122,7 @@ export function OnboardingWizard({ templatesEnabled = false }: { templatesEnable
     }
   }, [localLogoPreview])
 
+  const [contentDirection, setContentDirection] = useState<ContentDirection>({ style: 'auto', styles: [], audience: '', notes: '' })
   const [imageDirection, setImageDirection] = useState<ImageDirection>({ style: 'auto', styles: [], notes: '' })
   const [imageMode, setImageMode] = useState<'upload' | 'generate' | 'mixed'>('mixed')
   const [uploadedImages, setUploadedImages] = useState<Array<IntakeMedia['photos'][number] & { url: string; name: string }>>([])
@@ -127,6 +138,8 @@ export function OnboardingWizard({ templatesEnabled = false }: { templatesEnable
   const [gtmContainerId, setGtmContainerId] = useState('')
   const [googleVerification, setGoogleVerification] = useState('')
   const [addressLine1, setAddressLine1] = useState('')
+  const [addressCity, setAddressCity] = useState('')
+  const [addressRegion, setAddressRegion] = useState('')
   const [postalCode, setPostalCode] = useState('')
   const [country, setCountry] = useState('')
   const [hours, setHours] = useState<Array<{ day: string; opens: string; closes: string; closed: boolean }>>(
@@ -143,22 +156,25 @@ export function OnboardingWizard({ templatesEnabled = false }: { templatesEnable
     setError(undefined)
 
     try {
-      const reference = referenceUrl.trim() ? designReferenceSchema.safeParse({ url: referenceUrl, mode: referenceMode, notes: referenceNotes }) : undefined
-      if (reference && !reference.success) throw new Error(reference.error.issues[0]?.message || 'Check the reference website address')
+      const inspiration = references.filter(reference => reference.url.trim() || reference.notes.trim())
+      if (inspiration.some(reference => !reference.url.trim())) throw new Error('Add a website address for each inspiration description, or remove that reference.')
+      const parsedReferences = designReferencesSchema.safeParse(inspiration)
+      if (!parsedReferences.success) throw new Error(parsedReferences.error.issues[0]?.message || 'Check the reference website addresses')
       const { projectId: created } = await createProjectFromBrief({
         ...(templatesEnabled && templateId ? { templateId } : {}),
         businessName,
         homepageLength,
-        homepageSections,
+        homepageSections: [...homepageSections, ...(separateServiceAreaSection && mergeChipValues(serviceAreas, serviceAreaInput).length ? ['Service areas' as const] : [])],
         description,
-        ...(reference?.success ? { designReference: reference.data } : {}),
-        industry,
-        city,
+        ...(parsedReferences.data.length ? { designReferences: parsedReferences.data } : {}),
+        industry: mergeChipValues(industries, industryInput).join(', '),
+        serviceAreas: mergeChipValues(serviceAreas, serviceAreaInput),
         phone,
+        additionalPhones: additionalPhones.map(entry => entry.value.trim()).filter(Boolean),
         email,
-        tone,
+        tone: mergeChipValues(tones, toneInput).join(', '),
         primaryConversion,
-        services: services.map((service) => service.trim()).filter(Boolean),
+        services: mergeChipValues(services, serviceInput),
         testimonials: [],
       })
 
@@ -253,7 +269,7 @@ export function OnboardingWizard({ templatesEnabled = false }: { templatesEnable
         if (!videoTitle.trim()) throw new Error('Add a title for your video.')
         savedVideos = [...videos, { url: result.data, title: videoTitle.trim() }]
       }
-      await saveIntakeMedia(projectId, { imageMode, ...(imageMode !== 'upload' ? { imageDirection } : {}), photos: uploadedImages.map(({ assetId, purpose, description }) => ({ assetId, purpose, description })), videos: savedVideos })
+      await saveIntakeMedia(projectId, { imageMode, contentDirection, ...(imageMode !== 'upload' ? { imageDirection } : {}), photos: uploadedImages.map(({ assetId, purpose, description }) => ({ assetId, purpose, description })), videos: savedVideos })
       setVideos(savedVideos)
       setVideoUrl('')
       setVideoTitle('')
@@ -298,6 +314,8 @@ export function OnboardingWizard({ templatesEnabled = false }: { templatesEnable
         gtmContainerId,
         googleVerification,
         addressLine1,
+        city: addressCity,
+        region: addressRegion,
         postalCode,
         country,
         hours,
@@ -360,7 +378,7 @@ export function OnboardingWizard({ templatesEnabled = false }: { templatesEnable
           <Field label="Business name">
             <input className={inputClass} value={businessName} onChange={(event) => setBusinessName(event.target.value)} />
           </Field>
-          <Field label="What does the business do?" hint="A few sentences. This drives the whole site." onVoiceText={text => setDescription(current => [current, text].filter(Boolean).join('\n\n'))}>
+          <Field label="What does the business do?" hint="A few sentences. This drives the whole site." voiceValue={description} onVoiceText={setDescription}>
             <textarea
               className={inputClass}
               rows={5}
@@ -369,26 +387,27 @@ export function OnboardingWizard({ templatesEnabled = false }: { templatesEnable
             />
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Industry">
-              <input className={inputClass} value={industry} onChange={(event) => setIndustry(event.target.value)} />
-            </Field>
-            <Field label="City or service area">
-              <input className={inputClass} value={city} onChange={(event) => setCity(event.target.value)} />
-            </Field>
-            <Field label="Phone">
-              <input className={inputClass} value={phone} onChange={(event) => setPhone(event.target.value)} />
-            </Field>
+            <ChipInput id="industry-input" label="Industry" values={industries} draft={industryInput} onValuesChange={setIndustries} onDraftChange={setIndustryInput} placeholder="e.g. construction, renovation" />
+            <div>
+              <ChipInput id="service-area-input" label="City or service area" values={serviceAreas} draft={serviceAreaInput} onValuesChange={setServiceAreas} onDraftChange={setServiceAreaInput} placeholder="e.g. Toronto, Mississauga" />
+              <label className="mt-2 flex items-start gap-2 text-sm">
+                <input type="checkbox" className="mt-1" checked={separateServiceAreaSection} onChange={event => setSeparateServiceAreaSection(event.target.checked)} aria-describedby="service-area-help" />
+                Add a separate service-area section
+              </label>
+              <p id="service-area-help" className="mt-1 text-xs text-neutral-500">Leave unchecked to mention your city or service area naturally in the introduction only.</p>
+            </div>
+            <div className="grid gap-2">
+              <Field label="Phone"><input type="tel" autoComplete="tel" className={inputClass} value={phone} onChange={event => setPhone(event.target.value)} /></Field>
+              {additionalPhones.map((entry, index) => <div key={entry.id} className="flex items-end gap-2">
+                <Field label={`Additional phone ${index + 1}`}><input type="tel" className={inputClass} value={entry.value} onChange={event => setAdditionalPhones(current => current.map(item => item.id === entry.id ? { ...item, value: event.target.value } : item))} /></Field>
+                <button type="button" className="mb-2 px-2 text-sm" aria-label={`Remove additional phone ${index + 1}`} onClick={() => setAdditionalPhones(current => current.filter(item => item.id !== entry.id))}>×</button>
+              </div>)}
+              {additionalPhones.length < 19 && <button type="button" className="text-left text-xs underline" onClick={() => setAdditionalPhones(current => [...current, { id: crypto.randomUUID(), value: '' }])}>Add another phone number</button>}
+            </div>
             <Field label="Email">
               <input className={inputClass} value={email} onChange={(event) => setEmail(event.target.value)} />
             </Field>
-            <Field label="Tone">
-              <input
-                className={inputClass}
-                placeholder="warm, premium, direct"
-                value={tone}
-                onChange={(event) => setTone(event.target.value)}
-              />
-            </Field>
+            <ChipInput id="tone-input" label="Tone" values={tones} draft={toneInput} onValuesChange={setTones} onDraftChange={setToneInput} placeholder="e.g. warm, premium, direct" />
             <Field label="Main action for visitors">
               <select
                 className={inputClass}
@@ -427,33 +446,19 @@ export function OnboardingWizard({ templatesEnabled = false }: { templatesEnable
           </fieldset>
           <fieldset className="grid gap-3 rounded-lg border border-neutral-200 p-4">
             <legend className="px-1 text-sm font-medium">Design inspiration (optional)</legend>
-            <p className="text-sm text-neutral-500">Have a website you like? Add its address. No reference is needed—we can create a design from your business brief.</p>
-            <label className="grid gap-1 text-sm">Reference website<input className={inputClass} value={referenceUrl} onChange={event => setReferenceUrl(event.target.value)} placeholder="https://www.example.com" autoComplete="url" /></label>
-            {referenceUrl.trim() && <>
-              <label className="grid gap-1 text-sm">What should inspire your design?<select className={inputClass} value={referenceMode} onChange={event => setReferenceMode(event.target.value as typeof referenceMode)}><option value="both">Layout and visual style</option><option value="layout">Layout and section arrangement</option><option value="style">Visual style, colours and typography</option></select></label>
-              <label className="grid gap-1 text-sm">What do you like—or want changed?<textarea className={inputClass} rows={3} maxLength={1500} value={referenceNotes} onChange={event => setReferenceNotes(event.target.value)} placeholder="For example: large project images and a badge wall, but use my brand colours and a simpler menu." /></label>
-              <p className="text-xs text-neutral-500">We use the readable page structure as inspiration, with original text and images for your business. Your uploaded branding takes priority. Some sites block access; if that happens, we continue with your brief and these notes.</p>
-              <button type="button" className="text-left text-xs underline" onClick={() => setReferenceUrl('')}>Skip reference—let AI choose</button>
-            </>}
+            <p className="text-sm text-neutral-500">Add up to {MAX_DESIGN_REFERENCES} websites and tell us what you like about each. You can type or speak your notes.</p>
+            {references.map((reference, index) => <div key={reference.id} className="grid gap-3 rounded-md border border-neutral-200 p-3">
+              <label className="grid gap-1 text-sm">Reference website {index + 1}<input className={inputClass} value={reference.url} onChange={event => updateReference(reference.id, { url: event.target.value })} placeholder="https://www.example.com" autoComplete="url" /></label>
+              <label className="grid gap-1 text-sm">What should inspire your design?<select className={inputClass} value={reference.mode} onChange={event => updateReference(reference.id, { mode: event.target.value as typeof reference.mode })}><option value="both">Layout and visual style</option><option value="layout">Layout and section arrangement</option><option value="style">Visual style, colours and typography</option></select></label>
+              <Field label={`What do you like—or want changed? (website ${index + 1})`} voiceValue={reference.notes} onVoiceText={text => updateReference(reference.id, { notes: text })}>
+                <textarea className={inputClass} rows={3} maxLength={1500} value={reference.notes} onChange={event => updateReference(reference.id, { notes: event.target.value })} placeholder="For example: use the large project images, but keep my brand colours and a simpler menu." />
+              </Field>
+              <button type="button" className="text-left text-xs underline" onClick={() => setReferences(current => current.filter(item => item.id !== reference.id))}>Remove website {index + 1}</button>
+            </div>)}
+            {references.length < MAX_DESIGN_REFERENCES && <button type="button" className={secondaryButton} onClick={() => setReferences(current => [...current, { id: crypto.randomUUID(), url: '', mode: 'both', notes: '' }])}>Add another website</button>}
+            <p className="text-xs text-neutral-500">AI combines your references and notes into an original design. Your uploaded branding takes priority. If a site blocks access, we continue with your brief and notes. Leave blank to let AI choose.</p>
           </fieldset>
-          <Field label="Services">
-            <div className="grid gap-2">
-              {services.map((service, index) => (
-                <input
-                  key={index}
-                  className={inputClass}
-                  value={service}
-                  placeholder={`Service ${index + 1}`}
-                  onChange={(event) =>
-                    setServices((current) => current.map((entry, position) => (position === index ? event.target.value : entry)))
-                  }
-                />
-              ))}
-              <button type="button" className={secondaryButton} onClick={() => setServices((current) => [...current, ''])}>
-                Add another service
-              </button>
-            </div>
-          </Field>
+          <ChipInput id="service-input" label="Services" values={services} draft={serviceInput} onValuesChange={setServices} onDraftChange={setServiceInput} placeholder="Type a service, then press Enter or comma" />
           <button
             type="button"
             disabled={busy || businessName.length < 2 || description.length < 20}
@@ -513,11 +518,9 @@ export function OnboardingWizard({ templatesEnabled = false }: { templatesEnable
                     <span className="block text-xs text-neutral-500">{suggestion.rationale}</span>
                   </span>
                   <span className="flex gap-1">
-                    {Object.values(suggestion.tokens.palette)
-                      .slice(0, 6)
-                      .map((color, index) => (
-                        <span key={index} className="h-6 w-6 rounded" style={{ background: color }} />
-                      ))}
+                    {paletteFields.map(field => (
+                      <span key={field.key} className="h-6 w-6 rounded border border-black/10" style={{ background: suggestion.tokens.palette[field.key] }} title={`${field.label}: ${suggestion.tokens.palette[field.key]}`} aria-label={`${field.label}: ${suggestion.tokens.palette[field.key]}`} />
+                    ))}
                   </span>
                 </button>
               ))}
@@ -632,6 +635,7 @@ export function OnboardingWizard({ templatesEnabled = false }: { templatesEnable
               }}>Add video</button>
             </>}
           </div>
+          <ContentDirectionFields value={contentDirection} onChange={setContentDirection} disabled={busy} />
           <StepNav onBack={() => setStepIndex(1)} onNext={() => void handleSaveMedia()} nextLabel="Continue" busy={busy} />
         </div>
       )}
@@ -671,25 +675,13 @@ export function OnboardingWizard({ templatesEnabled = false }: { templatesEnable
         <div className="mt-8 grid gap-6 rounded-lg border border-neutral-200 bg-white p-6">
           <div className="grid gap-3">
             <p className="text-sm font-medium">Google</p>
-            <Field label="Google Business Profile URL">
-              <input className={inputClass} value={googleBusinessUrl} onChange={(event) => setGoogleBusinessUrl(event.target.value)} />
-            </Field>
-            <Field label="Google Maps URL">
-              <input className={inputClass} value={googleMapsUrl} onChange={(event) => setGoogleMapsUrl(event.target.value)} />
-            </Field>
+            <GoogleField kind="business" value={googleBusinessUrl} onChange={setGoogleBusinessUrl} />
+            <GoogleField kind="maps" value={googleMapsUrl} onChange={setGoogleMapsUrl} />
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Google Place ID" hint="Optional">
-                <input className={inputClass} value={googlePlaceId} onChange={(event) => setGooglePlaceId(event.target.value)} />
-              </Field>
-              <Field label="GA4 measurement ID" hint="G-XXXXXXX">
-                <input className={inputClass} value={ga4MeasurementId} onChange={(event) => setGa4MeasurementId(event.target.value)} />
-              </Field>
-              <Field label="GTM container ID" hint="GTM-XXXXXX">
-                <input className={inputClass} value={gtmContainerId} onChange={(event) => setGtmContainerId(event.target.value)} />
-              </Field>
-              <Field label="Search Console verification" hint="Meta tag content value">
-                <input className={inputClass} value={googleVerification} onChange={(event) => setGoogleVerification(event.target.value)} />
-              </Field>
+              <GoogleField kind="place" hint="Optional" value={googlePlaceId} onChange={setGooglePlaceId} />
+              <GoogleField kind="analytics" hint="G-XXXXXXX" value={ga4MeasurementId} onChange={setGa4MeasurementId} />
+              <GoogleField kind="tagManager" hint="GTM-XXXXXX" value={gtmContainerId} onChange={setGtmContainerId} />
+              <GoogleField kind="verification" hint="Meta tag content value" value={googleVerification} onChange={setGoogleVerification} />
             </div>
           </div>
 
@@ -698,6 +690,12 @@ export function OnboardingWizard({ templatesEnabled = false }: { templatesEnable
             <div className="grid gap-3 sm:grid-cols-3">
               <Field label="Street address">
                 <input className={inputClass} value={addressLine1} onChange={(event) => setAddressLine1(event.target.value)} />
+              </Field>
+              <Field label="City">
+                <input className={inputClass} autoComplete="address-level2" value={addressCity} onChange={event => setAddressCity(event.target.value)} />
+              </Field>
+              <Field label="Province / State">
+                <input className={inputClass} autoComplete="address-level1" value={addressRegion} onChange={event => setAddressRegion(event.target.value)} />
               </Field>
               <Field label="Postcode">
                 <input className={inputClass} value={postalCode} onChange={(event) => setPostalCode(event.target.value)} />
@@ -830,13 +828,13 @@ const inputClass = 'mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 t
 const primaryButton = 'rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-40'
 const secondaryButton = 'rounded-md border border-neutral-300 px-3 py-2 text-sm disabled:opacity-40'
 
-function Field({ label, hint, children, onVoiceText }: { label: string; hint?: string; children: React.ReactNode; onVoiceText?: (text: string) => void }) {
+function Field({ label, hint, children, voiceValue, onVoiceText }: { label: string; hint?: string; children: React.ReactNode; voiceValue?: string; onVoiceText?: (text: string) => void }) {
   return (
     <div className="text-sm font-medium"><label className="block">
       {label}
       {hint && <span className="ml-2 text-xs font-normal text-neutral-500">{hint}</span>}
       {children}
-    </label>{onVoiceText && <IntakeVoice label={label} onUseText={onVoiceText} />}</div>
+    </label>{onVoiceText && <IntakeVoice label={label} value={voiceValue ?? ''} onChange={onVoiceText} />}</div>
   )
 }
 

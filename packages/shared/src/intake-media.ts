@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { imageDirectionSchema } from './image-direction'
+import { contentDirectionSchema } from './content-direction'
 
 export function videoSource(value: string): { kind: 'embed' | 'file'; url: string } | undefined {
   try {
@@ -25,6 +26,7 @@ export function videoSource(value: string): { kind: 'embed' | 'file'; url: strin
 export const videoLinkSchema = z.string().trim().max(2048).refine(value => Boolean(videoSource(value)), 'Use an HTTPS YouTube, Vimeo, MP4 or WebM video link.')
 export const intakeMediaSchema = z.object({
   imageDirection: imageDirectionSchema.optional(),
+  contentDirection: contentDirectionSchema.optional(),
   imageMode: z.enum(['upload', 'generate', 'mixed']).default('mixed'),
   photos: z.array(z.object({
     assetId: z.string().min(1),

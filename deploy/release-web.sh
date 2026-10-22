@@ -17,6 +17,7 @@ copy_source() {
   [[ ! -e "$target" ]] || { echo 'Release already exists; use a new ID.'; exit 1; }
   mkdir -p "$target"
   rsync -a --exclude=.git --exclude=node_modules --exclude=.next --exclude=.turbo --exclude=.env --exclude='.env-*' --exclude='.env.*' --exclude=.uploads "$source_root/" "$target/"
+  python3 "$target/deploy/source-version.py" --root "$target" --provenance-root "$source_root" --output "$target/deploy/source-version.json"
   ln -s "$source_root/.env" "$target/.env"
   ln -s "$source_root/.uploads" "$target/.uploads"
 }

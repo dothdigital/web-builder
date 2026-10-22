@@ -14,3 +14,12 @@ assert.equal(model.pages[0].sections[0].props.imageUrl, 'portrait')
 assert.equal(model.pages[1].sections[0].props.imageUrl, 'portrait')
 assert.equal((JSON.stringify(model).match(/portrait/g) ?? []).length, 2)
 console.log('Personal photo policy: introduction only, duplicate and nested placements removed, service pages excluded.')
+
+const imported = { pages: [
+ { id: 'home', path: '/', sections: [{ id: 'layout-0', componentId: 'Tpl_finbiz_1_1', props: { heading: 'Insurance' } }, { id: 'layout-1', componentId: 'Tpl_finbiz_1_2', props: { text0: 'Meet your advisor' } }] },
+ { id: 'about', path: '/about', sections: [{ id: 'layout-0', componentId: 'Tpl_finbiz_about_1', props: { heading: 'About your advisor' } }, { id: 'layout-1', componentId: 'Tpl_finbiz_about_2', props: { text1: 'Who we are' } }] },
+] } as unknown as WebsiteModel
+assert.equal(allowsPersonalPhoto(imported, 'home:layout-0:/imageUrl'), true)
+assert.equal(allowsPersonalPhoto(imported, 'about:layout-1:/imageUrl'), true)
+assert.equal(allowsPersonalPhoto(imported, 'about:layout-0:/imageUrl'), false)
+console.log('Imported layout portraits: biography sections recognized, title banners excluded.')

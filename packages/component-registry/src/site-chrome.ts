@@ -1,6 +1,8 @@
+import { normalizeServiceLabels } from './service-labels'
 import type { WebsiteModel } from '@awb/website-model'
 
 export function siteChrome(model: WebsiteModel) {
+  model = normalizeServiceLabels(model)
   const header = model.globalComponents.header.props
   const footer = model.globalComponents.footer.props
   const mainPages = model.pages.filter((page) => page.path === '/' || page.path.split('/').filter(Boolean).length === 1).slice(0, 5)

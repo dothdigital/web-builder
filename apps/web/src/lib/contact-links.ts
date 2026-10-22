@@ -1,4 +1,4 @@
-import { resolveBusinessContact } from '@awb/component-registry'
+import { resolveBusinessContact, normalizeServiceLabels } from '@awb/component-registry'
 import type { WebsiteModel } from '@awb/website-model'
 
 export function contactRoute(model: WebsiteModel): string | undefined {
@@ -9,7 +9,7 @@ export function contactRoute(model: WebsiteModel): string | undefined {
 }
 
 export function resolveContactLinks(model: WebsiteModel): WebsiteModel {
-  model = resolveBusinessContact(model)
+  model = resolveBusinessContact(normalizeServiceLabels(model))
   const route = contactRoute(model)
   if (!route || route === '/contact') return model
   const targetRoute: string = route

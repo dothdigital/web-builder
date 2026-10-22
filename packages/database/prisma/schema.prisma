@@ -192,6 +192,7 @@ model BusinessProfile {
   tone           String?
   primaryDomain  String?
   email          String?
+  phones         String[] @default([])
   phone          String?
   whatsapp       String?
   addressLine1   String?

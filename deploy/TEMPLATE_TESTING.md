@@ -73,3 +73,34 @@ node scripts/import-layouts.cjs
 The compiler rewrites and scopes CSS URLs/selectors, preserves body variants,
 namespaces animation names, removes missing background references, and compiles
 safe editable trees. Re-run the automated checks after changing it.
+
+
+## Business Classic generation contract
+
+Business Classic (`finbiz-1`) is the current focused theme. Its reference source is
+`apps/web/public/template-library/webtummy-business/index.html`, with shared
+styles in `webtummy-business/editable.css` and editable section trees in
+`packages/component-registry/src/imported/layouts.json`. Treat these as one
+versioned layout. Do not combine markup and styles from different imports.
+
+`business-classic-contract.ts` supplies AI with each section’s text roles,
+length limits, required copy and image placement. Copy generation may fill
+plain-text slots only. Component order, links, photos, classes, CSS and form
+structure are owned by the application. Responses violating this contract are
+returned for correction before they can be persisted. Missing proof does not
+authorize invented reviews, staff, statistics or credentials.
+
+Example: a hero headline is “Insurance and investment guidance”, followed by
+a concise supplied-fact introduction and a short “Request a quote” action.
+It must not become a multi-sentence company biography or carry layout markup.
+Image prompts receive foreground/background placement and a suggested aspect
+ratio. Uploaded owner photos remain factual assets; AI must not fabricate the
+named agent’s identity.
+
+Run `node --import tsx scripts/validate-business-classic-contract.mts` to test
+valid output, oversized headings, essential copy, forbidden layout fields,
+section order and the mocked AI correction loop without live AI calls.
+Run `node --import tsx scripts/validate-branded-layouts.tsx` for section and asset
+coverage. These checks do not establish visual fidelity: compare the complete
+rendered Business Classic page with its HTML reference at desktop and mobile
+widths before declaring a layout release verified.

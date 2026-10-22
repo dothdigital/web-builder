@@ -21,3 +21,7 @@ export { imageSizesSchema } from './image-sizing'
 export { inlineLinksSchema, safeTextLink, textOccurrence, type InlineLink } from './inline-links'
 
 export { resolveBusinessContact } from './business-contact'
+
+export { BUSINESS_CLASSIC_ID, BUSINESS_CLASSIC_RULES, businessClassicContract, validateBusinessClassicCopy } from './business-classic-contract'
+
+export { normalizeServiceLabels } from './service-labels'

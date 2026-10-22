@@ -14,12 +14,16 @@ import type { DesignReference, ReferenceObservation } from '@awb/shared/design-r
 export interface GenerationBrief {
   templateId?: string
   designReference?: DesignReference & { observation?: ReferenceObservation }
+  designReferences?: Array<DesignReference & { observation?: ReferenceObservation }>
   homepageLength?: 'compact' | 'expanded'
   homepageSections?: string[]
   businessName: string
   description: string
   industry?: string
   location?: string
+  serviceAreas?: string[]
+  phoneNumbers?: string[]
+  serviceAreaPlacement?: 'separate_section' | 'content_only'
   services: string[]
   goals: string[]
   tonePreferences: string[]
@@ -28,6 +32,7 @@ export interface GenerationBrief {
   logoColors: string[]
   /// URLs of images the user uploaded; empty means AI must generate imagery.
   uploadedImageUrls: string[]
+  contentDirection?: import('@awb/shared/content-direction').ContentDirection
   imageDirection?: import('@awb/shared/image-direction').ImageDirection
   intakeMedia?: import('@awb/shared/intake-media').IntakeMedia
   uploadedPhotos?: Array<{ url: string; purpose: string; description: string }>

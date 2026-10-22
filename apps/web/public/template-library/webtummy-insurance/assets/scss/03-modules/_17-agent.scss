@@ -1,0 +1,106 @@
+/*----------------------------------------*/
+/*  17. Agent CSS
+/*----------------------------------------*/
+
+.rs-agent{
+    background-image: url(../images/call_to_action_bg.jpg);
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center;
+    &__content{
+        position: relative;
+        z-index: 10;
+        @media #{$large-mobile} {
+            padding-right: 0;
+        }
+        & .rs-shape{
+            position: absolute;
+            right: -80px;
+            top: 50%;
+            transform: translateY(-50%);
+            @media #{$tablet-device} {
+              display: none;
+            } 
+            @media #{$large-mobile} {
+              display: none;
+            } 
+        }
+        .title{
+            color: $white;
+            font-size: 40px;
+            line-height: 52px;
+            @media #{$desktop-device} {
+              font-size: 30px;
+            } 
+            @media #{$tablet-device} {
+              font-size: 30px;
+            } 
+            @media #{$large-mobile} {
+              font-size: 30px;
+            } 
+        }
+        p{
+            color: #FFFFFFEB;
+            font-size: 17px;
+            line-height: 27px;
+            margin-top: 10px;
+            margin-bottom: 33px;
+        }
+        a{
+            &.main-btn{
+                border-radius: 3px;
+                background: $theme-color-4;
+                margin-right: 40px;
+                padding: 16px 40px;
+                font-size: 17px;
+                font-weight: 600;
+                &:hover{
+                    background: $white;
+                    color: #101010;
+                }
+            }
+        }
+        &.item-2{
+            @media #{$tablet-device} {
+              margin-top: 40px;
+            } 
+            @media #{$large-mobile} {
+              margin-top: 40px;
+            } 
+            & a{
+                background: $white;
+                color: #101010;
+                &:hover{
+                    background: $theme-color-4;
+                    color: $white;
+                }
+            }
+        }
+    }
+    &.rs-agent-about-page{
+      background-image: none;
+      background-color: $heading-color;
+      .rs-agent__content{
+        a{
+          background: $white;
+          color: $heading-color;
+          font-size: 16px;
+          font-weight: 700;
+          &:hover{
+            background: $primary;
+            color: $white;
+          }
+        }
+        &.item-2{
+          a{
+            background: $primary;
+            color: $white;
+            &:hover{
+              background: $white;
+              color: $heading-color;
+            }
+          }
+        }
+      }
+    }
+}

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { designReferenceSchema, normalizeReferenceUrl } from '@awb/shared/design-reference'
+import { designReferenceSchema, designReferencesSchema, storedDesignReferencesSchema, MAX_DESIGN_REFERENCES, normalizeReferenceUrl } from '@awb/shared/design-reference'
 import { publicReferenceAddress, observeReferenceHtml, inspectDesignReference } from '../packages/pipeline/src/design-reference'
 import { OpenAiProvider, StubAiProvider } from '@awb/ai'
 assert.equal(normalizeReferenceUrl('kinexmedia.com/our-work/#projects'), 'https://kinexmedia.com/our-work/')
@@ -21,6 +21,14 @@ assert.equal(observeReferenceHtml(html, 'layout').style, undefined)
 assert.equal(observeReferenceHtml(html, 'style').structure, undefined)
 assert.equal((await inspectDesignReference({ url: 'file:///not-allowed', mode: 'both', notes: '' })).status, 'unavailable', 'Unreadable references fall back without failing generation')
 const brief = { businessName: 'Our studio', description: 'Our original business details and products.', services: [], goals: ['FORM'], tonePreferences: [], answers: {}, hasLogo: false, logoColors: [], uploadedImageUrls: [], testimonials: [], designReference: { url: 'https://example.com', mode: 'both' as const, notes: 'Use our own brand colours.', observation } }
+assert.equal(storedDesignReferencesSchema.parse(brief.designReference).length, 1, 'Legacy single references still load')
+const multipleReferences = designReferencesSchema.parse([
+  { url: 'kinexmedia.com', mode: 'layout', notes: 'Use the spacious hero layout.' },
+  { url: 'openai.com', mode: 'style', notes: 'Use understated typography.' },
+])
+assert.equal(storedDesignReferencesSchema.parse(multipleReferences).length, 2)
+assert.equal(designReferencesSchema.safeParse(Array(MAX_DESIGN_REFERENCES + 1).fill(multipleReferences[0])).success, false)
+assert.equal(designReferencesSchema.safeParse([multipleReferences[0], { url: 'http://localhost' }]).success, false)
 const stub = new StubAiProvider({ seed: 'reference-test' })
 const { data: analysis } = await stub.analyzeBrief(brief)
 const { data: directions } = await stub.proposeDesignDirections(brief, analysis)
@@ -35,6 +43,16 @@ try {
   assert.ok(messages.find(message => message.role === 'system')?.content.includes('untrusted website data'))
   assert.ok(messages.find(message => message.role === 'user')?.content.includes('Selected work'))
   assert.ok(messages.find(message => message.role === 'user')?.content.includes('Never copy the reference wording'))
+  await new OpenAiProvider({ apiKey: 'test-only' }).proposeDesignDirections({ ...brief, designReference: undefined, designReferences: multipleReferences.map(reference => ({ ...reference, observation })) }, analysis)
+  const prompt = messages.find(message => message.role === 'user')!.content
+  for (const reference of multipleReferences) { assert.ok(prompt.includes(reference.url)); assert.ok(prompt.includes(reference.notes)) }
+  assert.ok(prompt.includes('Consider every supplied reference together'))
+  await new OpenAiProvider({ apiKey: 'test-only' }).proposeDesignDirections({ ...brief, contentDirection: { style: 'auto', styles: [], audience: 'Homeowners', notes: 'Use plain language.' } }, analysis)
+  const writingPrompt = messages.find(message => message.role === 'user')!.content
+  assert.ok(writingPrompt.includes('Let AI choose'))
+  assert.ok(writingPrompt.includes('Homeowners'))
+  assert.ok(writingPrompt.includes('Use plain language.'))
+  assert.ok(writingPrompt.includes('Use only supplied business facts'))
   await new OpenAiProvider({ apiKey: 'test-only' }).proposeDesignDirections({ ...brief, designReference: undefined }, analysis)
   assert.ok(!messages.find(message => message.role === 'user')?.content.includes('designReference'), 'No reference is required')
 } finally { globalThis.fetch = originalFetch }

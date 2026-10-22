@@ -46,6 +46,8 @@ export interface EditorField {
 }
 
 export interface RenderContext {
+  templateTheme?: string
+  serviceLinks?: Array<{ label: string; href: string }>
   /** Stable instance scope for standalone rendering without React hooks. */
   staticRenderScope?: string
   forms?: { projectId: string; action: string; recaptchaSiteKey?: string }

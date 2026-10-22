@@ -1,0 +1,73 @@
+/*----------------------------------------*/
+/*  15. Award CSS
+/*----------------------------------------*/
+
+.rs-award{
+    .section-title-3{
+        & a{
+            background: $theme-color-3;
+            margin-top: 40px;
+            &:hover{
+                background: $dark-2;
+            }
+        }
+    }
+    &__item{
+        border-bottom: 1px solid #F1F0F1;
+        padding: 28px 0;
+        &:first-child{
+            border-top: 1px solid #F1F0F1;
+
+        }
+        & .rs-thumb-1{
+            width: 200px;
+            @media #{$small-mobile} {
+                width: auto;
+                text-align: center;
+            }  
+        }
+        & .rs-thumb-2{
+            @media #{$small-mobile} {
+                text-align: center;
+                margin: 30px 0;
+            }  
+        }
+        .rs-text{
+            text-align: right;
+            @media #{$small-mobile} {
+                text-align: center;
+            }  
+            span{
+                font-size: 20px;
+                font-weight: 500;
+            }
+        }
+    }
+    .section-title-3{
+        @media #{$tablet-device} {
+            margin-bottom: 50px;
+        } 
+        @media #{$large-mobile} {
+            margin-bottom: 50px;
+        }        
+    }
+    &.rs-award-about-page{
+        .section-title-3{
+            span{
+                color: $primary;
+                &::before{
+                    background: #25826A6E;
+                }
+            }
+            .title{
+                color: $heading-color;
+            }
+            a{
+                background: $primary;
+                &:hover{
+                    background: $heading-color;
+                }
+            }
+        }
+    }
+}

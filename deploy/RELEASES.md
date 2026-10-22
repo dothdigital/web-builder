@@ -45,3 +45,31 @@ activation. Worker deployments are separate and are not stopped by this script.
 This removes deployment-caused downtime; a single server still cannot tolerate
 a host failure. Host-level availability needs another server/load balancer and
 appropriately resilient storage/database infrastructure.
+
+
+## Source of truth and release identity
+
+GitHub `dothdigital/web-builder`, branch `main`, is the canonical source. Make
+source changes in Git, then prepare web and worker releases from that same commit.
+Release directories are immutable runtime snapshots, not alternate development
+checkouts. A worker release may intentionally lag the web release, but record
+its source identity and review that difference before activation.
+
+`copy_source` writes `deploy/source-version.json` into every new release. It
+records the Git commit and dirty state when the source is a Git checkout, plus a
+content fingerprint even when the source was copied without `.git`. A null
+commit means provenance is unknown; do not describe that snapshot as the latest
+Git version based only on its directory name. Runtime secrets, uploads, builds
+and dependencies are excluded from the fingerprint.
+
+Inspect a checkout or release without changing it:
+
+```sh
+python3 deploy/source-version.py --root /path/to/source
+systemctl show -p WorkingDirectory webtummy-worker.service
+systemctl show -p WorkingDirectory webtummy-web@RELEASE_ID.service
+```
+
+When distributing a Git archive without `.git`, generate and retain its manifest
+alongside the artifact. Do not edit the source inside a running release. Deploying
+a new web snapshot does not automatically update the background worker.

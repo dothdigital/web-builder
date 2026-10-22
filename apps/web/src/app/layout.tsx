@@ -1,9 +1,7 @@
 import type { Metadata } from 'next'
-import Script from 'next/script'
 import './globals.css'
 import './legal.css'
 import { MetaPixel } from '@/components/analytics/meta-pixel'
-import { GOOGLE_CONSENT_DEFAULT } from '@/components/analytics/google-consent'
 import { SITE_DESCRIPTION, SITE_URL } from '@/lib/seo'
 
 export const metadata: Metadata = {
@@ -21,7 +19,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-full bg-neutral-50 text-neutral-900">
         {children}
         <MetaPixel />
-        <Script id="google-consent-default" strategy="beforeInteractive">{GOOGLE_CONSENT_DEFAULT}</Script>
       </body>
     </html>
   )

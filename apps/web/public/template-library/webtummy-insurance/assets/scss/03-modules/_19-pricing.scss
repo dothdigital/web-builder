@@ -1,0 +1,183 @@
+/*----------------------------------------*/
+/*  19. Pricing CSS
+/*----------------------------------------*/
+
+
+.rs-pricing-page{
+    .skltbs-mode-tabs{
+        text-align: center;
+        .skltbs-tab-group{
+            display: inline-block;
+            background: $white;
+            padding: 10px;
+            box-shadow: 0px 4px 10px 0px rgba(0, 0, 0, 0.08);
+            border-radius: 60px;
+            li{
+                margin: 0;
+                .skltbs-tab{
+                    padding: 9px 20px;
+                    border-radius: 40px;
+                    background: transparent;
+                    border: 0;
+                    color: $heading-color;
+                    &:focus,
+                    &:active{
+                        border: 0;
+                        outline: 0;
+                        box-shadow: none;
+                    }
+                    &.skltbs-active{
+                        background: $primary;
+                        color: $white;
+                    }
+                }
+            }
+        }
+        .skltbs-panel-group{
+            .skltbs-panel{
+                border: 0;
+                padding: 0;
+            }
+        }
+    }
+    .skltbs-theme-light {
+        .skltbs-tab{
+            &:focus,
+            &:active{
+                border: 0;
+                box-shadow: none;
+                outline: 0;
+            }
+            &.skltbs-active{
+                background: $primary;
+                color: $white;
+            }
+        }
+        .skltbs-panel{
+            padding: 0 0 30px;
+            border: 0;
+        }
+    }
+    &__item{
+        background: #000;
+        box-shadow: 0px 0px 0px 0px rgba(2.0000000000000293, 1.0000000000000147, 1.0000000000000147, 0);
+        border-radius: 6px;
+        overflow: hidden;
+        padding: 40px 40px 30px 40px;
+        background: #EEF5F5;
+        text-align: left;
+        margin-top: 30px;
+        @media #{$large-mobile} {
+            padding: 40px 20px;
+        }
+        .pricing-top{
+            position: relative;
+            z-index: 10;
+            .rs-batch{
+                position: absolute;
+                right: 20px;
+                top: 0;
+                span{
+                    display: inline-block;
+                    padding: 1px 20px;
+                    font-size: 14px;
+                    color: $white;
+                    background: $primary;
+                    border-radius: 40px;
+                }
+            }
+            .title{
+                color: $primary;
+                font-size: 24px;
+                font-weight: 500;
+                margin-bottom: 30px;
+            }
+            span{
+                font-size: 24px;
+                color: $heading-color;
+                span{
+                    font-size: 40px;
+                    font-weight: 600;
+                    line-height: 55px;
+                }
+            }
+            p{
+                font-size: 16px;
+                color: $body-color;
+                margin-top: 8px;
+            }
+            a{
+                width: 100%;
+                background: $heading-color;
+                text-align: center;
+                color: $white;
+                font-size: 18px;
+                font-weight: 700;
+                border-radius: 2px;
+                padding: 15px 0px 15px 0px;
+                margin-top: 35px;
+                transition: $transition;
+                &:hover{
+                    background: $primary;
+                }
+            }
+        }
+        .pricing-list{
+            padding-top: 35px;
+            ul{
+                li{
+                    font-size: 18px;
+                    color: $body-color;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    margin: 8px 0;
+                    i{
+                        color: $primary;
+                    }
+                    & span{
+                        text-decoration: line-through;
+                    }
+                    &.off{
+                        i{
+                            color: #CAC4CA;
+                        }
+                    }
+                }
+            }
+        }
+        &.center{
+            background: $heading-color;
+            .pricing-top{
+                .title{
+                    color: $white;
+                }
+                span{
+                    color: $white;
+                }
+                p{
+                    color: $white;
+                }
+                a{
+                    background: $primary;
+                    &:hover{
+                        background: $white;
+                        color: $primary;
+                    }
+                }
+            }
+            .pricing-list{
+                ul{
+                    li{
+                        color: #FFFFFFB8;
+                        &.off{
+                            i{
+                                color: #FFFFFF91;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,3 +1,4 @@
+import { normalizeServiceLabels } from '@awb/component-registry'
 import { WebsiteVersionKind, prisma } from '@awb/database'
 import { websiteModelSchema, type WebsiteModel } from '@awb/website-model'
 
@@ -23,6 +24,7 @@ export async function saveDraftModel(
   staffActorId?: string,
   previewActorId?: string,
 ): Promise<{ testLinkQueued: boolean }> {
+  model = normalizeServiceLabels(model)
   const last = await prisma.websiteVersion.findFirst({ where: { projectId }, orderBy: { version: 'desc' } })
 
   /// Every edit produces a new immutable version, so undo and rollback are a
@@ -30,7 +32,7 @@ export async function saveDraftModel(
   return prisma.$transaction(async tx => {
   if (model.businessDetails) {
     const { hours, emails, phones, ...contact } = model.contact
-    await tx.businessProfile.update({ where: { projectId }, data: { ...model.businessDetails, ...Object.fromEntries(Object.entries(contact).map(([key, value]) => [key, value || null])), hours: JSON.parse(JSON.stringify(hours)) } })
+    await tx.businessProfile.update({ where: { projectId }, data: { ...model.businessDetails, ...Object.fromEntries(Object.entries(contact).map(([key, value]) => [key, value || null])), ...(phones !== undefined ? { phones } : {}), hours: JSON.parse(JSON.stringify(hours)) } })
     await tx.socialLink.deleteMany({ where: { projectId } })
     if (model.socials.length) await tx.socialLink.createMany({ data: model.socials.map((social, position) => ({ projectId, ...social, position })) })
   }

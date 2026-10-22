@@ -5,7 +5,7 @@ import { SocialLink, uniqueSocialLinks } from './social-link'
 import { defineComponent } from '../types'
 import { Container } from '../primitives'
 
-const footerPropsSchema = z.object({
+export const footerPropsSchema = z.object({
   businessName: z.string(),
   layoutManaged: z.boolean().default(false),
   tagline: z.string().optional(),

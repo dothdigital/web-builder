@@ -1,0 +1,579 @@
+/*----------------------------------------*/
+/*  06. Faq CSS
+/*----------------------------------------*/
+
+.rs-faq{
+    background-image: url("../images/faq_bg_image.jpg");
+    background-position: center right;
+    background-repeat: no-repeat;
+    background-size: cover;
+    @media #{$tablet-device} {
+        background-position: top left;
+    } 
+    @media #{$large-mobile} {
+        background-position: top left;
+    } 
+    &__content{
+        .section-title{
+            text-align: left;
+        }
+
+    }
+    &__wrapper{
+        margin-top: 40px;
+        & .accordion {
+            & .accordion_tab{
+                background: #E0EBEA;
+                color: $heading-color;
+                .heading-icon{
+                  display: inline-block;
+                  color: $primary;
+                  font-size: 38px;
+                  font-weight: 400;
+                }
+            }
+            & .accordion_content{
+                background: #E0EBEA;
+            }
+            &.active{
+                & .accordion_tab{
+                    & .accordion_arrow{
+                        color: $primary;
+                    }
+                }
+            }
+        }
+        & .rs-faq-btn{
+            & a{
+                margin-top: 20px;
+                background: $white;
+                border: 2px solid #323F7C33;
+                color: $heading-color;
+                transition: $transition;
+                &::before{
+                    background: $heading-color;
+                }
+                &:hover{
+                    color: $white;
+                    border-color: $heading-color;
+                }
+            }
+        }
+    }
+    &__form{
+      padding: 45px 50px 50px;
+      background: $heading-color;
+      border-radius: 10px;
+      margin-left: 100px;
+      @media #{$desktop-device} {
+          margin-left: 0;
+      } 
+      @media #{$tablet-device} {
+          margin-left: 0;
+          margin-top: 30px;
+      } 
+      @media #{$large-mobile} {
+          margin-left: 0;
+          margin-top: 30px;
+      } 
+      @media #{$small-mobile} {
+          padding: 35px 20px;
+      } 
+      & .title{
+        color: $white;
+        font-size: 40px;
+        font-weight: 600;
+        margin-bottom: 15px;
+        @media #{$desktop-device} {
+            font-size: 30px;
+            margin-bottom: 20px;
+        } 
+        @media #{$tablet-device} {
+            font-size: 30px;
+            margin-bottom: 20px;
+        } 
+        @media #{$large-mobile} {
+            font-size: 30px;
+            margin-bottom: 20px;
+        } 
+        @media #{$small-mobile} {
+            font-size: 24px;
+        } 
+      }
+      .input-box{
+        position: relative;
+        input[type="email"],
+        input[type="text"]{
+          width: 100%;
+          height: 60px;
+          padding-left: 20px;
+          color: $white;
+          border-radius: 5px;
+          border: 0;
+          background: $primary;
+          font-size: 16px;
+          font-family: $font-family-base;
+          &::placeholder{
+            color: $white;
+            opacity: 1;
+          }
+        }
+        &.arrow-select{
+          i{
+            position: absolute;
+            right: 20px;
+            top: 16px;
+            z-index: 9;
+            color: $white;
+          }
+
+        }
+        select{
+          width: 100%;
+          height: 60px;
+          padding-left: 20px;
+          padding-right: 20px;
+          border-radius: 5px;
+          border: 0;
+          background: $primary;
+          color: $white;
+          appearance: none;
+          font-size: 16px;
+          font-family: $font-family-base;
+          position: relative;
+          &::before{
+            position: absolute;
+            content: "\ea4e";
+            font-family: remixicon;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: $white;
+          }
+        }
+        button{
+          border: 0;
+          margin-top: 35px;
+          font-size: 16px;
+          font-family: $font-family-base;
+          background: #42806B;
+          &:focus{
+            color: $white;
+          }
+          &:hover{
+            background: $primary;
+          }
+        }
+      }
+    }
+    .form-message{
+      color: #ffffffa6;
+    }
+}
+
+
+
+.accordion {
+    width: auto;
+    height: 65px;
+    margin: 0 auto;
+    background: #fff;
+    border-radius: 6px;
+    overflow: hidden;
+    transition: height 0.3s ease;
+    margin-bottom: 24px;
+  }
+  .accordion .accordion_tab_2 ,
+  .accordion .accordion_tab {
+    padding: 9px 20px;
+    cursor: pointer;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    font-size: 18px;
+    line-height: 1.3;
+    font-weight: 700;
+    text-transform: capitalize;
+    color: #002559;
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    @media #{$small-mobile} {
+        font-size: 15px;
+    } 
+  }
+  .accordion .accordion_tab_2 .accordion_arrow ,
+  .accordion .accordion_tab .accordion_arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    right: 20px;
+    width: 30px;
+    height: 30px;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: transparent;
+    @media #{$small-mobile} {
+        display: none;
+    } 
+  }
+  .accordion .accordion_tab_2 img ,
+  .accordion .accordion_tab img {
+    width: 100%;
+    height: 100%;
+  }
+  .accordion .accordion_tab_2.active .accordion_arrow ,
+  .accordion .accordion_tab.active .accordion_arrow {
+    color: $primary;
+    transform: translateY(-50%) rotate(180deg);
+  }
+  .accordion .accordion_tab_2.active .accordion_arrow i::before ,
+  .accordion .accordion_tab.active .accordion_arrow i::before {
+    content: "\f1ae";
+  }
+  .accordion.active {
+    height: 165px;
+    @media #{$extra-minBig-device-2} {
+        height: 190px;
+    } 
+    @media #{$tablet-device} {
+        height: 165px;
+    } 
+    @media #{$small-mobile} {
+        height: 245px;
+    } 
+  }
+  .accordion .accordion_content {
+    padding: 20px;
+    border-top: 1px solid #D3E0DF;
+  }
+  .accordion .accordion_content .accordion_item {
+    margin-bottom: 20px;
+  }
+  .accordion .accordion_content .accordion_item p {
+    color: #606060;
+    font-size: 16px;
+    line-height: 28px;
+  }
+
+
+
+
+
+
+
+  .range-slider {
+    margin: 0px 0 0 0;
+    width: 100%;
+    position: relative;
+  }
+  
+
+  .range-slider__range {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 10px;
+    border-radius: 5px;
+    background: #204D4B;
+    outline: none;
+    padding: 0;
+    margin: 0;
+  }
+  .range-slider__range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: $primary;
+    cursor: pointer;
+    -webkit-transition: all 0.15s ease-in-out;
+    transition: all 0.15s ease-in-out;
+  }
+  .range-slider__range::-webkit-slider-thumb:hover {
+    background: $white;
+  }
+  .range-slider__range:active::-webkit-slider-thumb {
+    background: $white;
+  }
+  .range-slider__range::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+    border: 0;
+    border-radius: 50%;
+    background: $primary;
+    border: 1px solid #ffffff2c;
+    cursor: pointer;
+    -moz-transition: all 0.15s ease-in-out;
+    transition: all 0.15s ease-in-out;
+  }
+  .range-slider__range::-moz-range-thumb:hover {
+    background: $white;
+  }
+  .range-slider__range:active::-moz-range-thumb {
+    background: $white;
+  }
+  .range-slider__range:focus::-webkit-slider-thumb {
+    box-shadow: none;
+  }
+  
+  .range-slider__value {
+    display: inline-block;
+    position: relative;
+    color: $white;
+    margin-left: 0px;
+    position: absolute;
+    right: 0;
+    top: -35px;
+  }
+
+  .range-slider__label  {
+    position: absolute;
+    left: 0;
+    top: -35px;
+    color: $white;
+    font-weight: 500;
+
+  }
+ 
+
+  
+  input::-moz-focus-inner,
+  input::-moz-focus-outer {
+    border: 0;
+  }
+
+
+
+  .rs-faq-2{
+    .section-title-2{
+      margin: 0 15px;
+      @media #{$tablet-device} {
+          margin-bottom: 40px;
+      } 
+      @media #{$large-mobile} {
+          margin-bottom: 40px;
+      } 
+    }
+    &__box{
+      margin-top: 50px;
+      @media #{$tablet-device} {
+          margin-top: 0;
+      } 
+      @media #{$large-mobile} {
+          margin-top: 0;
+      } 
+      & .accordion {
+        & .accordion_tab_2,
+        & .accordion_tab{
+            background: #F7FCFF;
+            color: $black;
+            .heading-icon{
+              display: inline-block;
+              color: $theme-color-2;
+              font-size: 38px;
+              font-weight: 400;
+            }
+            & .accordion_arrow{
+              color: $black;
+            }
+        }
+        & .accordion_content{
+            background: #F7FCFF;
+        }
+        &.active{
+          height: 195px;
+            & .accordion_tab{
+                & .accordion_arrow{
+                    color: $theme-color-2;
+                }
+            }
+        }
+    }
+    }
+  }
+
+
+
+
+  .rs-faq-3{
+    background-image: url(../images/faq_sec-bg.png);
+    background-position: top right;
+    background-repeat: no-repeat;
+    background-size: cover;
+    position: relative;
+    z-index: 10;
+    @media #{$extra-minBig-device-2} {
+        background-position: center;
+    }
+    .rs-faq__wrapper{
+      .accordion{
+        &.active{
+          height: 195px;
+          @media #{$desktop-device} {
+              height: 215px;
+          }  
+          @media #{$small-mobile} {
+              height: 315px;
+          }  
+        }
+        .accordion_tab{
+          background: #F6F5F6;
+          padding: 21px 20px;
+          color: $dark-2;
+          .accordion_arrow{
+            background: $theme-color-3;
+            color: $white;
+          }
+          &.active{
+            .accordion_arrow{
+              background: $white;
+              color: $theme-color-3;
+            }
+          }
+        }
+        .accordion_content{
+          background: #F6F5F6;
+        }
+      }
+      & > a{
+        color: $theme-color-3;
+        font-weight: 700;
+        display: block;
+        margin-top: 40px;
+        &:hover{
+          & i{
+            transform: translateX(5px);
+          }
+        }
+        & i{
+          display: inline-block;
+          padding-left: 5px;
+          font-weight: 400;
+          font-size: 20px;
+          transform: translateX(0px);
+          transition: $transition-ease;
+        }
+      }
+    }
+    .rs-shape{
+      position: absolute;
+      left: 150px;
+      top: -120px;
+      transform: rotate(-75deg);
+      z-index: -1;
+    }
+  }
+
+
+
+  .rs-faq-page{
+    .section-title{
+      .title{
+        font-size: 36px;
+        line-height: 46px;
+        @media #{$large-mobile} {
+            font-size: 26px;
+            line-height: 36px;
+        }  
+      }
+    }
+    .rs-faq__wrapper{
+      margin-top: 10px;
+      margin-left: -25px;
+      margin-right: -25px;
+      @media #{$laptop-device} {
+          margin-left: 0;
+          margin-right: 0;
+      } 
+      @media #{$desktop-device} {
+          margin-left: 0;
+          margin-right: 0;
+      }  
+      @media #{$tablet-device} {
+          margin-left: 0;
+          margin-right: 0;
+      }  
+      @media #{$large-mobile} {
+          margin-left: 0;
+          margin-right: 0;
+      }  
+      .accordion{
+        @media #{$small-mobile} {
+          height: 80px;
+        }
+        .accordion_tab{
+          padding: 21px 20px;
+          background: #EEF5F5;
+          font-weight: 600;
+          @media #{$small-mobile} {
+            padding: 30px 20px;
+          }
+          &.active{
+            color: $primary;
+          }
+          .accordion_arrow{
+            background: $primary;
+            color: $white;
+            font-weight: 400;
+          }
+        }
+        .accordion_content{
+          background: #EEF5F5;
+        }
+        &.active{
+          @media #{$tablet-device} {
+            height: 190px;
+          }
+          @media #{$small-mobile} {
+            height: 315px;
+          }
+        }
+      }
+    }
+    &__box{
+      background: #EEF5F5;
+      margin-left: -25px;
+      margin-right: -25px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 20px;
+      border-radius: 6px;
+      @media #{$laptop-device} {
+          margin-left: 0;
+          margin-right: 0;
+      } 
+      @media #{$desktop-device} {
+          margin-left: 0;
+          margin-right: 0;
+      }  
+      @media #{$tablet-device} {
+          margin-left: 0;
+          margin-right: 0;
+      }  
+      @media #{$large-mobile} {
+          margin-left: 0;
+          margin-right: 0;
+      }
+      @media #{$small-mobile} {
+        flex-direction: column;
+        gap: 15px;
+        padding: 30px 20px;
+      }
+      span{
+        font-size: 18px;
+        font-weight: 600;
+        color: $heading-color;
+      }
+      a{
+        padding: 10px 20px;
+      }
+    }
+  }
+

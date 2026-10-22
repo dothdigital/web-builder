@@ -1,3 +1,4 @@
+import { stageWorkCounter } from './stage-work-counter'
 import { JobStatus, prisma } from '@awb/database'
 import { generationStages, stageDescriptor } from './stages'
 
@@ -11,6 +12,9 @@ export interface StageProgress {
   startedAt?: string
   finishedAt?: string
   note?: string
+  completed?: number
+  total?: number
+  unit?: 'images' | 'pages'
 }
 
 export interface GenerationProgress {
@@ -51,6 +55,7 @@ export async function getGenerationProgress(
       activity: descriptor.activity,
       status: job?.status ?? (contentJob?.status === 'FAILED' && descriptor.stage === 'VALIDATE' ? JobStatus.FAILED : 'PENDING'),
       attempts: job?.attempts ?? 0,
+      ...stageWorkCounter(descriptor.stage, job?.output, job?.input, job?.status),
       ...(typeof output?.referenceMessage === 'string' ? { note: output.referenceMessage } : {}),
       ...(job?.errorMessage ? { errorMessage: job.errorMessage } : !job && descriptor.stage === 'VALIDATE' && contentJob?.status === 'FAILED' ? { errorMessage: contentJob.error ?? 'The update could not finish. Please try again.' } : {}),
       ...(job?.startedAt ? { startedAt: job.startedAt.toISOString() } : {}),

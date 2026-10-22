@@ -1,3 +1,4 @@
+import { importedSection } from '@awb/component-registry'
 import type { WebsiteModel } from '@awb/website-model'
 
 // Page scope is not permission to use a portrait in every section on that page.
@@ -6,12 +7,15 @@ export function personalPhotoSection(page: WebsiteModel['pages'][number]): strin
   if (!['/', '/about', '/about-us', '/team'].includes(path)) return undefined
   const candidates = page.sections.filter(section => {
     if (section.hidden) return false
+    const imported = importedSection(section.componentId)
+    // Imported inner-page heroes are wide title banners, not biography photos.
+    if (imported && imported.family === 'HERO' && path !== '/') return false
     const text = `${section.id} ${section.props.heading ?? ''} ${section.props.eyebrow ?? ''}`
     if (/service|product|approach|process|area|location|benefit|why|gallery|photos|testimonial|contact/i.test(text)) return false
-    return /about|intro|who.we.are|meet|founder|team|biograph/i.test(text) || path === '/' && /hero/i.test(section.id)
+    return imported?.family === 'ABOUT' || path === '/' && imported?.family === 'HERO' || /about|intro|who.we.are|meet|founder|team|biograph/i.test(text) || path === '/' && /hero/i.test(section.id)
   })
   // A home hero introducing the owner takes precedence over a second About portrait.
-  return (path === '/' ? candidates.find(section => /hero/i.test(section.id)) : undefined)?.id ?? candidates[0]?.id
+  return (path === '/' ? candidates.find(section => /hero/i.test(section.id) || importedSection(section.componentId)?.family === 'HERO') : undefined)?.id ?? candidates[0]?.id
 }
 
 export function allowsPersonalPhoto(model: WebsiteModel, slot: string): boolean {

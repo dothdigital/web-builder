@@ -8,3 +8,5 @@ export * from './site-palette'
 export * from './site-colors'
 
 export * from './image-quality'
+
+export { formatServiceLabel } from './service-label'
