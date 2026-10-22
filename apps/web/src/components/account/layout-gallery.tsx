@@ -14,6 +14,7 @@ export function LayoutGallery({ onSelect }: { onSelect: (id?: string) => void })
     <p className="wt-eyebrow">CREATE YOUR WEBSITE · 1. CHOOSE A LAYOUT</p>
     <h1>Start with a layout you love.</h1>
     <p>Choose Business Classic or let AI create a layout from your business details.</p>
+    <div className={styles.custom}><div><h2>Let AI choose the layout</h2><p>AI will choose the page structure and sections from your business details.</p></div><button type="button" className="wt-button" onClick={() => onSelect(undefined)}>Let AI choose the layout</button></div>
     <div className={styles.grid}>{selectableLayouts.map(layout => <article key={layout.id} className={styles.card}>
       <button type="button" className={styles.thumbnail} aria-label={`Preview ${layout.name}`} onClick={() => { setDevice('desktop'); setPreview(layout) }}>
         {/* Uploaded theme screenshots are served as static assets. */}
@@ -25,7 +26,6 @@ export function LayoutGallery({ onSelect }: { onSelect: (id?: string) => void })
         <button type="button" className="wt-button" onClick={() => onSelect(layout.id)}>Use this layout</button>
       </div></div>
     </article>)}</div>
-    <div className={styles.custom}><div><h2>Let AI choose the layout</h2><p>AI will choose the page structure and sections from your business details.</p></div><button type="button" className="wt-button secondary" onClick={() => onSelect(undefined)}>Let AI choose the layout</button></div>
     <dialog ref={dialog} className={styles.dialog} aria-labelledby="layout-preview-title" onCancel={() => setPreview(undefined)}>
       {preview && <><header><div><h2 id="layout-preview-title">{preview.name}</h2><p>Sample content and photography. Your website will use your business details.</p></div><div className={styles.actions}>
         <button type="button" aria-pressed={device === 'desktop'} className="wt-button secondary" onClick={() => setDevice('desktop')}>Desktop</button>
