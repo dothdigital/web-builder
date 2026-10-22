@@ -13,7 +13,7 @@ export function LayoutGallery({ onSelect }: { onSelect: (id?: string) => void })
   return <div className={styles.gallery}>
     <p className="wt-eyebrow">CREATE YOUR WEBSITE · 1. CHOOSE A LAYOUT</p>
     <h1>Start with a layout you love.</h1>
-    <p>Choose Business Classic or let AI create a layout from your business details.</p>
+    <p>Choose Business or let AI create a layout from your business details.</p>
     <div className={styles.custom}><div><h2>Let AI choose the layout</h2><p>AI will choose the page structure and sections from your business details.</p></div><button type="button" className="wt-button" onClick={() => onSelect(undefined)}>Let AI choose the layout</button></div>
     <div className={styles.grid}>{selectableLayouts.map(layout => <article key={layout.id} className={styles.card}>
       <button type="button" className={styles.thumbnail} aria-label={`Preview ${layout.name}`} onClick={() => { setDevice('desktop'); setPreview(layout) }}>

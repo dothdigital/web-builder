@@ -17,7 +17,7 @@ import { rerunRequestSchema, type RerunRequest } from '@awb/shared/rerun-request
 import { primaryWorkspace, requireProject, requireUser } from '@/lib/tenancy'
 
 const briefSchema = z.object({
-  templateId: z.string().refine(isSelectableLayoutId, 'Choose Business Classic or let AI choose the layout.').optional(),
+  templateId: z.string().refine(isSelectableLayoutId, 'Choose Business or let AI choose the layout.').optional(),
   designReference: designReferenceSchema.optional(),
   designReferences: designReferencesSchema.optional(),
   homepageSections: z.array(z.enum(['About us / Who we are', 'Service areas', 'Our methodology / Approach', 'Why choose us'])).max(4).default([]),
