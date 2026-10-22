@@ -1,3 +1,4 @@
+import { runStage } from './run-stage'
 import { repeatedPageImages, assertDistinctPageImages, applySitePalette } from '@awb/website-model'
 import { imageDirectionPrompt } from '@awb/shared/image-direction'
 import { allowsPersonalPhoto, removeMisplacedPersonalPhotos } from './personal-photo-policy'
@@ -8,7 +9,6 @@ import {
   AssetKind,
   AssetSource,
   GenerationStage,
-  JobStatus,
   PageStatus,
   ProjectStatus,
   WebsiteVersionKind,
@@ -52,7 +52,6 @@ import {
 } from '@awb/website-model'
 import { auditHeadings } from '@awb/seo'
 import { assetKey, getStorage } from '@awb/shared'
-import { generationStages } from './stages'
 import { applyTestimonials } from './testimonials'
 import { storedDesignReferencesSchema } from '@awb/shared/design-reference'
 import { inspectDesignReference } from './design-reference'
@@ -141,82 +140,6 @@ export interface GenerationRequest {
   selectedDirectionId?: string
   rerun?: RerunRequest
   baseVersionId?: string
-}
-
-class StageError extends Error {
-  constructor(
-    readonly stage: GenerationStage,
-    message: string,
-    readonly cause?: unknown,
-  ) {
-    super(message)
-  }
-}
-
-/// Runs one stage as its own auditable, retryable unit of work. Every stage
-/// writes a generation_jobs row before it starts, so the progress stream has
-/// something to show even if the process dies mid-stage.
-async function runStage<T>(
-  projectId: string,
-  correlationId: string,
-  stage: GenerationStage,
-  input: Prisma.InputJsonValue,
-  handler: (report: (completed: number, total: number) => Promise<void>) => Promise<{ output: Prisma.InputJsonValue; result: T; usage?: { model: string; inputTokens: number; outputTokens: number; costCents: number } }>,
-): Promise<T> {
-  const existing = await prisma.generationJob.findFirst({ where: { projectId, correlationId, stage } })
-  const job = existing
-    ? await prisma.generationJob.update({
-        where: { id: existing.id },
-        data: { status: JobStatus.RUNNING, startedAt: new Date(), attempts: { increment: 1 }, errorMessage: null, finishedAt: null },
-      })
-    : await prisma.generationJob.create({
-        data: {
-          projectId,
-          correlationId,
-          stage,
-          status: JobStatus.RUNNING,
-          input,
-          attempts: 1,
-          startedAt: new Date(),
-        },
-      })
-
-  try {
-    const report = async (completed: number, total: number) => {
-      await prisma.generationJob.update({ where: { id: job.id }, data: { output: toJson({ completed, total }) } })
-    }
-    const { output, result, usage } = await handler(report)
-
-    await prisma.generationJob.update({
-      where: { id: job.id },
-      data: {
-        status: JobStatus.SUCCEEDED,
-        output,
-        finishedAt: new Date(),
-        ...(usage
-          ? {
-              model: usage.model,
-              inputTokens: usage.inputTokens,
-              outputTokens: usage.outputTokens,
-              costCents: usage.costCents,
-            }
-          : {}),
-      },
-    })
-
-    return result
-  } catch (error) {
-    await prisma.generationJob.update({
-      where: { id: job.id },
-      data: {
-        status: JobStatus.FAILED,
-        errorMessage: error instanceof Error ? error.message : String(error),
-        finishedAt: new Date(),
-      },
-    })
-
-    throw new StageError(stage, `Stage ${stage} failed: ${error instanceof Error ? error.message : String(error)}`, error)
-  }
 }
 
 interface BusinessPresence {
@@ -452,6 +375,7 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
         })
         return { output: toJson({ scope: rerun.scope, issues: validation.issues }), result: saved.id }
       })
+      await prisma.project.update({ where: { id: projectId }, data: { status: ProjectStatus.READY } })
       return { correlationId, websiteVersionId }
     }
     const presence = await loadPresence(projectId)
@@ -959,6 +883,7 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
       },
     )
 
+    await prisma.project.update({ where: { id: projectId }, data: { status: ProjectStatus.READY } })
     return { correlationId, websiteVersionId }
   } catch (error) {
     await prisma.project.update({ where: { id: projectId }, data: { status: ProjectStatus.DRAFT } })
@@ -966,25 +891,7 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
   }
 }
 
-/// Re-runs a single failed stage onwards. Used by the "retry" action in the UI.
+/// Continue the same run; successful stage results are restored by runStage.
 export async function retryGeneration(projectId: string, correlationId: string): Promise<void> {
-  await prisma.generationJob.deleteMany({
-    where: { projectId, correlationId, status: { in: [JobStatus.FAILED, JobStatus.CANCELLED] } },
-  })
-
-  const completed = await prisma.generationJob.findMany({
-    where: { projectId, correlationId, status: JobStatus.SUCCEEDED },
-  })
-
-  /// Stages are cheap enough to redo from the first incomplete one, which keeps
-  /// resume logic simple and always consistent.
-  const firstIncomplete = generationStages.find(
-    (descriptor) => !completed.some((job) => job.stage === descriptor.stage),
-  )
-
-  if (firstIncomplete) {
-    await prisma.generationJob.deleteMany({ where: { projectId, correlationId } })
-  }
-
   await runGeneration({ projectId, correlationId })
 }

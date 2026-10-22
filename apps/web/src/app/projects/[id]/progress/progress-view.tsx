@@ -1,4 +1,5 @@
 'use client'
+import { resumeWebsiteBuild } from '@/app/actions/content-jobs'
 import { ErrorNotice } from '@/components/error-notice'
 
 import { useEffect, useState } from 'react'
@@ -39,6 +40,9 @@ function elapsed(start: string | undefined, now: number): string {
 
 export function ProgressView({ projectId, correlationId }: { projectId: string; correlationId: string }) {
   const router = useRouter()
+  const [resuming, setResuming] = useState(false)
+  const [resumeError, setResumeError] = useState<string>()
+  const [streamVersion, setStreamVersion] = useState(0)
   const [progress, setProgress] = useState<Progress>()
   const [streamError, setStreamError] = useState<string>()
   const [lastUpdate, setLastUpdate] = useState(0)
@@ -78,7 +82,7 @@ export function ProgressView({ projectId, correlationId }: { projectId: string; 
       setStreamError('Reconnecting to live updates. Your generation continues in the background.')
     }
     return () => source.close()
-  }, [projectId, correlationId, router])
+  }, [projectId, correlationId, router, streamVersion])
 
   const stages = progress?.stages ?? []
   const current = progress?.currentStage
@@ -89,6 +93,18 @@ export function ProgressView({ projectId, correlationId }: { projectId: string; 
   )
   const finished = progress?.status === 'succeeded' || progress?.status === 'failed'
   const connected = lastUpdate > 0 && !streamError && (!now || now - lastUpdate < 10000)
+
+  const canResume = Boolean(failed || current?.startedAt && now - Date.parse(current.startedAt) > 10 * 60 * 1000 || progress?.status === 'pending')
+  const resume = async () => {
+    setResuming(true)
+    setResumeError(undefined)
+    try {
+      await resumeWebsiteBuild(projectId, correlationId)
+      setStreamVersion(value => value + 1)
+    } catch (error) {
+      setResumeError(error instanceof Error ? error.message : 'Could not resume. Please try again.')
+    } finally { setResuming(false) }
+  }
 
   return (
     <div className="mx-auto max-w-7xl">
@@ -135,6 +151,8 @@ export function ProgressView({ projectId, correlationId }: { projectId: string; 
             </ol>
             <p className="mt-6 border-t border-neutral-100 pt-4 text-xs leading-5 text-neutral-400">{lastUpdate ? `Last update ${Math.max(0, Math.floor((now - lastUpdate) / 1000))}s ago` : 'Updates arrive automatically.'} Overall progress advances when a step finishes.</p>
             {streamError && <ErrorNotice code="WT-REQUEST-001" message={streamError} className="mt-4 rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-800" />}
+            {canResume && <div className="mt-5 rounded-xl border border-blue-200 bg-blue-50 p-4"><p className="text-sm text-blue-950">Continue from the last saved step. Completed steps will be kept.</p><button type="button" className="wt-button mt-3" disabled={resuming} onClick={resume}>{resuming ? 'Resuming…' : 'Resume build'}</button></div>}
+            {resumeError && <p role="alert" className="mt-3 text-sm text-red-700">{resumeError}</p>}
             {failed && <a href="/dashboard" className="mt-5 inline-block rounded-lg bg-neutral-900 px-4 py-2 text-sm text-white">Back to dashboard</a>}
           </div>
         </aside>
