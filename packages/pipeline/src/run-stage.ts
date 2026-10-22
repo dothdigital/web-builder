@@ -20,10 +20,10 @@ export async function runStage<T>(
   correlationId: string,
   stage: GenerationStage,
   input: Prisma.InputJsonValue,
-  handler: (report: (completed: number, total: number) => Promise<void>) => Promise<{ output: Prisma.InputJsonValue; result: T; usage?: { model: string; inputTokens: number; outputTokens: number; costCents: number } }>,
+  handler: (report: (completed: number, total: number, partialResult?: unknown) => Promise<void>, partialResult?: unknown) => Promise<{ output: Prisma.InputJsonValue; result: T; usage?: { model: string; inputTokens: number; outputTokens: number; costCents: number } }>,
 ): Promise<T> {
   const existing = await prisma.generationJob.findFirst({ where: { projectId, correlationId, stage } })
-  const checkpoint = existing?.status === JobStatus.SUCCEEDED ? stageCheckpointResult(existing.output) : undefined
+  const checkpoint = existing?.status === JobStatus.SUCCEEDED ? stageCheckpointResult(existing.output, stage) : undefined
   if (checkpoint) return checkpoint.result as T
   const job = existing
     ? await prisma.generationJob.update({
@@ -43,10 +43,10 @@ export async function runStage<T>(
       })
 
   try {
-    const report = async (completed: number, total: number) => {
-      await prisma.generationJob.update({ where: { id: job.id }, data: { output: toJson({ completed, total }) } })
+    const report = async (completed: number, total: number, partialResult?: unknown) => {
+      await prisma.generationJob.update({ where: { id: job.id }, data: { output: toJson({ completed, total, ...(partialResult !== undefined ? { partialResult } : {}) }) } })
     }
-    const { output, result, usage } = await handler(report)
+    const { output, result, usage } = await handler(report, (existing?.output as { partialResult?: unknown } | null)?.partialResult)
 
     await prisma.generationJob.update({
       where: { id: job.id },

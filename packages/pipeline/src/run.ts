@@ -478,11 +478,12 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
       correlationId,
       GenerationStage.CONTENT,
       toJson(plan),
-      async report => {
-        const written: WebsitePage[] = []
-        await report(0, plan.pages.length)
+      async (report, partialResult) => {
+        const written: WebsitePage[] = Array.isArray(partialResult) ? partialResult as WebsitePage[] : []
+        await report(written.length, plan.pages.length, written)
 
         for (const plannedPage of plan.pages) {
+          if (written.some(page => page.path === plannedPage.path)) continue
           const { data } = await provider.writePage(brief, analysis, dna, tokens, plannedPage)
 
           written.push({
@@ -500,7 +501,7 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
             },
             sections: brief.templateId ? templatePageComponents(brief.templateId, plannedPage.path).map((componentId,index) => data.sections.find(section=>section.componentId===componentId) ?? {id:`layout-unused-${index}`,componentId,componentVersion:'1.0.0',hidden:true,props:initialTemplateProps(componentId)}).concat(data.sections.filter(section => section.componentId === 'FaqAccordion' && !templatePageComponents(brief.templateId!, plannedPage.path).includes('FaqAccordion'))) : data.sections,
           })
-          await report(written.length, plan.pages.length)
+          await report(written.length, plan.pages.length, written)
         }
 
         return { output: toJson({ pageCount: written.length, pages: written, completed: written.length, total: plan.pages.length }), result: written }

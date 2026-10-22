@@ -25,5 +25,18 @@ assert.equal(rows.get('IMAGES').attempts, 2)
 const version = await runStage('project', 'run', GenerationStage.VALIDATE, {}, async () => ({ output: { issues: [] }, result: 'version-1' }))
 assert.equal(version, 'version-1')
 assert.equal(await runStage('project', 'run', GenerationStage.VALIDATE, {}, async () => { throw Error('must not create a duplicate version') }), 'version-1')
-console.log('PASS: interrupted stage retries; completed content/models/version IDs restored without provider calls or duplicate saves')
+// Legacy completed plans are reusable; bare counts are not saved page content.
+const { stageCheckpointResult } = await import('../packages/pipeline/src/stage-checkpoint.ts')
+assert.deepEqual(stageCheckpointResult({pages:[{path:'/'}],navigation:[]}, 'SITE_PLAN')?.result, {pages:[{path:'/'}],navigation:[]})
+assert.equal(stageCheckpointResult({completed:6,total:15}, 'CONTENT'), undefined)
+rows.delete('CONTENT')
+await assert.rejects(runStage('project', 'run', GenerationStage.CONTENT, {}, async report => {
+  await report(1, 2, [{path:'/', text:'saved first page'}])
+  throw Error('interrupted on second page')
+}), /interrupted/)
+await runStage('project', 'run', GenerationStage.CONTENT, {}, async (report, partial) => {
+  assert.deepEqual(partial, [{path:'/',text:'saved first page'}])
+  return {output:{completed:2,total:2},result:[...(partial as any[]),{path:'/about'}]}
+})
+console.log('PASS: interrupted stages, legacy plans, per-page partial checkpoints and final version reuse; no live AI or database calls')
 await prisma.$disconnect()
