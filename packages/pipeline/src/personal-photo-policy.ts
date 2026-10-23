@@ -39,7 +39,10 @@ export function removeMisplacedPersonalPhotos(model: WebsiteModel, urls: Set<str
   }
   for (const page of model.pages) {
     const intro = personalPhotoSection(page)
-    for (const section of page.sections) clean(section.props, section.id === intro, true)
+    for (const section of page.sections) {
+      clean(section.props, section.id === intro, true)
+      if (section.componentId === 'Tpl_finbiz_1_1' && urls.has(String(section.props.imageUrl ?? ''))) section.props.heroImageFit = 'contain'
+    }
   }
   clean(model.globalComponents, false)
 }

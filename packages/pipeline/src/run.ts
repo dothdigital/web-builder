@@ -1,3 +1,5 @@
+import { planningKey } from './planning-key'
+import { sitePlanSchema } from '@awb/ai'
 import { runStage } from './run-stage'
 import { repeatedPageImages, assertDistinctPageImages, applySitePalette } from '@awb/website-model'
 import { imageDirectionPrompt } from '@awb/shared/image-direction'
@@ -458,18 +460,24 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
       },
     )
 
+    const sitemapKey = planningKey(brief)
+    const workspaceId = (await prisma.project.findUniqueOrThrow({ where: { id: projectId }, select: { workspaceId: true } })).workspaceId
     const plan = await runStage<SitePlan>(
       projectId,
       correlationId,
       GenerationStage.SITE_PLAN,
-      toJson(dna),
+      toJson({ planningKey: sitemapKey }),
       async () => {
-        const { data, usage } = await provider.planSite(brief, analysis, dna)
+        const previous = await prisma.generationJob.findFirst({ where: { stage: GenerationStage.SITE_PLAN, status: 'SUCCEEDED', project: { workspaceId }, input: { path: ['planningKey'], equals: sitemapKey } }, orderBy: { createdAt: 'asc' }, select: { output: true } })
+        const saved = sitePlanSchema.safeParse((previous?.output as { basePlan?: unknown } | null)?.basePlan)
+        const planned = saved.success ? { data: saved.data, usage: undefined } : await provider.planSite(brief, analysis, dna)
+        const { data, usage } = planned
+        const basePlan = structuredClone(data)
         if (brief.templateId) {
           // AI chooses page topics and navigation; the selected template supplies their layout.
           data.pages = data.pages.map(page => ({ ...page, sectionPlan: templatePageComponents(brief.templateId!, page.path).map(id => ({ family: getComponent(id)!.family, intent: page.purpose })) }))
         }
-        return { output: toJson(data), result: data, usage }
+        return { output: toJson({ ...data, basePlan }), result: data, usage }
       },
     )
 

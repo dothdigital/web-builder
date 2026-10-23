@@ -2,7 +2,12 @@
 export const HEADER_MENU_SCRIPT = `(function(){
   if(window.__awbHeaderMenus)return;
   window.__awbHeaderMenus=true;
-  var selector='header nav[aria-label="Primary"] details,header details.awb-mobile-menu';
+  var selector='header nav[aria-label="Primary"] details,header details.awb-mobile-menu,.wt-layout-dropdown,details.wt-layout-mobile-menu';
+  document.addEventListener('toggle',function(event){
+    var menu=event.target;
+    if(!menu.matches||!menu.matches('.wt-layout-dropdown')||!menu.open)return;
+    document.querySelectorAll('.wt-layout-dropdown[open]').forEach(function(other){if(other!==menu&&!other.contains(menu)&&!menu.contains(other))other.open=false;});
+  },true);
   document.addEventListener('pointerdown',function(event){
     document.querySelectorAll(selector).forEach(function(menu){
       if(!menu.contains(event.target))menu.open=false;

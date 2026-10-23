@@ -19347,3 +19347,5 @@
 .wt-layout-webtummy-insurance[data-layout-family="HEADER"] .wt-layout-submenu li a{padding:8px 12px!important;line-height:1.35;height:auto;min-height:0}
 
 .wt-layout-webtummy-insurance[data-layout-family="HEADER"] .mainmenu a::before,.wt-layout-webtummy-insurance[data-layout-family="HEADER"] .mainmenu a::after,.wt-layout-webtummy-insurance[data-layout-family="HEADER"] .mainmenu li::before,.wt-layout-webtummy-insurance[data-layout-family="HEADER"] .mainmenu li::after,.wt-layout-webtummy-insurance[data-layout-family="HEADER"] .wt-layout-dropdown summary::before,.wt-layout-webtummy-insurance[data-layout-family="HEADER"] .wt-layout-dropdown summary::after,.wt-layout-webtummy-insurance[data-layout-family="HEADER"] .wt-layout-submenu a::before,.wt-layout-webtummy-insurance[data-layout-family="HEADER"] .wt-layout-submenu a::after{content:none!important;display:none!important}
+
+.wt-layout-webtummy-insurance[data-layout-family="HEADER"] .wt-layout-dropdown:not([open])>.wt-layout-submenu{display:none!important}

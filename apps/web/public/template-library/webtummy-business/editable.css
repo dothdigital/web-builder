@@ -39900,3 +39900,18 @@ svg:not(.wt-layout-webtummy-business) {
 
 .wt-layout-webtummy-business[data-hero-image-fit="contain"] .awb-classic-hero-portrait{position:absolute;right:0;top:0;width:46%;height:100%;max-width:46%;object-fit:contain;object-position:center;z-index:0}
 @media(max-width:991px){.wt-layout-webtummy-business[data-hero-image-fit="contain"] .awb-classic-hero-portrait{top:auto;bottom:0;right:24px;width:calc(100% - 48px);height:360px;max-width:calc(100% - 48px)}}
+
+/* Closed details must stay closed even when template menu CSS uses display:grid. */
+.wt-layout-webtummy-business[data-layout-family="HEADER"] .wt-layout-dropdown:not([open])>.wt-layout-submenu{display:none!important}
+/* Bounded home imagery: preserve the portrait instead of enlarging it into a backdrop. */
+.wt-layout-webtummy-business .rts-banner-one .banner-one-inner{min-height:480px;padding:48px 0;width:min(52%,660px)}
+.wt-layout-webtummy-business .rts-banner-one .banner-one-inner .title{font-size:clamp(30px,3vw,48px);line-height:1.14;margin-bottom:20px}
+.wt-layout-webtummy-business .rts-banner-one .banner-one-inner .banner-para{font-size:16px;line-height:1.65}
+.wt-layout-webtummy-business[data-hero-image-fit="contain"] .awb-classic-hero-portrait{right:max(24px,calc((100% - 1305px)/2));top:24px;height:calc(100% - 48px);max-height:480px;width:42%;max-width:550px;object-fit:contain;object-position:center}
+.wt-layout-webtummy-business .feature-left-area>img{height:clamp(240px,28vw,400px);max-height:400px;object-fit:cover}
+.wt-layout-webtummy-business .about-image-v-inner .image-area .img-1{max-height:400px;object-fit:cover}
+@media(max-width:991px){
+.wt-layout-webtummy-business .rts-banner-one .banner-one-inner{width:calc(100% - 48px);min-height:0;padding:40px 0}
+.wt-layout-webtummy-business[data-hero-image-fit="contain"] .rts-banner-one .banner-one-inner{width:calc(100% - 48px);padding:40px 0 320px}
+.wt-layout-webtummy-business[data-hero-image-fit="contain"] .awb-classic-hero-portrait{top:auto;bottom:20px;right:24px;width:calc(100% - 48px);max-width:calc(100% - 48px);height:280px;max-height:280px}
+}

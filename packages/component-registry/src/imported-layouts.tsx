@@ -265,7 +265,7 @@ function renderTree(tree: Tree, values: Record<string, unknown>, context: Render
     if (tree.kind === 'menu') {
       const items = (values.items || []) as Array<{ label: string; href: string; children?: Array<{ label: string; href: string }> }>
       return createElement('ul', { ...tree.attrs, key }, items.map((item, index) => createElement('li', { key:index }, item.children?.length
-        ? createElement('details', { className:'wt-layout-dropdown' }, createElement('summary', { 'data-awb-element':`/items/${index}/label` }, item.label, ' ▾'), createElement('ul', { className:'wt-layout-submenu' }, [item,...item.children].map((child,j) => createElement('li',{key:j},createElement('a',{href:route(child.href,context)}, j===0 ? `${child.label} overview` : child.label)))))
+        ? createElement('details', { className:'wt-layout-dropdown', name:'awb-template-navigation' }, createElement('summary', { 'data-awb-element':`/items/${index}/label` }, item.label, ' ▾'), createElement('ul', { className:'wt-layout-submenu' }, [item,...item.children].map((child,j) => createElement('li',{key:j},createElement('a',{href:route(child.href,context)}, j===0 ? `${child.label} Overview` : child.label)))))
         : createElement('a', { className:'nav-link',href:route(item.href,context),'data-awb-element':`/items/${index}/label` },item.label))))
     }
     if (tree.kind === 'form') return renderContactForm(contactPropsSchema.parse({ heading: '', formFields: [ { name:'name',label:'Name',type:'text',required:true }, { name:'email',label:'Email',type:'email',required:true }, { name:'phone',label:'Phone',type:'tel' }, { name:'message',label:'Message',type:'textarea',required:true } ], submitLabel: values.submitLabel || 'Send enquiry' }), context)
@@ -407,7 +407,7 @@ export const importedLayoutDefinitions: ComponentDefinition[] = sections.map(sec
           if (!values[name] && /book.*meeting|get.*quote|let.s talk/i.test(section.fixture[name] || '')) values[name] = 'Get in touch'
         }
       }
-      return createElement('div',{className:`wt-layout-${section.theme} ${section.bodyClass || ''}`, 'data-layout-family':section.family,'data-hero-image-fit':values.heroImageFit,style:{position:'relative',...templateColorVars(context.tokens)}},createElement('link',{rel:'stylesheet',href:`/template-library/${section.theme}/editable.css?v=20261022-classic-no-rotating-shapes-6`,precedence:`layout-${section.theme}`}),renderTree(section.tree,values,{...context,templateTheme:context.templateTheme||section.theme},section.family),section.family==='HEADER'?createElement('details',{className:'wt-layout-mobile-menu'},createElement('summary',{},'Menu'),renderTree({kind:'menu'},values,context,section.family)):null)
+      return createElement('div',{className:`wt-layout-${section.theme} ${section.bodyClass || ''}`, 'data-layout-family':section.family,'data-hero-image-fit':values.heroImageFit,style:{position:'relative',...templateColorVars(context.tokens)}},createElement('link',{rel:'stylesheet',href:`/template-library/${section.theme}/editable.css?v=20261022-compact-images-menus-7`,precedence:`layout-${section.theme}`}),renderTree(section.tree,values,{...context,templateTheme:context.templateTheme||section.theme},section.family),section.family==='HEADER'?createElement('details',{className:'wt-layout-mobile-menu'},createElement('summary',{},'Menu'),renderTree({kind:'menu'},values,context,section.family)):null)
     },
   }
 })
