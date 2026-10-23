@@ -5,6 +5,15 @@ import type { BusinessContactDetailsValue } from './components/business-contact-
 
 /** Resolve supplied facts at render time, so existing sites and every output stay in sync. */
 export function resolveBusinessContact(model: WebsiteModel): WebsiteModel {
+  // Fold the template's separate contact-information strip into its form.
+  // Preserve the original section and fields so the change stays reversible.
+  model = { ...model, pages: model.pages.map(page => {
+    const form = page.sections.find(section => !section.hidden && section.componentId === 'Tpl_finbiz_1_12')
+    const info = page.sections.find(section => !section.hidden && section.componentId === 'Tpl_finbiz_1_13')
+    if (!form || !info) return page
+    const contactDetails = Object.fromEntries(Object.entries(info.props).filter(([,value]) => typeof value === 'string'))
+    return { ...page, sections: page.sections.map(section => section.id === form.id ? { ...section, props: { ...section.props, contactDetails } } : section.id === info.id ? { ...section, hidden:true } : section) }
+  }) }
   const contact = model.contact
   if (!contact) return model
   if (!model.businessDetails && !Object.entries(contact).some(([key, value]) => key !== 'hours' && Boolean(value)) && !model.socials.length) return model

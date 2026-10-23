@@ -281,6 +281,18 @@ function renderTree(tree: Tree, values: Record<string, unknown>, context: Render
         email?createElement('a',{href:`mailto:${email}`,style:{color:'inherit',textDecoration:'none',overflowWrap:'anywhere'}},email):null,
         phone?createElement('a',{href:`tel:${phone.replace(/[^+\d]/g,'')}`,style:{color:'inherit',textDecoration:'none'}},phone):null)}))
   }
+  // These demo photos can be very tall. Bound the actual image nodes, so
+  // natural aspect ratios and cached template styles cannot enlarge the fold.
+  if (family === 'ABOUT' && /(?:^|\s)(?:about-one-thumbnail|feature-left-area)(?:\s|$)/.test(classes)) {
+    const about = classes.includes('about-one-thumbnail')
+    return createElement(tree.tag, { ...tree.attrs, key, style: { ...tree.attrs.style as CSSProperties, position:'relative', width:'100%', maxWidth:about ? 420 : 520, margin:'0 auto', padding:0, animation:'none' } }, ...tree.children.map((child,index) => {
+      if (typeof child === 'object' && 'tag' in child && child.tag === 'img') {
+        const small = String(child.attrs.className || '').includes('small-img')
+        return renderTree({ ...child, attrs: { ...child.attrs, style: { ...child.attrs.style as CSSProperties, display:'block', width:small ? 96 : '100%', height:small ? 96 : about ? 'clamp(240px,25vw,320px)' : 'clamp(260px,30vw,380px)', maxHeight:small ? 96 : about ? 320 : 380, objectFit:'cover', borderRadius:12, margin:0, animation:'none' }, 'data-awb-template-bounded-image':true } }, values, context, family, `${key}-${index}`)
+      }
+      return renderTree(child,values,context,family,`${key}-${index}`)
+    }))
+  }
   if(family==='HEADER' && /(?:^|\s)call-area(?:\s|$)/.test(classes)) return null
   if (/\brts-single-wized\b/.test(classes) && /\bdownload\b/.test(classes) || /\bsingle-download-area\b/.test(classes)) {
     const files=treeNodes(tree,node=>node.tag==='a').map(node=>{
@@ -369,6 +381,7 @@ function renderTree(tree: Tree, values: Record<string, unknown>, context: Render
 const menuSchema = z.array(z.object({ label:z.string(),href:z.string(),children:z.array(z.object({label:z.string(),href:z.string()})).default([]) })).default([])
 export const importedLayoutDefinitions: ComponentDefinition[] = sections.map(section => {
   const shape: Record<string, z.ZodType> = Object.fromEntries(section.fields.map(field => [field.path.slice(1), z.string().max(field.type === 'textarea' ? 12000 : 3000).default('')]))
+  if (section.componentId === 'Tpl_finbiz_1_12') shape.contactDetails = z.record(z.string(), z.string()).optional()
   if (section.family === 'CONTACT') shape.businessContact = businessContactDetailsSchema.optional()
   if (section.componentId === 'Tpl_finbiz_1_1') shape.heroImageFit = z.enum(['cover', 'contain']).default('cover')
   shape.imageAlt = z.string().default('')
@@ -407,7 +420,7 @@ export const importedLayoutDefinitions: ComponentDefinition[] = sections.map(sec
           if (!values[name] && /book.*meeting|get.*quote|let.s talk/i.test(section.fixture[name] || '')) values[name] = 'Get in touch'
         }
       }
-      return createElement('div',{className:`wt-layout-${section.theme} ${section.bodyClass || ''}`, 'data-layout-family':section.family,'data-hero-image-fit':values.heroImageFit,style:{position:'relative',...templateColorVars(context.tokens)}},createElement('link',{rel:'stylesheet',href:`/template-library/${section.theme}/editable.css?v=20261022-compact-images-menus-7`,precedence:`layout-${section.theme}`}),renderTree(section.tree,values,{...context,templateTheme:context.templateTheme||section.theme},section.family),section.family==='HEADER'?createElement('details',{className:'wt-layout-mobile-menu'},createElement('summary',{},'Menu'),renderTree({kind:'menu'},values,context,section.family)):null)
+      return createElement('div',{className:`wt-layout-${section.theme} ${section.bodyClass || ''}`, 'data-layout-family':section.family,'data-hero-image-fit':values.heroImageFit,style:{position:'relative',...templateColorVars(context.tokens)}},createElement('link',{rel:'stylesheet',href:`/template-library/${section.theme}/editable.css?v=20261022-proportional-contact-8`,precedence:`layout-${section.theme}`}),renderTree(section.tree,values,{...context,templateTheme:context.templateTheme||section.theme},section.family),section.family==='HEADER'?createElement('details',{className:'wt-layout-mobile-menu'},createElement('summary',{},'Menu'),renderTree({kind:'menu'},values,context,section.family)):null)
     },
   }
 })

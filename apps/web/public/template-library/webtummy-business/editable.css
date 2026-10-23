@@ -39915,3 +39915,8 @@ svg:not(.wt-layout-webtummy-business) {
 .wt-layout-webtummy-business[data-hero-image-fit="contain"] .rts-banner-one .banner-one-inner{width:calc(100% - 48px);padding:40px 0 320px}
 .wt-layout-webtummy-business[data-hero-image-fit="contain"] .awb-classic-hero-portrait{top:auto;bottom:20px;right:24px;width:calc(100% - 48px);max-width:calc(100% - 48px);height:280px;max-height:280px}
 }
+
+/* Scale the biography badge with its bounded photo. */
+.wt-layout-webtummy-business .about-one-thumbnail .experience{width:260px;max-width:90%;padding:14px 18px;animation:none}
+.wt-layout-webtummy-business .about-one-thumbnail .experience .left .title{font-size:32px}
+.wt-layout-webtummy-business .about-one-thumbnail .experience .left p,.wt-layout-webtummy-business .about-one-thumbnail .experience .right p{font-size:14px;line-height:1.4}
