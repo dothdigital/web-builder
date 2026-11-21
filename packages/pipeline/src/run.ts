@@ -29,7 +29,7 @@ import {
 } from '@awb/ai'
 import {
   defaultTokens,
-  businessClassicContract,
+  templateContract,
   normalizeServiceLabels,
   emptyImagePointers,
   getComponent,
@@ -96,7 +96,7 @@ function sectionHeading(props: Record<string, unknown>): string | undefined {
   return undefined
 }
 
-function collectImageSlots(model: WebsiteModel): ImageSlotRequest[] {
+function collectImageSlots(model: WebsiteModel, templateId?: string): ImageSlotRequest[] {
   const slots: ImageSlotRequest[] = []
 
   for (const page of model.pages) {
@@ -117,8 +117,8 @@ function collectImageSlots(model: WebsiteModel): ImageSlotRequest[] {
           family: definition.family,
           subjectContext: JSON.stringify({
             section: props,
-            ...(model.globalComponents.header.componentId === 'Tpl_finbiz_1_0' ? {
-              templateImage: businessClassicContract(page.path).find(section => section.componentId === definition.componentId)?.imageSlots.find(image => image.path === pointer),
+            ...(templateId ? {
+              templateImage: templateContract(templateId, page.path).find(section => section.componentId === definition.componentId)?.imageSlots.find(image => image.path === pointer),
             } : {}),
             imageOwner: pointer.split('/').slice(1, -1).reduce<unknown>((value, key) =>
               value && typeof value === 'object' ? (value as Record<string, unknown>)[key.replace(/~1/g, '/').replace(/~0/g, '~')] : undefined, props),
@@ -473,10 +473,6 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
         const planned = saved.success ? { data: saved.data, usage: undefined } : await provider.planSite(brief, analysis, dna)
         const { data, usage } = planned
         const basePlan = structuredClone(data)
-        if (brief.templateId) {
-          // AI chooses page topics and navigation; the selected template supplies their layout.
-          data.pages = data.pages.map(page => ({ ...page, sectionPlan: templatePageComponents(brief.templateId!, page.path).map(id => ({ family: getComponent(id)!.family, intent: page.purpose })) }))
-        }
         return { output: toJson({ ...data, basePlan }), result: data, usage }
       },
     )
@@ -713,7 +709,7 @@ export async function runGeneration(request: GenerationRequest): Promise<{ corre
             if (use.pointer.endsWith('/imageUrl')) setByPointer(props, use.pointer.replace(/imageUrl$/, 'imageAlt'), '')
           }
         }
-        const slots = collectImageSlots(filled)
+        const slots = collectImageSlots(filled, getLayoutTemplate(brief.templateId)?.id)
 
         const resolve = (slot: string): Record<string, unknown> | undefined => {
           const [pageId, sectionId] = slot.split(':')

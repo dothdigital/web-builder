@@ -8000,7 +8000,6 @@
   opacity: 0;
   visibility: hidden;
   cursor: pointer;
-  cursor: url(/ auto;
 }
 .wt-layout-webtummy-insurance .off-canvas-wrap .overly.show-overly {
   visibility: visible;
@@ -9770,7 +9769,7 @@
   z-index: -1;
 }
 .wt-layout-webtummy-insurance .rs-page-banner__content ul li {
-  color: #eef5f5;
+  color: var(--awb-surface,#eef5f5);
   font-size: 16px;
   line-height: 18px;
   display: inline-block;
@@ -11272,7 +11271,7 @@
   position: absolute;
   right: 30px;
   top: 30px;
-  color: #EEF5F5;
+  color: var(--awb-surface,#EEF5F5);
   font-size: 44px;
   font-weight: 600;
   line-height: 48px;
@@ -11500,7 +11499,7 @@
 .wt-layout-webtummy-insurance .rs-service__item .rs-content .rs-icon {
   height: 60px;
   width: 60px;
-  background: #42806b;
+  background: var(--awb-primary,#42806b);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -11565,10 +11564,10 @@
   border-radius: 50%;
 }
 .wt-layout-webtummy-insurance .rs-service__slider .owl-dots .owl-dot.active {
-  border-color: #42806b;
+  border-color: var(--awb-primary,#42806b);
 }
 .wt-layout-webtummy-insurance .rs-service__slider .owl-dots .owl-dot.active::before {
-  background: #42806b;
+  background: var(--awb-primary,#42806b);
 }
 
 .wt-layout-webtummy-insurance .rs-service-2 {
@@ -12238,7 +12237,7 @@
   }
 }
 .wt-layout-webtummy-insurance .rs-service-faq .rs-faq__wrapper .accordion .accordion_tab {
-  background: #EEF5F5;
+  background: var(--awb-surface,#EEF5F5);
   padding: 21px;
 }
 @media only screen and (min-width: 992px) and (max-width: 1199px) {
@@ -12264,7 +12263,7 @@
   color: #ffffff;
 }
 .wt-layout-webtummy-insurance .rs-service-faq .rs-faq__wrapper .accordion .accordion_content {
-  background: #EEF5F5;
+  background: var(--awb-surface,#EEF5F5);
 }
 .wt-layout-webtummy-insurance .rs-service-faq__thumb {
   padding-left: 40px;
@@ -12328,7 +12327,7 @@
   }
 }
 .wt-layout-webtummy-insurance .rs-service-details__sidebar .common-box {
-  background: #EEF5F5;
+  background: var(--awb-surface,#EEF5F5);
   padding: 30px;
   border-radius: 6px;
 }
@@ -12519,7 +12518,7 @@
   margin-top: 36px;
 }
 .wt-layout-webtummy-insurance .rs-service-details__content .rs-service-contact-box {
-  background: #EEF5F5;
+  background: var(--awb-surface,#EEF5F5);
   padding: 10px 20px;
   border-radius: 6px;
   display: flex;
@@ -13000,7 +12999,7 @@
 }
 
 .wt-layout-webtummy-insurance .rs-why-choose-3 {
-  border-bottom: 1px solid #F6F5F6;
+  border-bottom: 1px solid var(--awb-surface,#F6F5F6);
   background-image: url("/template-library/webtummy-insurance/assets/images/growth-shape.png");
   background-position: right bottom;
   background-repeat: no-repeat;
@@ -13206,7 +13205,7 @@
 }
 .wt-layout-webtummy-insurance .rs-work-progress__item .rs-top-inner {
   padding: 20px 20px 10px;
-  background: #42806b;
+  background: var(--awb-primary,#42806b);
   text-align: center;
   border-radius: 10px;
   position: relative;
@@ -13220,7 +13219,7 @@
   right: 4px;
   top: 99.4%;
   height: 50px;
-  background: #42806b;
+  background: var(--awb-primary,#42806b);
   -webkit-clip-path: polygon(50% 100%, 0 0, 100% 0);
           clip-path: polygon(50% 100%, 0 0, 100% 0);
   transition: all 0.3s ease 0s;
@@ -13307,7 +13306,7 @@
   background: var(--awb-fg,#003A37);
 }
 .wt-layout-webtummy-insurance .rs-work-progress__item:hover .rs-top-inner .rs-number span {
-  background: #42806b;
+  background: var(--awb-primary,#42806b);
 }
 .wt-layout-webtummy-insurance .rs-work-progress__item.item-2 {
   padding-right: 30px;
@@ -13340,16 +13339,16 @@
   background: var(--awb-fg,#003A37);
 }
 .wt-layout-webtummy-insurance .rs-work-progress__item.item-2 .rs-top-inner .rs-number span {
-  background: #42806b;
+  background: var(--awb-primary,#42806b);
 }
 .wt-layout-webtummy-insurance .rs-work-progress__item.item-2 .rs-arrow {
   right: -115px;
 }
 .wt-layout-webtummy-insurance .rs-work-progress__item.item-2:hover .rs-top-inner {
-  background: #42806b;
+  background: var(--awb-primary,#42806b);
 }
 .wt-layout-webtummy-insurance .rs-work-progress__item.item-2:hover .rs-top-inner::before {
-  background: #42806b;
+  background: var(--awb-primary,#42806b);
 }
 .wt-layout-webtummy-insurance .rs-work-progress__item.item-2:hover .rs-top-inner .rs-number span {
   background: var(--awb-fg,#003A37);
@@ -13575,7 +13574,7 @@
   margin-top: 35px;
   font-size: 16px;
   font-family: "Epilogue", sans-serif;
-  background: #42806B;
+  background: var(--awb-primary,#42806B);
 }
 .wt-layout-webtummy-insurance .rs-faq__form .input-box button:focus {
   color: #ffffff;
@@ -13856,7 +13855,7 @@
   }
 }
 .wt-layout-webtummy-insurance .rs-faq-3 .rs-faq__wrapper .accordion .accordion_tab {
-  background: #F6F5F6;
+  background: var(--awb-surface,#F6F5F6);
   padding: 21px 20px;
   color: var(--awb-fg,#00214D);
 }
@@ -13869,7 +13868,7 @@
   color: var(--awb-primary,#E11631);
 }
 .wt-layout-webtummy-insurance .rs-faq-3 .rs-faq__wrapper .accordion .accordion_content {
-  background: #F6F5F6;
+  background: var(--awb-surface,#F6F5F6);
 }
 .wt-layout-webtummy-insurance .rs-faq-3 .rs-faq__wrapper > a {
   color: var(--awb-primary,#E11631);
@@ -13942,7 +13941,7 @@
 }
 .wt-layout-webtummy-insurance .rs-faq-page .rs-faq__wrapper .accordion .accordion_tab {
   padding: 21px 20px;
-  background: #EEF5F5;
+  background: var(--awb-surface,#EEF5F5);
   font-weight: 600;
 }
 @media only screen and (max-width: 575px) {
@@ -13959,7 +13958,7 @@
   font-weight: 400;
 }
 .wt-layout-webtummy-insurance .rs-faq-page .rs-faq__wrapper .accordion .accordion_content {
-  background: #EEF5F5;
+  background: var(--awb-surface,#EEF5F5);
 }
 @media only screen and (min-width: 768px) and (max-width: 991px) {
   .wt-layout-webtummy-insurance .rs-faq-page .rs-faq__wrapper .accordion.active {
@@ -13972,7 +13971,7 @@
   }
 }
 .wt-layout-webtummy-insurance .rs-faq-page__box {
-  background: #EEF5F5;
+  background: var(--awb-surface,#EEF5F5);
   margin-left: -25px;
   margin-right: -25px;
   display: flex;
@@ -14375,7 +14374,7 @@
 }
 .wt-layout-webtummy-insurance .rs-compare-2.rs-compare-3 .rs-compare-2__tabs .skltbs-panel-group .skltbs-panel .rs-compare-tab-form .input-box input[type=text],
 .wt-layout-webtummy-insurance .rs-compare-2.rs-compare-3 .rs-compare-2__tabs .skltbs-panel-group .skltbs-panel .rs-compare-tab-form .input-box input[type=email] {
-  background: #F6F5F6;
+  background: var(--awb-surface,#F6F5F6);
 }
 .wt-layout-webtummy-insurance .rs-compare-2.rs-compare-3 .rs-compare-2__tabs .skltbs-panel-group .skltbs-panel .rs-compare-tab-form .input-box button {
   background: var(--awb-primary,#E11631);
@@ -14384,7 +14383,7 @@
   background: var(--awb-fg,#00214D);
 }
 .wt-layout-webtummy-insurance .rs-compare-2.rs-compare-3 .rs-compare-2__tabs .skltbs-panel-group .skltbs-panel .rs-compare-tab-form .input-box .range-slider .range-slider__range {
-  background: #F6F5F6;
+  background: var(--awb-surface,#F6F5F6);
 }
 .wt-layout-webtummy-insurance .rs-compare-2.rs-compare-3 .rs-compare-2__tabs .skltbs-panel-group .skltbs-panel .rs-compare-tab-form .input-box .range-slider .range-slider__range::-webkit-slider-thumb {
   background: var(--awb-primary,#E11631);
@@ -14456,10 +14455,10 @@
 }
 .wt-layout-webtummy-insurance .rs-compare-2.rs-compare-tab-style .rs-compare-2__tabs .skltbs-panel-group .skltbs-panel .rs-compare-tab-form .input-box input[type=text],
 .wt-layout-webtummy-insurance .rs-compare-2.rs-compare-tab-style .rs-compare-2__tabs .skltbs-panel-group .skltbs-panel .rs-compare-tab-form .input-box input[type=email] {
-  background: #F6F5F6;
+  background: var(--awb-surface,#F6F5F6);
 }
 .wt-layout-webtummy-insurance .rs-compare-2.rs-compare-tab-style .rs-compare-2__tabs .skltbs-panel-group .skltbs-panel .rs-compare-tab-form .input-box .range-slider .range-slider__range {
-  background: #F6F5F6;
+  background: var(--awb-surface,#F6F5F6);
 }
 .wt-layout-webtummy-insurance .rs-compare-2.rs-compare-tab-style .rs-compare-2__tabs .skltbs-panel-group .skltbs-panel .rs-compare-tab-form .title {
   color: var(--awb-fg,#003A37);
@@ -15753,10 +15752,10 @@
 }
 
 .wt-layout-webtummy-insurance .rs-blog-3 {
-  background: #F6F5F6;
+  background: var(--awb-surface,#F6F5F6);
 }
 .wt-layout-webtummy-insurance .rs-blog-3 .rs-team-3__btn .title {
-  color: #F6F5F6;
+  color: var(--awb-surface,#F6F5F6);
 }
 .wt-layout-webtummy-insurance .rs-blog-3 .rs-blog__single .rs-content {
   padding: 20px 0 0;
@@ -17465,13 +17464,13 @@
   }
 }
 .wt-layout-webtummy-insurance .rs-team-3__item .rs-thumb {
-  background-color: #f6f5f6;
+  background-color: var(--awb-surface,#f6f5f6);
   padding-top: 30px;
   border-radius: 6px;
   overflow: hidden;
 }
 .wt-layout-webtummy-insurance .rs-team-3__item .rs-thumb:hover {
-  background-color: #F6F5F6;
+  background-color: var(--awb-surface,#F6F5F6);
   background-image: url("/template-library/webtummy-insurance/assets/images/team-image-shape.png");
   background-position: top center;
   background-repeat: no-repeat;
@@ -17712,7 +17711,7 @@
   }
 }
 .wt-layout-webtummy-insurance .rs-team-details__education {
-  background: #EEF5F5;
+  background: var(--awb-surface,#EEF5F5);
   padding: 35px 40px 40px 40px;
   margin-top: 75px;
   margin-right: 70px;
@@ -17748,7 +17747,7 @@
   margin-bottom: 15px;
 }
 .wt-layout-webtummy-insurance .rs-team-details__skill {
-  background: #EEF5F5;
+  background: var(--awb-surface,#EEF5F5);
   padding: 35px 40px 40px 40px;
   margin-top: 45px;
   margin-right: 70px;
@@ -18250,7 +18249,7 @@
   color: #ffffff;
 }
 .wt-layout-webtummy-insurance .rs-project-grid__box span:hover {
-  background: #42806b;
+  background: var(--awb-primary,#42806b);
   opacity: 0.9;
 }
 .wt-layout-webtummy-insurance .rs-project-grid__box .title {
@@ -18317,7 +18316,7 @@
   width: 100%;
 }
 .wt-layout-webtummy-insurance .rs-project-details__info {
-  background: #EEF5F5;
+  background: var(--awb-surface,#EEF5F5);
   margin-top: -75px;
 }
 @media only screen and (min-width: 768px) and (max-width: 991px) {
@@ -18430,7 +18429,7 @@
   margin-right: 6px;
 }
 .wt-layout-webtummy-insurance .rs-project-details__content {
-  border-bottom: 1px solid #eef5f5;
+  border-bottom: 1px solid var(--awb-surface,#eef5f5);
   padding-bottom: 40px;
 }
 .wt-layout-webtummy-insurance .rs-project-details__content .title {
@@ -18999,7 +18998,7 @@
   border-radius: 6px;
   overflow: hidden;
   padding: 40px 40px 30px 40px;
-  background: #EEF5F5;
+  background: var(--awb-surface,#EEF5F5);
   text-align: left;
   margin-top: 30px;
 }
@@ -19129,7 +19128,7 @@
 }
 .wt-layout-webtummy-insurance .rs-contact-page__info {
   padding: 30px 80px 50px 30px;
-  background: #eef5f5;
+  background: var(--awb-surface,#eef5f5);
 }
 @media only screen and (min-width: 992px) and (max-width: 1199px) {
   .wt-layout-webtummy-insurance .rs-contact-page__info {

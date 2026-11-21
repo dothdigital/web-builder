@@ -1,3 +1,4 @@
+import { isContactPath } from '@awb/shared/layout-catalogue'
 import { BusinessContactDetails, businessContactDetailsSchema } from './components/business-contact-details'
 import { Container, Section } from './primitives'
 import { createElement, type CSSProperties, type ReactNode } from 'react'
@@ -38,7 +39,7 @@ export function importedBackgroundImagePaths(id: string): string[] {
 export function templatePageComponents(id: string, pagePath: string): string[] {
   const template = getLayoutTemplate(id)
   if (!template) return []
-  const candidates = pagePath === '/' ? template.home : pagePath === '/contact' || /quote|contact/.test(pagePath) ? template.secondary.contact : pagePath === '/services' ? template.secondary.services : pagePath.startsWith('/services/') ? template.secondary.service : template.secondary.about
+  const candidates = pagePath === '/' ? template.home : pagePath === '/contact' || /quote|contact/.test(pagePath) || isContactPath(pagePath) ? template.secondary.contact : pagePath === '/services' ? template.secondary.services : pagePath.startsWith('/services/') ? template.secondary.service : template.secondary.about
   return candidates.filter(componentId => !['HEADER', 'FOOTER'].includes(importedSection(componentId)?.family || ''))
 }
 export function templateGenerationComponents(id: string, pagePath: string, reviews = false): string[] {
@@ -213,7 +214,8 @@ function renderServiceGrid(section:ImportedSection,values:Record<string,unknown>
     createElement(SiteContentContainer,{theme:context.templateTheme||section.theme,children:createElement('div',{},
       createElement('header',{style:{marginBottom:32,maxWidth:780}},clean(eyebrow,'p','services-eyebrow',{margin:'0 0 10px',fontSize:12,fontWeight:600,letterSpacing:'.1em',textTransform:'uppercase',color:'var(--awb-primary)'}),clean(title,'h2','services-title',{margin:0,fontSize:'clamp(26px,3vw,38px)',lineHeight:1.2,fontWeight:700})),
       createElement('div',{className:'awb-template-services-grid'},...cards.map((card,index)=>{
-        const service=serviceCardLink(card,values)!
+        const service=serviceCardLink(card,values)
+        if(!service)return null
         const match=context.serviceLinks?.find(link=>link.label.toLowerCase()===service.label.toLowerCase()) ?? context.serviceLinks?.find(link=>service.label.toLowerCase().includes(link.label.toLowerCase()))
         const href=match?.href||'/services'
         const linkNode=treeNodes(card,node=>node.tag==='a' && /read|more|learn|detail/i.test(anchorText(node,values)))[0]
@@ -420,7 +422,7 @@ export const importedLayoutDefinitions: ComponentDefinition[] = sections.map(sec
           if (!values[name] && /book.*meeting|get.*quote|let.s talk/i.test(section.fixture[name] || '')) values[name] = 'Get in touch'
         }
       }
-      return createElement('div',{className:`wt-layout-${section.theme} ${section.bodyClass || ''}`, 'data-layout-family':section.family,'data-hero-image-fit':values.heroImageFit,style:{position:'relative',...templateColorVars(context.tokens)}},createElement('link',{rel:'stylesheet',href:`/template-library/${section.theme}/editable.css?v=20261022-proportional-contact-8`,precedence:`layout-${section.theme}`}),renderTree(section.tree,values,{...context,templateTheme:context.templateTheme||section.theme},section.family),section.family==='HEADER'?createElement('details',{className:'wt-layout-mobile-menu'},createElement('summary',{},'Menu'),renderTree({kind:'menu'},values,context,section.family)):null)
+      return createElement('div',{className:`wt-layout-${section.theme} ${section.bodyClass || ''}`, 'data-layout-family':section.family,'data-hero-image-fit':values.heroImageFit,style:{position:'relative',...templateColorVars(context.tokens)}},createElement('link',{rel:'stylesheet',href:`/template-library/${section.theme}/editable.css?v=20261121-central-palette-3`,precedence:`layout-${section.theme}`}),renderTree(section.tree,values,{...context,templateTheme:context.templateTheme||section.theme},section.family),section.family==='HEADER'?createElement('details',{className:'wt-layout-mobile-menu'},createElement('summary',{},'Menu'),renderTree({kind:'menu'},values,context,section.family)):null)
     },
   }
 })

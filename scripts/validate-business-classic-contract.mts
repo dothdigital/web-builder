@@ -6,9 +6,13 @@ const contract = businessClassicContract(path)
 const content = {
   path, h1: 'Insurance and investment guidance',
   seo: { title: 'Insurance guidance | Example', description: 'Learn about the insurance and investment services supplied by Example. Get in touch to discuss the available options for your needs.', index: true },
-  sections: [...contract.map((section, index) => ({ id: `section-${index}`, componentId: section.componentId, componentVersion: '1.0.0', hidden: false, props: Object.fromEntries(section.fields.map(field => [field.key, field.required ? 'Insurance guidance for your needs' : ''])) })), { id: 'faq', componentId: 'FaqAccordion', componentVersion: '1.0.0', hidden: false, props: { heading: 'Questions', items: [{ question: 'How do I enquire?', answer: 'Use the contact form.' }, { question: 'Where are you based?', answer: 'Toronto.' }] } }],
+  sections: [...contract.map((section, index) => ({ id: `section-${index}`, componentId: section.componentId, componentVersion: '1.0.0', hidden: false, props: Object.fromEntries(section.fields.map(field => [field.key, field.required ? 'Insurance guidance for your needs' : 'Insurance guidance'])) })), { id: 'faq', componentId: 'FaqAccordion', componentVersion: '1.0.0', hidden: false, props: { heading: 'Questions', items: [{ question: 'How do I enquire?', answer: 'Use the contact form.' }, { question: 'Where are you based?', answer: 'Toronto.' }] } }],
 }
 assert.deepEqual(validateBusinessClassicCopy(content, path), [])
+const sparse = structuredClone(content)
+const about = sparse.sections.find(section => section.componentId === 'Tpl_finbiz_1_2')!
+for (const field of contract.find(section => section.componentId === 'Tpl_finbiz_1_2')!.fields) if (!field.required) about.props[field.key] = ''
+assert.ok(validateBusinessClassicCopy(sparse, path).some(error => error.includes('Tpl_finbiz_1_2: section is mostly empty')))
 const invalid = structuredClone(content)
 invalid.sections[0]!.props = { ...invalid.sections[0]!.props, className: 'new-layout', imageUrl: 'invented.png' }
 const required = contract[1]!.fields.find(field => field.required)!
@@ -20,7 +24,7 @@ oversized.h1 = 'x'.repeat(100)
 assert.ok(validateBusinessClassicCopy(oversized, path).some(error => error.includes('84')))
 const reordered = structuredClone(content)
 reordered.sections.reverse()
-assert.ok(validateBusinessClassicCopy(reordered, path).some(error => error.includes('exact Business Classic section order')))
+assert.ok(validateBusinessClassicCopy(reordered, path).some(error => error.includes('template section order')))
 for (const pagePath of ['/about', '/services', '/services/life-insurance', '/contact']) assert.ok(businessClassicContract(pagePath).length)
 const brief: GenerationBrief = { templateId: BUSINESS_CLASSIC_ID, businessName: 'Example', description: 'Insurance guidance for customers in Toronto.', services: ['Life insurance'], goals: ['FORM'], tonePreferences: [], answers: {}, hasLogo: true, logoColors: [], uploadedImageUrls: [], testimonials: [] }
 const stub = new StubAiProvider({ seed: 'classic-contract' })
@@ -37,7 +41,7 @@ globalThis.fetch = async (_url, options) => {
 try {
   const result = await new OpenAiProvider({ apiKey: 'mock-only' }).writePage(brief, analysis, directions.options[0]!.dna, defaultTokens, { path, title: 'Home', purpose: brief.description, inMainNav: true, sectionPlan: [] })
   assert.equal(calls, 2, 'Invalid layout edits must trigger correction before acceptance')
-  assert.ok(lastMessages[0]!.content.includes('Business Classic slot contract'))
+  assert.ok(lastMessages[0]!.content.includes('Template slot contract'))
   assert.ok(lastMessages.some(message => message.content.includes('application-owned')))
   assert.equal(result.data.sections[0]!.componentId, contract[0]!.componentId)
   assert.equal(result.data.sections[0]!.props.className, undefined)

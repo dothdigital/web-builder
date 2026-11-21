@@ -20227,7 +20227,7 @@ svg:not(.wt-layout-webtummy-business) {
   margin-left: 30px;
 }
 .wt-layout-webtummy-business .header--sticky.header-one.six .header-top .right a {
-  color: #181A1C;
+  color: var(--awb-fg,#181A1C);
   font-weight: 500;
 }
 .wt-layout-webtummy-business .header--sticky.header-one.six .header-main-one #menu-btn {
@@ -20243,11 +20243,11 @@ svg:not(.wt-layout-webtummy-business) {
   background: var(--color-primary-5) !important;
 }
 .wt-layout-webtummy-business .header--sticky.header-one.six .header-main-one .rts-btn.quote-btn {
-  background: #181A1C;
+  background: var(--awb-fg,#181A1C);
   border-radius: 100px;
 }
 .wt-layout-webtummy-business .header--sticky.header-one.six .header-main-one .rts-btn.quote-btn:hover {
-  color: #181A1C;
+  color: var(--awb-fg,#181A1C);
   background: var(--awb-surface,#f6f6f6) !important;
 }
 
@@ -22221,7 +22221,7 @@ svg:not(.wt-layout-webtummy-business) {
 }
 
 .wt-layout-webtummy-business .sign-up-u-btn {
-  color: #111013;
+  color: var(--awb-fg,#111013);
   font-size: 16px;
   font-style: normal;
   font-weight: 600;
@@ -22244,7 +22244,7 @@ svg:not(.wt-layout-webtummy-business) {
 }
 .wt-layout-webtummy-business .rts-btn.btn-primary-11:hover {
   background: #e9e2ff;
-  color: #111013;
+  color: var(--awb-fg,#111013);
 }
 
 .wt-layout-webtummy-business .bg_case-11 {
@@ -23438,7 +23438,7 @@ svg:not(.wt-layout-webtummy-business) {
   font-weight: 700;
   font-size: 110px;
   line-height: 90px;
-  color: #181A1C;
+  color: var(--awb-fg,#181A1C);
 }
 @media only screen and (min-width: 768px) and (max-width: 991px) {
   .wt-layout-webtummy-business .banner-inner-six .title {
@@ -23548,7 +23548,7 @@ svg:not(.wt-layout-webtummy-business) {
   font-weight: 700;
   font-size: 48px;
   line-height: 58px;
-  color: #181A1C;
+  color: var(--awb-fg,#181A1C);
 }
 @media only screen and (max-width: 1199px) {
   .wt-layout-webtummy-business .title-area-style-six .title {
@@ -24128,7 +24128,7 @@ svg:not(.wt-layout-webtummy-business) {
   }
 }
 .wt-layout-webtummy-business .banner-eleven-left-content .title {
-  color: #111013;
+  color: var(--awb-fg,#111013);
   font-family: Red Hat Display;
   font-size: 75px;
   font-style: normal;
@@ -24137,7 +24137,7 @@ svg:not(.wt-layout-webtummy-business) {
 }
 @media only screen and (min-width: 1200px) and (max-width: 1599px) {
   .wt-layout-webtummy-business .banner-eleven-left-content .title {
-    color: #111013;
+    color: var(--awb-fg,#111013);
     font-size: 55px;
     font-style: normal;
     font-weight: 700;
@@ -24246,19 +24246,19 @@ svg:not(.wt-layout-webtummy-business) {
   left: 60px;
   width: 1px;
   bottom: -16px;
-  background: #111013;
+  background: var(--awb-fg,#111013);
   height: 60px;
   transform: rotate(-90deg);
 }
 .wt-layout-webtummy-business .rts-banner-area-eleven .rts-mail-information a {
-  color: #111013;
+  color: var(--awb-fg,#111013);
   font-size: 16px;
   font-style: normal;
   font-weight: 600;
   line-height: normal;
 }
 .wt-layout-webtummy-business .rts-banner-area-eleven .rts-mail-information i {
-  color: #111013;
+  color: var(--awb-fg,#111013);
   font-size: 16px;
   font-style: normal;
   font-weight: 400;
@@ -24282,7 +24282,7 @@ svg:not(.wt-layout-webtummy-business) {
   }
 }
 .wt-layout-webtummy-business .rts-banner-area-eleven .scroll-down span {
-  color: #111013;
+  color: var(--awb-fg,#111013);
   font-size: 16px;
   font-style: normal;
   font-weight: 600;
@@ -24290,7 +24290,7 @@ svg:not(.wt-layout-webtummy-business) {
 }
 .wt-layout-webtummy-business .rts-banner-area-eleven .scroll-down i {
   margin-left: 8px;
-  color: #111013;
+  color: var(--awb-fg,#111013);
   font-size: 16px;
   font-style: normal;
   font-weight: 400;
@@ -24682,7 +24682,7 @@ svg:not(.wt-layout-webtummy-business) {
   color: var(--color-primary-8) !important;
 }
 .wt-layout-webtummy-business .testimonial-h2.black-title.title-area.left-right .title-left .title {
-  color: #181A1C !important;
+  color: var(--awb-fg,#181A1C) !important;
 }
 
 .wt-layout-webtummy-business.thirteen-body .title-area span {
@@ -25648,7 +25648,7 @@ svg:not(.wt-layout-webtummy-business) {
   font-weight: 400;
   font-size: 16px;
   line-height: 32px;
-  color: #181A1C;
+  color: var(--awb-fg,#181A1C);
 }
 .wt-layout-webtummy-business .about-content-inner-style-six .item-check-inner .single-col .single-check i {
   font-weight: 900;
@@ -25723,7 +25723,7 @@ svg:not(.wt-layout-webtummy-business) {
   font-weight: 700;
   font-size: 20px;
   line-height: 26px;
-  color: #181A1C;
+  color: var(--awb-fg,#181A1C);
   transition: 0.3s;
 }
 .wt-layout-webtummy-business .about-content-inner-style-six .contact-inner-about .single-right a.number:hover {
@@ -29254,7 +29254,7 @@ svg:not(.wt-layout-webtummy-business) {
   color: var(--color-primary-4);
 }
 .wt-layout-webtummy-business .rts-business-goal2 .container .business-goal-right .single-goal .goal-wrapper .title {
-  color: #0B101C;
+  color: var(--awb-fg,#0B101C);
   font-family: "Red Hat Display", sans-serif;
   font-weight: 700;
   font-size: 20px;
@@ -29660,14 +29660,14 @@ svg:not(.wt-layout-webtummy-business) {
   font-weight: 700;
   font-size: 36px;
   line-height: 48px;
-  color: #181A1C;
+  color: var(--awb-fg,#181A1C);
 }
 .wt-layout-webtummy-business .inner-goal-progress-7 .left-business-goal .left p {
   font-weight: 600;
   font-size: 16px;
   line-height: 21px;
   letter-spacing: -0.02em;
-  color: #181A1C;
+  color: var(--awb-fg,#181A1C);
 }
 
 .wt-layout-webtummy-business .mt-decress {
@@ -29839,7 +29839,7 @@ svg:not(.wt-layout-webtummy-business) {
   font-weight: 700;
   font-size: 16px;
   line-height: 21px;
-  color: #181A1C;
+  color: var(--awb-fg,#181A1C);
 }
 .wt-layout-webtummy-business .tab-buttons-portfolio ul li button:hover {
   border: none;
@@ -31994,7 +31994,7 @@ svg:not(.wt-layout-webtummy-business) {
   color: var(--color-primary-4);
 }
 .wt-layout-webtummy-business .rts-team-area4 .container .rts-title-area .title {
-  color: #0B101C;
+  color: var(--awb-fg,#0B101C);
   margin-bottom: 0;
 }
 .wt-layout-webtummy-business .rts-team-area4 .container .rts-title-area::after {
@@ -32063,7 +32063,7 @@ svg:not(.wt-layout-webtummy-business) {
   transition: all 0.4s;
 }
 .wt-layout-webtummy-business .rts-team-area.style-3 .team-inner-two .thumbnail .social a:hover {
-  color: #0B101C;
+  color: var(--awb-fg,#0B101C);
 }
 .wt-layout-webtummy-business .rts-team-area.style-3 .team-inner-two .inner-content {
   padding: 30px;
@@ -32357,7 +32357,7 @@ svg:not(.wt-layout-webtummy-business) {
 .wt-layout-webtummy-business .single-team-style-six .inner .thumbnail .social-team ul li a i {
   width: 40px;
   height: 40px;
-  color: #181A1C;
+  color: var(--awb-fg,#181A1C);
   background: #fff;
   display: flex;
   align-items: center;
@@ -33583,7 +33583,7 @@ svg:not(.wt-layout-webtummy-business) {
   font-weight: 700;
   font-size: 24px;
   line-height: 32px;
-  color: #181A1C;
+  color: var(--awb-fg,#181A1C);
   margin-bottom: 5px;
 }
 .wt-layout-webtummy-business .testimonials-7-style .body p.disc {
@@ -33649,7 +33649,7 @@ svg:not(.wt-layout-webtummy-business) {
   content: "\f061";
   font-family: "Font Awesome 5 Pro" !important;
   font-weight: 200;
-  color: #181A1C;
+  color: var(--awb-fg,#181A1C);
   font-size: 18px;
 }
 .wt-layout-webtummy-business .rts-client-rating .swiper-button-next:hover {
@@ -33672,7 +33672,7 @@ svg:not(.wt-layout-webtummy-business) {
   content: "\f060";
   font-family: "Font Awesome 5 Pro" !important;
   font-weight: 200;
-  color: #181A1C;
+  color: var(--awb-fg,#181A1C);
   font-size: 18px;
 }
 .wt-layout-webtummy-business .rts-client-rating .swiper-button-prev:hover {
@@ -33776,7 +33776,7 @@ svg:not(.wt-layout-webtummy-business) {
 }
 .wt-layout-webtummy-business .feedback-11-content .title-left-area-11 .author-area .name {
   margin-bottom: 5px;
-  color: #111013;
+  color: var(--awb-fg,#111013);
   font-size: 24px;
   font-style: normal;
   font-weight: 700;
@@ -33791,7 +33791,7 @@ svg:not(.wt-layout-webtummy-business) {
 }
 
 .wt-layout-webtummy-business .branding-agency-area .experience-ten-area-left .title-area-left-ten .title-left-area-11 .title {
-  color: #111013;
+  color: var(--awb-fg,#111013);
   font-size: 39px;
   font-style: normal;
   font-weight: 700;
@@ -34163,7 +34163,7 @@ svg:not(.wt-layout-webtummy-business) {
   border: 1px solid #E9ECF1;
   background: #FFF;
   box-shadow: 0px 9px 18px 0px rgba(24, 16, 16, 0.05);
-  color: #111013;
+  color: var(--awb-fg,#111013);
   font-size: 16px;
   font-style: normal;
   font-weight: 700;
@@ -35447,10 +35447,10 @@ svg:not(.wt-layout-webtummy-business) {
 }
 
 .wt-layout-webtummy-business .rts-blog-area.style-seven .title-area .title {
-  color: #0B101C;
+  color: var(--awb-fg,#0B101C);
 }
 .wt-layout-webtummy-business .rts-blog-area.style-seven .single-blog-one-wrapper .blog-content p {
-  color: #0B101C;
+  color: var(--awb-fg,#0B101C);
   font-weight: 500;
   font-size: 14px;
   line-height: 18px;
@@ -35462,13 +35462,13 @@ svg:not(.wt-layout-webtummy-business) {
   font-weight: 700;
   font-size: 24px;
   line-height: 32px;
-  color: #0B101C;
+  color: var(--awb-fg,#0B101C);
 }
 .wt-layout-webtummy-business .rts-blog-area.style-seven .single-blog-one-wrapper .blog-content a.rts-read-more {
   font-weight: 500;
   font-size: 16px;
   line-height: 21px;
-  color: #0B101C;
+  color: var(--awb-fg,#0B101C);
 }
 .wt-layout-webtummy-business .rts-blog-area.style-seven .single-blog-one-wrapper .blog-content a.rts-read-more i {
   background: #ECECEC;
@@ -35548,7 +35548,7 @@ svg:not(.wt-layout-webtummy-business) {
   font-weight: 700;
   font-size: 24px;
   line-height: 34px;
-  color: #181A1C;
+  color: var(--awb-fg,#181A1C);
   transition: 0.3s;
   margin-bottom: 10px;
 }
@@ -35746,7 +35746,7 @@ svg:not(.wt-layout-webtummy-business) {
   margin-bottom: 30px;
 }
 .wt-layout-webtummy-business .pricing-single-11 .head .title {
-  color: #111013;
+  color: var(--awb-fg,#111013);
   font-size: 24px;
   font-style: normal;
   font-weight: 700;
@@ -35762,7 +35762,7 @@ svg:not(.wt-layout-webtummy-business) {
   margin-bottom: 20px;
 }
 .wt-layout-webtummy-business .pricing-single-11 .head .pric-area .title-price span {
-  color: #111013;
+  color: var(--awb-fg,#111013);
   font-size: 16px;
   font-style: normal;
   font-weight: 400;
@@ -39920,3 +39920,4 @@ svg:not(.wt-layout-webtummy-business) {
 .wt-layout-webtummy-business .about-one-thumbnail .experience{width:260px;max-width:90%;padding:14px 18px;animation:none}
 .wt-layout-webtummy-business .about-one-thumbnail .experience .left .title{font-size:32px}
 .wt-layout-webtummy-business .about-one-thumbnail .experience .left p,.wt-layout-webtummy-business .about-one-thumbnail .experience .right p{font-size:14px;line-height:1.4}
+.wt-layout-webtummy-business.home-blue.medium-blue[data-layout-family="HEADER"] .main-header nav a:not(.wt-layout-submenu a){color:#fff!important}
