@@ -11,7 +11,7 @@ import type { InlineLink, FlowSlot } from '@awb/component-registry'
 import { renderedElement } from '@/lib/rendered-element'
 import { imageResizeTarget } from '@/lib/image-resize-target'
 import { imagePlacementAction } from '@/lib/image-placement'
-import { objectScope, objectTextPointer, type LayerDirection, type ObjectAction, type Placement } from '@/lib/object-editing'
+import { cardLinkContent, objectScope, objectTextPointer, type LayerDirection, type ObjectAction, type Placement } from '@/lib/object-editing'
 import { getAtPointer } from '@/lib/json-pointer'
 import { renderedBackgroundColor } from '@/lib/rendered-background'
 import { SelectedObjectInteraction, type MovePointer } from './selected-object-interaction'
@@ -143,8 +143,9 @@ export function ObjectToolbar({ node, path, props, projectId, imageUrls, section
   const imageSizes = (imageScope.props.imageSizes ?? {}) as Record<string, Record<string, unknown>>
   const textColor = String(style.color ?? target.color)
   const backgroundColor = String(scope.path === '/layout/0' ? renderedBackgroundColor(target.element) : style.backgroundColor ?? target.background)
-  const textPointer = objectTextPointer(props, path)
-  const textValue = textPointer ? getAtPointer(props, textPointer) : undefined
+  const textPointer = target.kind === 'image' && imageTarget?.dataset.awbElement ? imageTarget.dataset.awbElement : objectTextPointer(props, path)
+  const cardLink = target.kind === 'button' ? cardLinkContent(props, path) : undefined
+  const textValue = textPointer ? getAtPointer(props, textPointer) ?? cardLink?.label : undefined
   const changeStyle = (value: Record<string, unknown>) => onAction({ type: 'style', value })
   const movementElement = target.element.parentElement?.hasAttribute('data-awb-image-container') ? target.element.parentElement : target.element
   const sourcePath = movementElement.dataset.awbElement ?? path
@@ -207,7 +208,7 @@ export function ObjectToolbar({ node, path, props, projectId, imageUrls, section
   return createPortal(<div ref={toolbarRef} data-awb-object-toolbar="true" role="toolbar" aria-label={`${target.kind} controls`} className={`${toolbarStyles.toolbar} ${dockHost ? toolbarStyles.docked : 'fixed z-[1000] w-max max-w-[calc(100vw-16px)] max-h-[calc(100vh-16px)] overflow-y-auto'}`} style={dockHost ? { opacity: dragging ? .6 : 1 } : { minWidth: panel === 'size' || panel === 'border' ? 'min(760px, calc(100vw - 16px))' : undefined, top: target.top, left: target.left, opacity: dragging ? .6 : 1 }} onClick={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
     {sectionId && <SelectedObjectInteraction element={target.element} onStart={startDrag} onMove={(x, y) => { if (drag.current) { drag.current.latestX = x; drag.current.latestY = y } }} onFinish={finishDrag} onCancel={() => { cleanup(); setDragging(false) }} onNudge={nudge} />}
     {target.kind === 'image' && textPointer && <div role="region" aria-label="Toolbar image controls" className="mb-2 border-b border-neutral-200 pb-2">
-      <ImageField canvas toolbar cropElement={imageTarget ?? target.element} imagePointer={textPointer} key={`${sectionId}:${textPointer}`} aiContext={JSON.stringify({ section: props.heading, body: props.body, selectedImage: textPointer }).slice(0, 8000)} onGenerated={(url, alt) => { const parentPath = textPointer.split('/').slice(0, -1).join('/'); const parent = parentPath ? getAtPointer(props, parentPath) : props; const key = textPointer.split('/').pop()!; onAction({ type: 'content', pointer: parentPath, value: { ...(parent as Record<string, unknown>), [key]: url, ...(key === 'imageUrl' ? { imageAlt: alt } : key === 'url' ? { alt } : {}) } }) }} projectId={projectId} imageUrls={imageUrls} value={String(textValue ?? '')} onChange={(value) => onAction({ type: 'content', pointer: textPointer, value })} />
+      <ImageField canvas toolbar fit={imageSizes[imageScope.path]?.fit === 'contain' ? 'contain' : imageSizes[imageScope.path]?.fit === 'cover' ? 'cover' : imageTarget && getComputedStyle(imageTarget).objectFit === 'contain' ? 'contain' : 'cover'} onFitChange={fit => onAction({ type: 'content', pointer: `${imageScope.prefix}/imageSizes`, value: { ...imageSizes, [imageScope.path]: { ...imageSizes[imageScope.path], fit } } })} cropElement={imageTarget ?? target.element} imagePointer={textPointer} key={`${sectionId}:${textPointer}`} aiContext={JSON.stringify({ section: props.heading, body: props.body, selectedImage: textPointer }).slice(0, 8000)} onGenerated={(url, alt) => { const parentPath = textPointer.split('/').slice(0, -1).join('/'); const parent = parentPath ? getAtPointer(props, parentPath) : props; const key = textPointer.split('/').pop()!; onAction({ type: 'content', pointer: parentPath, value: { ...(parent as Record<string, unknown>), [key]: url, ...(key === 'imageUrl' ? { imageAlt: alt } : key === 'url' ? { alt } : {}) } }) }} projectId={projectId} imageUrls={imageUrls} value={String(textValue ?? '')} onChange={(value) => onAction({ type: 'content', pointer: textPointer, value })} />
     </div>}
     <div className={toolbarStyles.controls}>
       {htmlTarget && <HtmlCodeEditor value={htmlTarget.value} onApply={value=>onAction({type:'content',pointer:htmlTarget.pointer,value})} />}
@@ -239,6 +240,7 @@ export function ObjectToolbar({ node, path, props, projectId, imageUrls, section
         <input type="color" aria-label={`Background fill: ${backgroundColor}`} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" value={backgroundColor === 'transparent' ? '#ffffff' : backgroundColor} onClick={() => setPanel('background')} onChange={(event) => changeStyle({ backgroundColor: event.target.value })} />
       </label>}
       {target.kind === 'button' && textPointer && <button type="button" className={buttonClass} onClick={() => setPanel(panel === 'content' ? undefined : 'content')}>Edit text{target.kind === 'button' ? ' / link' : ''}</button>}
+      {cardLink && <label>Button style<select aria-label="Button style" className={buttonClass} value={cardLink.variant} onChange={event => onAction({ type: 'content', pointer: `${scope.prefix}${scope.path}`, value: { ...cardLink, variant: event.target.value } })}><option value="text-link">Text link</option><option value="solid">Solid button</option><option value="outline">Outline button</option></select></label>}
       {sectionId && <>
         {scope.root && scope.entry?.source === '/layout/0' && <button type="button" className={buttonClass} title="Restore this moved layout as its own section, including its content and appearance" onClick={() => onAction({ type: 'restoreSection' })}>Restore as section</button>}
         <button type="button" className={buttonClass} aria-label="Duplicate object" title="Duplicate object with its contents; copied button links are cleared" onClick={() => onAction({ type: 'duplicate', placement: placement(target.element, node, 20, 20) })}><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3" /></svg></button>
@@ -254,7 +256,7 @@ export function ObjectToolbar({ node, path, props, projectId, imageUrls, section
       {panel === 'border' && <AppearanceControls compact={!!dockHost} value={appearance} element={imageTarget ?? target.element} onChange={patch => changeAppearance({ ...patch, shadowTarget: target.kind === 'text' ? 'text' : 'box' })} />}
       {(panel === 'color' || panel === 'background') && <ColorInput label={panel === 'color' ? 'Text colour' : 'Background colour'} value={panel === 'color' ? textColor : backgroundColor} onChange={(value) => changeStyle({ [panel === 'color' ? 'color' : 'backgroundColor']: value })} />}
 
-      {panel === 'content' && textPointer && <div className="grid gap-2"><label>Text<textarea className="mt-1 w-full rounded border p-2" value={String(textValue ?? '')} onChange={(event) => onAction({ type: 'content', pointer: textPointer, value: event.target.value })} /></label>{target.kind === 'button' && <label>Link<input className="mt-1 w-full rounded border p-2" value={String(getAtPointer(props, `${scope.prefix}${scope.path}/href`) ?? '')} onChange={(event) => onAction({ type: 'content', pointer: `${scope.prefix}${scope.path}/href`, value: event.target.value })} /></label>}</div>}
+      {panel === 'content' && textPointer && <div className="grid gap-2"><label>Text<textarea className="mt-1 w-full rounded border p-2" value={String(textValue ?? '')} onChange={(event) => onAction({ type: 'content', pointer: textPointer, value: event.target.value })} /></label>{target.kind === 'button' && <label>Link<input className="mt-1 w-full rounded border p-2" value={String(getAtPointer(props, `${scope.prefix}${scope.path}/href`) ?? cardLink?.href ?? '')} onChange={(event) => onAction({ type: 'content', pointer: `${scope.prefix}${scope.path}/href`, value: event.target.value })} /></label>}</div>}
       {panel === 'size' && <div className="grid gap-4 sm:grid-cols-[160px_minmax(0,1fr)]">
         <PanelOptions className={settingsHost ? "sticky top-16 self-start" : undefined} label="Adjust size" options={[{ value: 'width', label: 'Width' }, { value: 'height', label: 'Height' }, ...(target.kind === 'image' ? [{ value: 'fit', label: 'Image fit' }] : [{ value: 'opacity', label: 'Opacity' }])]} value={sizeMode} onChange={setSizeMode} />
         <div className="grid min-w-0 content-start gap-3 rounded-xl border border-neutral-200 bg-neutral-50/50 p-4">
@@ -282,7 +284,7 @@ export function ObjectToolbar({ node, path, props, projectId, imageUrls, section
           <option value={0}>Original layout</option><option value={1}>Stack — full-width rows</option><option value={2}>2 responsive columns</option><option value={3}>3 responsive columns</option><option value={4}>4 responsive columns</option>
         </select></label>
         <label>Space between items (px)<NumberControl label="Layout spacing" min={0} max={160} value={Number(layoutStyle.layoutGap ?? 24)} onChange={(layoutGap) => changeLayout({ layoutColumns: Number(layoutStyle.layoutColumns ?? 1), layoutGap })} /></label>
-        <p className="text-neutral-500">Select a cards container to arrange its cards. Use Parent to select the surrounding layout.</p>
+        <p className="text-neutral-500">For a section with one card collection, this arranges the cards and keeps its heading above them. Use Parent to select the surrounding layout.</p>
         {target.kind === 'image' && <button type="button" className={`${buttonClass} text-red-700`} onClick={() => onAction({ type: 'delete' })}>Remove image and its empty frame</button>}
         </>}
       </div>}

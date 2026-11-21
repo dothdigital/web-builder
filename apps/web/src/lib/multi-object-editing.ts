@@ -2,6 +2,29 @@ import type { WebsiteSection } from '@awb/website-model'
 import { editObjectProps, moveObject, objectScope, type Placement } from './object-editing'
 
 export type ElementGroup = { id: string; paths: string[] }
+
+export function selectionPath(props: Record<string, unknown>, path: string): string {
+  const scope = objectScope(props, path)
+  return scope.root ? `/freeElements/${scope.index}` : path
+}
+
+// Copied objects can be hit through either their frame or their rendered child.
+// Resolve both to the same member, and never leave a saved group half selected.
+export function expandGroupedSelection(props: Record<string, unknown>, paths: string[]): string[] {
+  const selected = new Set(paths.map(path => selectionPath(props, path)))
+  const groups = ((props.elementGroups ?? []) as ElementGroup[]).map(group => group.paths.map(path => selectionPath(props, path)))
+  let changed = true
+  while (changed) {
+    changed = false
+    for (const members of groups) {
+      if (!members.some(member => [...selected].some(path => path === member || path.startsWith(`${member}/`)))) continue
+      for (const member of members) {
+        if (!selected.has(member)) { selected.add(member); changed = true }
+      }
+    }
+  }
+  return [...selected].filter(path => ![...selected].some(parent => parent !== path && path.startsWith(`${parent}/`)))
+}
 export type MultiAction =
   | { type: 'style' | 'imageSize'; paths: string[]; value: Record<string, unknown> }
   | { type: 'delete' | 'group' | 'ungroup'; paths: string[] }
@@ -41,8 +64,9 @@ export function applyMultiAction(sections: WebsiteSection[], id: string, action:
   let props = section.props
   const paths = [...new Set(action.paths)]
   if (action.type === 'group' || action.type === 'ungroup') {
-    const groups = ((props.elementGroups ?? []) as ElementGroup[]).filter((group) => !group.paths.some((path) => paths.includes(path)))
-    if (action.type === 'group' && paths.length > 1) groups.push({ id: crypto.randomUUID(), paths })
+    const members = [...new Set(paths.map(path => selectionPath(props, path)))]
+    const groups = ((props.elementGroups ?? []) as ElementGroup[]).filter((group) => !group.paths.some((path) => members.includes(selectionPath(props, path))))
+    if (action.type === 'group' && members.length > 1) groups.push({ id: crypto.randomUUID(), paths: members })
     props = { ...props, elementGroups: groups }
   } else {
     for (const path of paths) props = editObjectProps(props, path, action.type === 'style' || action.type === 'imageSize' ? { type: action.type, value: action.value } : { type: 'delete' })

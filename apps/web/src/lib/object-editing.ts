@@ -57,6 +57,20 @@ export function editObjectProps(props: Record<string, unknown>, path: string, ac
     return target.root ? setAtPointer(props, `/freeElements/${target.index}/zIndex`, zIndex) : setAtPointer(props, `${target.prefix}/elementColors`, { ...styles, [target.path]: { ...styles[target.path], zIndex } })
   }
   const scope = objectScope(props, path)
+  if ((action.type === 'style' || action.type === 'imageSize') && ('offsetX' in action.value || 'offsetY' in action.value)) {
+    const { offsetX, offsetY, ...size } = action.value
+    const dx = typeof offsetX === 'number' ? offsetX : 0
+    const dy = typeof offsetY === 'number' ? offsetY : 0
+    if (scope.root) {
+      // Free items store position and dimensions on their outer frame.
+      const next = editObjectProps(props, path, { type: 'placement', value: { ...size, y: scope.entry!.y + dy } })
+      return dx ? editObjectProps(next, path, { type: 'placement', value: { x: scope.entry!.x + scope.entry!.width - (typeof size.width === 'number' ? size.width : scope.entry!.width) } }) : next
+    }
+    const styled = editObjectProps(props, path, { type: action.type, value: size })
+    const offsets = (scope.props.elementOffsets ?? {}) as Record<string, { x: number; y: number; sectionX?: number }>
+    const previous = offsets[scope.path] ?? { x: 0, y: 0 }
+    return setAtPointer(styled, `${scope.prefix}/elementOffsets`, { ...offsets, [scope.path]: { ...previous, x: Math.max(-20000, Math.min(20000, previous.x + dx)), y: Math.max(-20000, Math.min(20000, previous.y + dy)) } })
+  }
   if (action.type === 'style' && scope.path === '/layout/0' && typeof action.value.backgroundColor === 'string') {
     const { backgroundColor, ...rest } = action.value
     const rootProps = scope.props.imageLayout === 'background'
@@ -153,8 +167,18 @@ export function moveObject(sections: WebsiteSection[], sourceId: string, path: s
   }) }
 }
 
+export function cardLinkContent(props: Record<string, unknown>, path: string): { label: string; href: string; variant: 'solid' | 'outline' | 'text-link' } | undefined {
+  const scope = objectScope(props, path)
+  const match = scope.path.match(/^(\/items\/\d+)\/link$/)
+  if (!match) return undefined
+  const item = getAtPointer(scope.props, match[1]!) as { title?: string; href?: string; link?: { label?: string; href?: string; variant?: 'solid' | 'outline' | 'text-link' } } | undefined
+  if (!item || typeof item.title !== 'string') return undefined
+  return { label: item.link?.label ?? `Explore ${item.title} →`, href: item.link?.href ?? item.href ?? '', variant: item.link?.variant ?? 'text-link' }
+}
+
 export function objectTextPointer(props: Record<string, unknown>, path: string) {
   const scope = objectScope(props, path)
+  if (cardLinkContent(props, path)) return `${scope.prefix}${scope.path}/label`
   const value = getAtPointer(scope.props, scope.path)
   if (typeof value === 'string') return `${scope.prefix}${scope.path}`
   if (value && typeof value === 'object') {

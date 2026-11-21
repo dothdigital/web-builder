@@ -94,3 +94,34 @@ apply. No AI or asset-copy jobs are queued.
 Validation: `npx tsx scripts/validate-copy-page.mts` (read-only database seed);
 browser verification covers independent copied HTML edits, URL conflicts,
 Undo/Redo, navigation and Save/reload.
+
+## Card section arrangement
+
+For a section containing one balanced card collection, **Arrangement → 4 responsive
+columns** arranges its cards rather than narrowing the outer section. The heading
+and introduction remain above the cards. Stack and 2–3 columns and item spacing
+use the same collection. Card containers can also be selected directly. Original
+layout restores the component defaults; sections with multiple independent card
+collections retain explicit container arrangement. Editor and static export share
+this behavior, and narrow screens wrap cards without horizontal overflow.
+Validation: `npx tsx scripts/validate-card-arrangement.mts`.
+
+## Service card links and buttons
+
+In large-number service cards, click the **Explore …** link itself to select it
+independently of its card. **Button style** switches between Text link, Solid
+button and Outline button. **Edit text / link** edits its label and destination.
+Appearance and spacing controls apply to that individual link. Older cards retain
+their generated Explore label and original destination until changed. Updates to
+one card do not change the other cards. Save persists the change to editor and
+export. Validation: `npx tsx scripts/validate-service-card-link.mts`.
+
+## Moving saved groups
+
+Selecting a saved group member restores the full group for click, Shift-click,
+and area selection. Copied buttons selected through their content or outer frame
+resolve to the same member. Multi-object controls also restore missing members
+from a saved group, so stale partial selections cannot move only part of it.
+Ungroup explicitly to edit the members independently.
+Validation: `npx tsx scripts/validate-multi-object-editing.ts` and
+`UI_CHECK_BASE=http://127.0.0.1:3003 npx tsx scripts/validate-grouped-buttons-browser.mts`.

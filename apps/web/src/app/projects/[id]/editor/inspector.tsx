@@ -406,6 +406,8 @@ function ShowcaseItemsEditor({ credentials, items, imageUrls, projectId, onChang
 }
 
 export function ImageField({
+  fit,
+  onFitChange,
   cropElement,
   canvas = false,
   toolbar = false,
@@ -417,6 +419,8 @@ export function ImageField({
   imagePointer,
   onGenerated,
 }: {
+  fit?: 'cover' | 'contain'
+  onFitChange?: (fit: 'cover' | 'contain') => void
   cropElement?: HTMLElement
   toolbar?: boolean
   canvas?: boolean
@@ -430,6 +434,8 @@ export function ImageField({
 }) {
   const router = useRouter()
   const sizing = useContext(ImageSizingContext)
+  const selectedFit = fit ?? (imagePointer ? sizing?.sizes[imagePointer]?.fit : undefined) ?? 'cover'
+  const changeFit = onFitChange ?? (sizing && imagePointer ? (fit: 'cover' | 'contain') => sizing.onChange({ ...sizing.sizes, [imagePointer]: { ...sizing.sizes[imagePointer], fit } }) : undefined)
   const [cropTarget, setCropTarget] = useState<HTMLElement>()
   const [imageEditor, setImageEditor] = useState<{ source: string }>()
   const [aiOpen, setAiOpen] = useState(false)
@@ -478,6 +484,7 @@ export function ImageField({
       {iconsOpen && <div className={toolbar ? "order-2 basis-full max-h-80 overflow-auto" : undefined}><IconLibrary onUse={(url, alt) => { if (onGenerated) onGenerated(url,alt); else onChange(url); setIconsOpen(false); setNotice('Icon selected. Save the website to keep this change.'); setError(undefined) }} /></div>}
       <button type="button" aria-expanded={aiOpen} className="rounded-md border border-violet-300 px-3 py-2 text-xs font-medium text-violet-900" onClick={() => setAiOpen(open => !open)}>{aiOpen ? 'Close AI image update' : canvas ? 'Generate with AI' : 'Update with AI'}</button>
       {aiOpen && <div className={toolbar ? "order-2 basis-full max-h-80 overflow-auto" : undefined}><AiImageUpdate imagePointer={imagePointer} originalUrl={value} projectId={projectId} context={aiContext} onUse={(url, alt) => { setUploaded(current => ({ ...current, [url]: `/api/projects/${projectId}/editor-image?thumbnail=1&url=${encodeURIComponent(url)}` })); if (onGenerated) onGenerated(url, alt); else onChange(url); setAiOpen(false); setNotice('AI image selected. Save the website to keep this change.'); setError(undefined) }} /></div>}
+      {changeFit && <label className="grid gap-1 text-xs font-medium">Image fit<select aria-label="Upload image fit" className="rounded-md border border-neutral-300 px-2 py-2 text-xs" value={selectedFit} onChange={event => changeFit(event.target.value as 'cover' | 'contain')}><option value="contain">Fit whole image</option><option value="cover">Fill / crop</option></select></label>}
       <UploadButton label={canvas ? 'Upload from computer' : /logo/i.test(imagePointer ?? '') ? 'Upload logo' : 'Upload image'} disabled={uploading}
           onChange={async (event) => {
             const input = event.currentTarget

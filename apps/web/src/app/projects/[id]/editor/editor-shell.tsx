@@ -4,7 +4,7 @@ import { ErrorNotice } from '@/components/error-notice'
 
 import { mergeAssistantChanges, sameEditorValue } from '@/lib/assistant-merge'
 import { PageAssistantDrawer } from './page-assistant-drawer'
-import { applyMultiAction } from '@/lib/multi-object-editing'
+import { applyMultiAction, expandGroupedSelection } from '@/lib/multi-object-editing'
 import { editObjectProps, moveObject, objectScope, restoreMovedSection } from '@/lib/object-editing'
 import { BusinessDetailsPanel } from './business-details-panel'
 import { IntegrationsPanel, ScriptFields } from './integrations-panel'
@@ -103,7 +103,8 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
   const [dirty, setDirty] = useState(false)
   const [addingObject, setAddingObject] = useState(false)
   const [copyPageId,setCopyPageId]=useState<string>()
-  const [newSectionColumns, setNewSectionColumns] = useState(1)
+  const [useNewSectionColumns, setUseNewSectionColumns] = useState(false)
+  const [newSectionColumns, setNewSectionColumns] = useState(2)
   const [adding, setAdding] = useState(false)
   const [generateContent, setGenerateContent] = useState(true)
   const [sectionTopic, setSectionTopic] = useState('')
@@ -379,13 +380,15 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
           {adding && (
             <div className="border-b border-neutral-200 p-3">
               <h3 className="text-sm font-semibold">Add a new section</h3>
-              <label className="mt-3 grid gap-1 text-xs font-semibold">Columns for a blank section<select aria-label="New section columns" value={newSectionColumns} onChange={event => setNewSectionColumns(Number(event.target.value))} className="w-full rounded border p-2">{[1,2,3,4,5].map(count => <option key={count} value={count}>{count} {count === 1 ? 'column' : 'columns'}</option>)}</select></label>
-              <p className="mt-2 text-xs text-neutral-500">Add multiple objects to each column. Adjust sizing and copy objects between columns in Properties.</p>
+              <label className="mt-3 flex items-center gap-2 text-xs font-semibold"><input type="checkbox" checked={useNewSectionColumns} onChange={event => setUseNewSectionColumns(event.target.checked)} />Use columns in this blank section</label>
+              {useNewSectionColumns && <label className="mt-3 grid gap-1 text-xs font-semibold">Columns for a blank section<select aria-label="New section columns" value={newSectionColumns} onChange={event => setNewSectionColumns(Number(event.target.value))} className="w-full rounded border p-2">{[1,2,3,4,5].map(count => <option key={count} value={count}>{count} {count === 1 ? 'column' : 'columns'}</option>)}</select></label>}
+              <p className="mt-2 text-xs text-neutral-500">{useNewSectionColumns ? 'Add multiple objects to each column. Adjust sizing and copy objects between columns in Properties.' : 'Add headings, text, images and other objects directly to your blank section.'}</p>
               <button type="button" className="mt-3 w-full rounded-md border border-violet-400 bg-violet-50 px-3 py-2 text-sm font-medium text-violet-900" onClick={() => {
-                const blank: WebsiteSection = { id: `section-${crypto.randomUUID()}`, componentId: 'ManualSection', componentVersion: '1.0.0', hidden: false, props: { items: [], sectionColumns: newSectionColumns, equalColumnWidths: true, equalColumnHeights: true } }
+                const blank: WebsiteSection = { id: `section-${crypto.randomUUID()}`, componentId: 'ManualSection', componentVersion: '1.0.0', hidden: false, props: { items: [], ...(useNewSectionColumns ? { sectionColumns: newSectionColumns, equalColumnWidths: true, equalColumnHeights: true } : {}) } }
                 const sections = [...page.sections]; sections.splice(insertIndex ?? sections.length, 0, blank)
                 commit({ ...model, pages: model.pages.map(entry => entry.id === page.id ? { ...entry, sections } : entry) })
-                setSelection({ kind: 'section', id: blank.id }); setAdding(false); setRightPanelOpen(true); setPanel('section')
+                setSelection({ kind: 'section', id: blank.id }); setUseNewSectionColumns(false); setAdding(false); setRightPanelOpen(true); setPanel('section')
+                revealEditorElement(undefined, blank.id)
               }}>+ Blank section — build without AI</button>
               <div className="my-3 grid gap-2">{['PortfolioShowcase', 'CredentialsShowcase'].map(componentId => <button key={componentId} type="button" className="rounded-md border border-sky-300 bg-sky-50 px-3 py-2 text-left text-xs text-sky-950" onClick={() => { const definition = getComponent(componentId)!; const section: WebsiteSection = { id: `section-${crypto.randomUUID()}`, componentId, componentVersion: definition.version, hidden: false, props: structuredClone(definition.fixture) as Record<string, unknown> }; const sections = [...page.sections]; sections.splice(insertIndex ?? sections.length, 0, section); commit({ ...model, pages: model.pages.map(entry => entry.id === page.id ? { ...entry, sections } : entry) }); setSelection({ kind: 'section', id: section.id }); setAdding(false); setRightPanelOpen(true); setPanel('section') }}>+ {componentId === 'PortfolioShowcase' ? 'Portfolio / products — add your work' : 'Credentials / awards — upload badges'}</button>)}</div><p className="mt-1 text-xs text-neutral-500">Page: {page.title}. Your existing sections stay in place.</p>
               <div className="my-3 grid grid-cols-2 gap-1 rounded-lg bg-neutral-100 p-1" role="group" aria-label="How to add a section">
@@ -524,7 +527,7 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
             setSelection({ kind: 'section', id: target.id, element: added.path })
           }
           setPanel('section')
-          requestAnimationFrame(() => revealEditorElement(added.path))
+          requestAnimationFrame(() => revealEditorElement(added.path, globalSlot ? undefined : target.id))
         }} />}
 
         <HeaderMenuBehavior />
@@ -533,7 +536,7 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
           <div className="min-h-0 flex-1">
         <EditorCanvas
           selectionMode={selectionMode}
-          onAreaSelect={(id, paths) => { setSelection({ kind: 'section', id, element: paths[paths.length - 1], elements: paths }); setSelectionMode(false) }}
+          onAreaSelect={(id, paths) => { const section = page.sections.find(entry => entry.id === id); const complete = section ? expandGroupedSelection(section.props, paths) : paths; setSelection({ kind: 'section', id, element: complete[complete.length - 1], elements: complete }); setSelectionMode(false) }}
           onMultiAction={(id, action) => {
             const sourceSections = action.type === 'resize' ? page.sections.map((entry) => entry.id === id ? { ...entry, props: resolveSectionMedia(model, page, entry) } : entry) : page.sections
             const next = applyMultiAction(sourceSections, id, action)
@@ -598,7 +601,7 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
 
             if (next) setPanel('section')
           }}
-          onResizeText={(id, path, style) => updateSections((sections) => sections.map((entry) => entry.id === id ? { ...entry, props: /^\/freeElements\/\d+$/.test(path) ? editObjectProps(entry.props, path, { type: 'placement', value: style }) : editObjectProps(entry.props, path, { type: 'style', value: style }) } : entry))}
+          onResizeText={(id, path, style) => updateSections((sections) => sections.map((entry) => entry.id === id ? { ...entry, props: (/^\/freeElements\/\d+$/.test(path) && !('offsetX' in style || 'offsetY' in style)) ? editObjectProps(entry.props, path, { type: 'placement', value: style }) : editObjectProps(entry.props, path, { type: 'style', value: style }) } : entry))}
           onResizeImage={(id, path, size) => updateSections((sections) => sections.map((entry) => entry.id === id ? { ...entry, props: editObjectProps(entry.props, path, { type: 'imageSize', value: size }) } : entry))}
           onMoveSection={(id, direction) =>
             updateSections((sections) => {
@@ -751,6 +754,15 @@ export function EditorShell({ projectId, initialModel, imageUrls: initialImageUr
                   let next = setAtPointer(base, `${root}${pointer}`, value)
                   if (definition.family === 'HERO' && pointer === '/imageLayout') next = setAtPointer(next, `${root}/sectionBackgroundMode`, 'original')
                   commit(next)
+                  if (section.componentId === 'ManualSection') {
+                    const previousItems = (section.props.items ?? []) as unknown[]
+                    const nextItems = (getAtPointer(next, `${root}/items`) ?? []) as unknown[]
+                    if (nextItems.length > previousItems.length) {
+                      const path = `/items/${nextItems.length - 1}`
+                      setSelection({ kind: 'section', id: section.id, element: path })
+                      revealEditorElement(path, section.id)
+                    }
+                  }
                 }}
                 onAskAi={async (instruction) => {
                   await askAiForSection(projectId, { model, pageId: page.id, sectionId: section.id, instruction })

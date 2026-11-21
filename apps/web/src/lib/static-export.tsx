@@ -245,7 +245,13 @@ async function renderPage(
 ): Promise<string> {
   const filePath = pageFilePath(page)
   const root = relativeRoot(filePath)
-  const body = await renderMarkup(<SiteRenderer model={model} page={page} baseUrl="" forms={options.forms} staticExport />)
+  const renderedBody = await renderMarkup(<SiteRenderer model={model} page={page} baseUrl="" forms={options.forms} staticExport />)
+  // Published customer scripts need their website origin for vendor domain checks.
+  // App-hosted previews retain opaque sandbox origins to isolate account access.
+  const body = options.preview ? renderedBody : renderedBody.replaceAll(
+    'sandbox="allow-scripts allow-forms allow-popups allow-modals"',
+    'sandbox="allow-scripts allow-forms allow-popups allow-modals allow-same-origin"',
+  )
 
   const html = `<!doctype html>
 <html lang="${escapeHtml(model.site.locale)}">

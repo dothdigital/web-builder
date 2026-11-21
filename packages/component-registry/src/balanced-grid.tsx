@@ -12,6 +12,7 @@ type BalancedGridProps = HTMLAttributes<HTMLElement> & {
   children: ReactNode; count: number; minimumWidth?: number; gap?: string; style?: CSSProperties; as?: 'div' | 'ol'; maxColumns?: 1 | 3; enabled?: boolean
   variants?: { ancestor: string; childSelector: string; count: number }[]
   scope?: string
+  arrangement?: { columns: number; gap?: number }
 }
 
 export function BalancedGrid({ scope, ...props }: BalancedGridProps) {
@@ -27,7 +28,14 @@ function InteractiveGrid(props: Omit<BalancedGridProps, 'scope'>) {
   return <Grid {...props} id={id} />
 }
 
-function Grid({ children, count, minimumWidth = 260, gap = '1.5rem', style, as: Tag = 'div', maxColumns = 3, enabled = true, variants = [], id, ...attributes }: Omit<BalancedGridProps, 'scope'> & { id: string }) {
+function Grid({ children, count, minimumWidth = 260, gap = '1.5rem', style, as: Tag = 'div', maxColumns = 3, enabled = true, variants = [], id, arrangement, ...attributes }: Omit<BalancedGridProps, 'scope'> & { id: string }) {
+  if (arrangement) {
+    const spacing = arrangement.gap ?? 24
+    const columns = Math.max(1, Math.min(4, arrangement.columns))
+    return <div style={{ containerType: 'inline-size', minWidth: 0, width: '100%' }}>
+      <Tag {...attributes} id={id || undefined} style={{ ...style, display: 'grid', gridTemplateColumns: columns === 1 ? 'minmax(0, 1fr)' : `repeat(auto-fit, minmax(min(100%, max(180px, calc((100% - ${spacing * (columns - 1)}px) / ${columns}))), 1fr))`, gap: spacing, alignItems: 'stretch' }}>{children}</Tag>
+    </div>
+  }
   function rowRules(columns: number, total = count, ancestor = '', childSelector = '') {
     let index = 0
     return balancedRows(total, columns).flatMap(size => Array.from({ length: size }, () =>

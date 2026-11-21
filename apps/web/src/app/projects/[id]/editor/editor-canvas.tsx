@@ -3,7 +3,7 @@ import { ErrorNotice } from '@/components/error-notice'
 
 import { MarqueeSelection } from './marquee-selection'
 import { MultiObjectToolbar } from './multi-object-toolbar'
-import type { ElementGroup, MultiAction } from '@/lib/multi-object-editing'
+import { expandGroupedSelection, type ElementGroup, type MultiAction } from '@/lib/multi-object-editing'
 import { ObjectToolbar } from './object-toolbar'
 import { imagePlacementAction } from '@/lib/image-placement'
 import { objectScope, type ObjectAction } from '@/lib/object-editing'
@@ -61,7 +61,7 @@ function SectionFrame({
   onDelete: () => void
   onToggleHidden: () => void
   onEditText: (pointer: string, value: string) => void
-  onResizeText: (path: string, style: { fontSize?: number; width?: number; height?: number; widthBasis?: 'section' }) => void
+  onResizeText: (path: string, style: { fontSize?: number; width?: number; height?: number; widthBasis?: 'section'; offsetX?: number; offsetY?: number }) => void
   onResizeImage: (path: string, size: { width: number; height: number }) => void
   onDragStart: () => void
   onDropBefore: () => void
@@ -299,7 +299,7 @@ function GlobalFrame({
         <Component props={parsed.data} context={context} />
       </div>
       {selected && <ObjectToolbar key={selectedElement ?? 'global-section'} node={node} path={selectedElement ?? '/layout/0'} props={props} {...objectControls} onSelect={onSelect} />}
-      {selected && selectedElement && node && Array.from(node.querySelectorAll<HTMLElement>('[data-awb-element]')).some(element => element.dataset.awbElement === selectedElement && imageResizeTarget(element)) && <ImageResizeHandle key={`global-image-${selectedElement}`} revision={props} node={node} path={selectedElement} onResize={size => objectControls.onAction({ type: 'imageSize', value: { width: size.width, height: size.height } })} onFontResize={value => objectControls.onAction({ type: 'style', value })} />}
+      {selected && selectedElement && node && Array.from(node.querySelectorAll<HTMLElement>('[data-awb-element]')).some(element => element.dataset.awbElement === selectedElement && imageResizeTarget(element)) && <ImageResizeHandle key={`global-image-${selectedElement}`} revision={props} node={node} path={selectedElement} onResize={size => objectControls.onAction({ type: 'imageSize', value: size })} onFontResize={value => objectControls.onAction({ type: 'style', value })} />}
     </div>
   )
 }
@@ -357,7 +357,7 @@ export function EditorCanvas({
   onDeleteSection: (sectionId: string) => void
   onToggleHidden: (sectionId: string) => void
   onEditText: (target: Selection, pointer: string, value: string) => void
-  onResizeText: (sectionId: string, path: string, style: { fontSize?: number; width?: number; height?: number; widthBasis?: 'section' }) => void
+  onResizeText: (sectionId: string, path: string, style: { fontSize?: number; width?: number; height?: number; widthBasis?: 'section'; offsetX?: number; offsetY?: number }) => void
   onResizeImage: (sectionId: string, path: string, size: { width: number; height: number }) => void
   onReorder: (sourceId: string, targetIndex: number) => void
   onInsertAfter: (sectionId: string) => void
@@ -428,9 +428,10 @@ export function EditorCanvas({
               const nodes = Array.from(frame?.querySelectorAll<HTMLElement>('[data-awb-element]') ?? [])
               const clicked = nodes.find((entry) => entry.dataset.awbElement === element)
               const group = element ? ((section.props.elementGroups ?? []) as ElementGroup[]).find((entry) => entry.paths.some((path) => path === element || (clicked && nodes.find((node) => node.dataset.awbElement === path)?.contains(clicked)))) : undefined
-              let paths = element ? additive ? current.includes(element) ? current.filter((path) => path !== element) : [...current, element] : current.length > 1 && current.includes(element) ? current : group?.paths ?? [element] : []
+              let paths = element ? additive ? current.includes(element) ? current.filter((path) => path !== element) : [...current, element] : group?.paths ?? (current.length > 1 && current.includes(element) ? current : [element]) : []
               // Never select both an ancestor and its descendant for a batch move.
               paths = paths.filter((path) => { const child = nodes.find((entry) => entry.dataset.awbElement === path); return child && !paths.some((other) => other !== path && nodes.find((entry) => entry.dataset.awbElement === other)?.contains(child)) })
+              paths = expandGroupedSelection(section.props, paths)
               onSelect({ kind: 'section', id: section.id, element: paths[paths.length - 1], elements: paths })
             }}
             onMove={(direction) => onMoveSection(section.id, direction)}

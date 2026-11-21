@@ -21,10 +21,10 @@ function restoreSizing(start: { element: HTMLElement; originalStyle: string; con
   if (start.free) start.free.style.cssText = start.freeStyle ?? ''
 }
 
-export function ImageResizeHandle({ revision, node, path, onResize, onFontResize, sectionWideImages = false }: { sectionWideImages?: boolean; revision?: unknown; node: HTMLElement | null; path?: string; onResize: (size: { width: number; height: number; offsetX?: number; offsetY?: number }) => void; onFontResize: (style: { fontSize?: number; width?: number; height?: number; widthBasis?: 'section' }) => void }) {
+export function ImageResizeHandle({ revision, node, path, onResize, onFontResize, sectionWideImages = false }: { sectionWideImages?: boolean; revision?: unknown; node: HTMLElement | null; path?: string; onResize: (size: { width: number; height: number; offsetX?: number; offsetY?: number }) => void; onFontResize: (style: { fontSize?: number; width?: number; height?: number; widthBasis?: 'section'; offsetX?: number; offsetY?: number }) => void }) {
   const [box, setBox] = useState<{ left: number; top: number; width: number; height: number; path: string; kind: 'image' | 'text' | 'block' }>()
   const image = useRef<HTMLElement | null>(null)
-  const drag = useRef<{ x: number; y: number; width: number; height: number; parentWidth: number; originalStyle: string; container?: HTMLElement; containerStyle?: string; free?: HTMLElement; freeStyle?: string; element: HTMLElement; kind: 'image' | 'text' | 'block'; fontSize: number; resultFont?: number; resultWidth?: number; resultHeight?: number; translate?: string; insetX: number; insetY: number; result?: { width: number; height: number; offsetX?: number; offsetY?: number } } | null>(null)
+  const drag = useRef<{ x: number; y: number; width: number; height: number; parentWidth: number; originalStyle: string; container?: HTMLElement; containerStyle?: string; free?: HTMLElement; freeStyle?: string; element: HTMLElement; kind: 'image' | 'text' | 'block'; fontSize: number; resultOffsetX?: number; resultOffsetY?: number; resultFont?: number; resultWidth?: number; resultHeight?: number; translate?: string; insetX: number; insetY: number; result?: { width: number; height: number; offsetX?: number; offsetY?: number } } | null>(null)
   useEffect(() => {
     if (!node || !path) return
     const selected = renderedElement(node, path)
@@ -86,22 +86,32 @@ export function ImageResizeHandle({ revision, node, path, onResize, onFontResize
       if (!start) return
       const dx = (event.clientX - start.x) * (handle.x * 2 - 1)
       const dy = (event.clientY - start.y) * (handle.y * 2 - 1)
+      const anchorBox = () => {
+        start.resultOffsetX = handle.x === 0 && start.resultWidth !== undefined ? start.width - start.resultWidth / 100 * start.parentWidth : 0
+        start.resultOffsetY = handle.y === 0 && start.resultHeight !== undefined ? start.height - start.resultHeight : 0
+        const [tx, ty = '0px'] = start.translate && start.translate !== 'none' ? start.translate.split(' ') : ['0px', '0px']
+        start.element.style.translate = `calc(${tx} + ${start.resultOffsetX}px) calc(${ty} + ${start.resultOffsetY}px)`
+      }
       if (start.kind === 'block') {
         if (handle.x !== 0.5) start.resultWidth = Math.max(10, Math.min(100, Math.round((start.width + dx) / Math.max(1, start.parentWidth) * 100)))
         if (handle.y !== 0.5) start.resultHeight = Math.max(24, Math.min(3000, Math.round(start.height + dy)))
         if (start.resultWidth !== undefined) start.element.style.width = `${start.resultWidth}%`
         if (start.resultHeight !== undefined) Object.assign(start.element.style, { height: `${start.resultHeight}px`, minHeight: '0', boxSizing: 'border-box' })
+        if (start.element.hasAttribute('data-awb-free-item') && start.resultHeight !== undefined) start.element.style.setProperty('--free-height', `${start.resultHeight}px`)
+        anchorBox()
         return
       }
       if (start.kind === 'text') {
         if (handle.x === 0.5) {
           start.resultHeight = Math.max(24, Math.min(3000, Math.round(start.height + dy)))
           Object.assign(start.element.style, { height: `${start.resultHeight}px`, boxSizing: 'border-box', minHeight: '0', ...(start.element.matches('a,button') ? { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.4rem 0.6rem' } : {}) })
+          anchorBox()
           return
         }
         if (handle.y === 0.5) {
           start.resultWidth = Math.max(10, Math.min(100, Math.round((start.width + dx) / Math.max(1, start.parentWidth) * 100)))
           Object.assign(start.element.style, { width: `${start.resultWidth / 100 * start.parentWidth}px`, minWidth: '0', maxWidth: 'none', height: `${start.height}px`, boxSizing: 'border-box', display: start.element.matches('a,button') ? 'inline-flex' : 'block', overflowWrap: 'anywhere', ...(start.element.matches('a,button') ? { padding: '0.4rem 0.6rem' } : {}) })
+          anchorBox()
           return
         }
         const delta = Math.abs(dx) > Math.abs(dy) ? dx : dy
@@ -150,9 +160,10 @@ export function ImageResizeHandle({ revision, node, path, onResize, onFontResize
       drag.current = null
       restoreSizing(start)
       event.currentTarget.releasePointerCapture(event.pointerId)
-      if (start.kind === 'block') onFontResize({ ...(start.resultWidth !== undefined ? { width: start.resultWidth } : {}), ...(start.resultHeight !== undefined ? { height: start.resultHeight } : {}) })
-      else if (start.resultHeight !== undefined) onFontResize({ height: start.resultHeight })
-      else if (start.resultWidth !== undefined) onFontResize({ width: start.resultWidth, widthBasis: 'section', height: Math.max(24, Math.min(3000, start.height)) })
+      const offsets = { offsetX: start.resultOffsetX, offsetY: start.resultOffsetY }
+      if (start.kind === 'block') onFontResize({ ...offsets, ...(start.resultWidth !== undefined ? { width: start.resultWidth } : {}), ...(start.resultHeight !== undefined ? { height: start.resultHeight } : {}) })
+      else if (start.resultHeight !== undefined) onFontResize({ ...offsets, height: start.resultHeight })
+      else if (start.resultWidth !== undefined) onFontResize({ ...offsets, width: start.resultWidth, widthBasis: 'section', height: Math.max(24, Math.min(3000, start.height)) })
       else if (start.resultFont !== undefined) onFontResize({ fontSize: start.resultFont })
       else if (start.result) onResize(start.result)
     }}

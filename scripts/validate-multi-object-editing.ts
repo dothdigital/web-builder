@@ -53,3 +53,17 @@ const free = twice[0]!.props.freeElements as Array<{ contentScale: number }>
 assert.equal(free.length, 2)
 assert.ok(free.every((entry) => entry.contentScale === 1))
 console.log('PASS: equal gaps with unequal box sizes, edge/centre alignment, proportional content scaling, group path remapping, and repeat resize without duplication.')
+
+import {expandGroupedSelection,selectionPath} from '../apps/web/src/lib/multi-object-editing'
+const mixedProps={freeElements:[{source:'/items/0/link',content:{},id:'a'},{source:'/items/0/link',content:{},id:'b'},{source:'/items/0/link',content:{},id:'c'}],elementGroups:[{id:'four',paths:['/items/0/link','/freeElements/0','/freeElements/1','/freeElements/2']}]}
+const expected=mixedProps.elementGroups[0]!.paths
+for(const member of expected)assert.deepEqual(new Set(expandGroupedSelection(mixedProps,[member])),new Set(expected))
+assert.deepEqual(new Set(expandGroupedSelection(mixedProps,expected.slice(0,2))),new Set(expected),'Reselecting two members must restore all four')
+assert.equal(selectionPath(mixedProps,'/freeElements/1/content/items/0/link'),'/freeElements/1')
+assert.deepEqual(new Set(expandGroupedSelection(mixedProps,['/freeElements/1/content/items/0/link'])),new Set(expected))
+assert.deepEqual(expandGroupedSelection(mixedProps,[]),[])
+const legacyGroups={...mixedProps,elementGroups:[{id:'legacy',paths:expected.map(path=>path.startsWith('/freeElements/')?path+'/content/items/0/link':path)}]}
+assert.deepEqual(new Set(expandGroupedSelection(legacyGroups,['/freeElements/0'])),new Set(expected))
+const overlapping={elementGroups:[{id:'a',paths:['/items/0','/items/1']},{id:'b',paths:['/items/0/title','/items/2/title']}]}
+assert.deepEqual(new Set(expandGroupedSelection(overlapping,['/items/0/title'])),new Set(['/items/0','/items/1','/items/2/title']),'Overlapping historical groups terminate and avoid parent/child duplication')
+console.log('PASS: complete four-member selection, copied frame/child aliases, legacy groups, empty selection, and overlapping ancestor groups.')

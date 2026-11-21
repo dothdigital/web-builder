@@ -10,6 +10,11 @@ const serviceSchema = z.object({
   description: z.string().optional(),
   price: z.string().optional(),
   href: z.string().optional(),
+  link: z.object({
+    label: z.string().optional(),
+    href: z.string().optional(),
+    variant: z.enum(['solid', 'outline', 'text-link']).optional(),
+  }).optional(),
   imageUrl: z.string().optional(),
   imageAlt: z.string().default(''),
 })
@@ -66,7 +71,7 @@ export const servicesLargeNumbers = defineComponent({
                 <Heading level={3} style={elementColor(props, `/items/${index}/title`)} data-awb-element={`/items/${index}/title`}>{item.title}</Heading>
                 {item.description && <Prose style={{ margin: 0, fontSize: '0.95rem' , ...elementColor(props, `/items/${index}/description`)}} data-awb-element={`/items/${index}/description`}>{item.description}</Prose>}
                 {item.price && <span style={{ color: 'var(--awb-muted)' }}>{item.price}</span>}
-                {item.href && <a href={item.href} style={{ color: 'var(--awb-primary)', fontWeight: 600, textUnderlineOffset: '4px', marginTop: '0.5rem' }}>Explore {item.title} <span aria-hidden="true">→</span></a>}
+                {(item.href || item.link) && <Cta data-awb-element={`/items/${index}/link`} label={item.link?.label ?? `Explore ${item.title} →`} href={item.link?.href ?? item.href ?? ''} variant={item.link?.variant ?? 'text-link'} style={{ fontWeight: 600, fontSize: 'inherit', textTransform: 'none', letterSpacing: 'normal', marginTop: '0.5rem', ...((item.link?.variant ?? 'text-link') === 'text-link' ? { color: 'var(--awb-primary)', justifyContent: 'flex-start', textAlign: 'left', textUnderlineOffset: '4px' } : {}), ...elementColor(props, `/items/${index}/link`) }} />}
               </div>
             </li>
           ))}

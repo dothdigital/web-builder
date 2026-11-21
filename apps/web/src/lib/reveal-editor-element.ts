@@ -1,13 +1,16 @@
-/** Called only by sidebar navigation, so canvas editing never jumps the viewport. */
-export function revealEditorElement(path?: string) {
+/** Reveal explicit navigation and newly added content; ordinary canvas edits do not scroll. */
+export function revealEditorElement(path?: string, sectionId?: string) {
   requestAnimationFrame(() => {
-    const frame = document.querySelector<HTMLElement>('[data-awb-selected-frame="true"]')
+    const frame = sectionId
+      ? Array.from(document.querySelectorAll<HTMLElement>('[data-awb-section-id]')).find(element => element.dataset.awbSectionId === sectionId)
+      : document.querySelector<HTMLElement>('[data-awb-selected-frame="true"]')
     if (!frame) return
     const elements = Array.from(frame.querySelectorAll<HTMLElement>('[data-awb-element]'))
     let pointer = path
     let target: HTMLElement | undefined
     while (pointer && !target) {
-      target = elements.find((element) => element.dataset.awbElement === pointer)
+      target = elements.find((element) => element.dataset.awbElement === pointer && element.getClientRects().length > 0 && getComputedStyle(element).visibility !== 'hidden')
+        ?? elements.find((element) => element.dataset.awbElement === pointer)
       pointer = pointer.slice(0, pointer.lastIndexOf('/'))
     }
     // Reveal nested menu and FAQ content before measuring its position.
@@ -17,7 +20,7 @@ export function revealEditorElement(path?: string) {
       parent = parent.parentElement
     }
     if (!target || !target.getClientRects().length) target = frame
-    let scroller = frame.parentElement
+    let scroller = frame.closest<HTMLElement>('[data-awb-canvas-scroll]') ?? frame.parentElement
     while (scroller && !/(auto|scroll)/.test(getComputedStyle(scroller).overflowY)) scroller = scroller.parentElement
     if (!scroller) return
     const bounds = target.getBoundingClientRect()

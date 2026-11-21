@@ -4,7 +4,7 @@ import toolbarStyles from './toolbar.module.css'
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { alignSelection, type Alignment, type ElementGroup, type MultiAction } from '@/lib/multi-object-editing'
+import { alignSelection, expandGroupedSelection, selectionPath, type Alignment, type ElementGroup, type MultiAction } from '@/lib/multi-object-editing'
 import { imageVisibleBounds } from '@/lib/image-visible-bounds'
 import { imageResizeTarget } from '@/lib/image-resize-target'
 import { objectScope } from '@/lib/object-editing'
@@ -23,7 +23,8 @@ export function MultiObjectToolbar({ node, paths, props, onAction, onClear }: { 
   useEffect(() => {
     if (!node) return
     const all = Array.from(node.querySelectorAll<HTMLElement>('[data-awb-element]'))
-    const selected = all.filter((element) => paths.includes(element.dataset.awbElement!))
+    const completePaths = expandGroupedSelection(props, paths)
+    const selected = all.filter((element) => completePaths.includes(element.dataset.awbElement!) && element.getBoundingClientRect().width > 0 && element.getBoundingClientRect().height > 0)
     const roots = selected.filter((element) => !selected.some((other) => other !== element && other.contains(element)))
     const previous = roots.map((element) => ({ element, outline: element.style.outline, offset: element.style.outlineOffset }))
     roots.filter(element => !imageResizeTarget(element)).forEach((element) => { element.style.outline = '2px solid #0284c7'; element.style.outlineOffset = '3px' })
@@ -69,7 +70,7 @@ export function MultiObjectToolbar({ node, paths, props, onAction, onClear }: { 
     return values.every((value) => value === values[0]) ? values[0] : undefined
   }
   const style = (value: Record<string, unknown>) => onAction({ type: 'style', paths: selectedPaths, value })
-  const group = ((props.elementGroups ?? []) as ElementGroup[]).find((entry) => entry.paths.length === selectedPaths.length && entry.paths.every((path) => selectedPaths.includes(path)))
+  const group = ((props.elementGroups ?? []) as ElementGroup[]).find((entry) => entry.paths.length === selectedPaths.length && entry.paths.every((path) => selectedPaths.includes(selectionPath(props, path))))
   const move = (dx: number, dy: number) => {
     const section = node.getBoundingClientRect()
     const boxes = elements.map((element) => element.getBoundingClientRect())
