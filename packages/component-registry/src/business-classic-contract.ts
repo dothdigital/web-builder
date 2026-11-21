@@ -78,6 +78,8 @@ export function validateTemplateCopy(templateId: string, content: TemplateCopy, 
       if (text.trim().length > field.maxCharacters) errors.push(`${section.componentId}.${field.key}: shorten ${field.role} to ${field.maxCharacters} characters`)
       if (/<\/?[a-z][^>]*>/i.test(text)) errors.push(`${section.componentId}.${field.key}: HTML is not allowed`)
     }
+    const filled = spec.fields.filter(field => String(section.props[field.key] ?? '').trim()).length
+    if (!['HERO', 'CONTACT', 'REVIEWS'].includes(spec.family) && spec.fields.length > 2 && filled * 2 < spec.fields.length) errors.push(`${section.componentId}: section is mostly empty; fill it from supplied facts or leave the section out`)
   }
   return errors
 }

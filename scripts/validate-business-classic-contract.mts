@@ -6,9 +6,13 @@ const contract = businessClassicContract(path)
 const content = {
   path, h1: 'Insurance and investment guidance',
   seo: { title: 'Insurance guidance | Example', description: 'Learn about the insurance and investment services supplied by Example. Get in touch to discuss the available options for your needs.', index: true },
-  sections: [...contract.map((section, index) => ({ id: `section-${index}`, componentId: section.componentId, componentVersion: '1.0.0', hidden: false, props: Object.fromEntries(section.fields.map(field => [field.key, field.required ? 'Insurance guidance for your needs' : ''])) })), { id: 'faq', componentId: 'FaqAccordion', componentVersion: '1.0.0', hidden: false, props: { heading: 'Questions', items: [{ question: 'How do I enquire?', answer: 'Use the contact form.' }, { question: 'Where are you based?', answer: 'Toronto.' }] } }],
+  sections: [...contract.map((section, index) => ({ id: `section-${index}`, componentId: section.componentId, componentVersion: '1.0.0', hidden: false, props: Object.fromEntries(section.fields.map(field => [field.key, field.required ? 'Insurance guidance for your needs' : 'Insurance guidance'])) })), { id: 'faq', componentId: 'FaqAccordion', componentVersion: '1.0.0', hidden: false, props: { heading: 'Questions', items: [{ question: 'How do I enquire?', answer: 'Use the contact form.' }, { question: 'Where are you based?', answer: 'Toronto.' }] } }],
 }
 assert.deepEqual(validateBusinessClassicCopy(content, path), [])
+const sparse = structuredClone(content)
+const about = sparse.sections.find(section => section.componentId === 'Tpl_finbiz_1_2')!
+for (const field of contract.find(section => section.componentId === 'Tpl_finbiz_1_2')!.fields) if (!field.required) about.props[field.key] = ''
+assert.ok(validateBusinessClassicCopy(sparse, path).some(error => error.includes('Tpl_finbiz_1_2: section is mostly empty')))
 const invalid = structuredClone(content)
 invalid.sections[0]!.props = { ...invalid.sections[0]!.props, className: 'new-layout', imageUrl: 'invented.png' }
 const required = contract[1]!.fields.find(field => field.required)!
