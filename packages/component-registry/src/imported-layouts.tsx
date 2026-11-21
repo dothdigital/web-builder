@@ -213,7 +213,8 @@ function renderServiceGrid(section:ImportedSection,values:Record<string,unknown>
     createElement(SiteContentContainer,{theme:context.templateTheme||section.theme,children:createElement('div',{},
       createElement('header',{style:{marginBottom:32,maxWidth:780}},clean(eyebrow,'p','services-eyebrow',{margin:'0 0 10px',fontSize:12,fontWeight:600,letterSpacing:'.1em',textTransform:'uppercase',color:'var(--awb-primary)'}),clean(title,'h2','services-title',{margin:0,fontSize:'clamp(26px,3vw,38px)',lineHeight:1.2,fontWeight:700})),
       createElement('div',{className:'awb-template-services-grid'},...cards.map((card,index)=>{
-        const service=serviceCardLink(card,values)!
+        const service=serviceCardLink(card,values)
+        if(!service)return null
         const match=context.serviceLinks?.find(link=>link.label.toLowerCase()===service.label.toLowerCase()) ?? context.serviceLinks?.find(link=>service.label.toLowerCase().includes(link.label.toLowerCase()))
         const href=match?.href||'/services'
         const linkNode=treeNodes(card,node=>node.tag==='a' && /read|more|learn|detail/i.test(anchorText(node,values)))[0]
