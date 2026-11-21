@@ -1,3 +1,4 @@
+import { isContactPath } from '@awb/shared/layout-catalogue'
 import { importedSection, importedBackgroundImagePaths, templateGenerationComponents } from './imported-layouts'
 
 export const BUSINESS_CLASSIC_ID = 'finbiz-1'
@@ -54,7 +55,7 @@ export function templateSelectionErrors(contract: Array<{ componentId: string; f
   const contacts = contract.filter(section => section.family === 'CONTACT' && (section.fields?.length ?? 1) > 0)
   if (contacts.some(section => section.enquiryForm) && !kept.some(section => section.enquiryForm)) errors.push(`Keep the template enquiry form section: ${contacts.filter(section => section.enquiryForm).map(section => section.componentId).join(' or ')}`)
   else if (contacts.length && !kept.some(section => contacts.includes(section))) errors.push(`Keep a CONTACT section with contact details: ${contacts.map(section => section.componentId).join(' or ')}`)
-  if (/quote|contact/.test(path)) for (const section of contacts) if (!kept.includes(section)) errors.push(`Keep ${section.componentId}: the contact page needs every contact details and enquiry section`)
+  if (/quote|contact/.test(path) || isContactPath(path)) for (const section of contacts) if (!kept.includes(section)) errors.push(`Keep ${section.componentId}: the contact page needs every contact details and enquiry section`)
   if (hasReviews && contract.some(section => section.family === 'REVIEWS') && !families.has('REVIEWS')) errors.push('Include a REVIEWS section for the supplied testimonials')
   const minimum = Math.min(path === '/' ? 3 : 1, contract.length)
   if (chosen.length < minimum) errors.push(`Choose at least ${minimum} template sections for this page`)

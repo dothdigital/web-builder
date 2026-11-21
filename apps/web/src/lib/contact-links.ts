@@ -1,3 +1,4 @@
+import { isContactPath } from '@awb/shared/layout-catalogue'
 import { resolveBusinessContact, normalizeServiceLabels } from '@awb/component-registry'
 import type { WebsiteModel } from '@awb/website-model'
 
@@ -6,6 +7,7 @@ export function contactRoute(model: WebsiteModel): string | undefined {
     ?? model.pages.find((page) => page.path === '/request-a-quote')?.path
     ?? model.pages.find((page) => page.path === '/quote')?.path
     ?? model.pages.find((page) => page.path === '/contact-us')?.path
+    ?? model.pages.find((page) => isContactPath(page.path))?.path
 }
 
 export function resolveContactLinks(model: WebsiteModel): WebsiteModel {
