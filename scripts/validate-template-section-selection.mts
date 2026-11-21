@@ -7,8 +7,7 @@ for (const template of importedTemplates) {
   for (const path of ['/', '/about', '/services', '/services/example', '/contact']) {
     const contract = templateContract(template.id, path)
     assert.ok(contract.length, `${template.id} ${path} has generation sections`)
-    const keep = new Set(['HERO', 'CONTACT'])
-    const required = contract.filter(section => keep.has(section.family) && contract.find(other => other.family === section.family) === section)
+    const required = contract.filter(section => section.family === 'HERO' ? contract.find(other => other.family === 'HERO') === section : section.family === 'CONTACT' && section.fields.length > 0)
     const extras = contract.filter(section => !required.includes(section)).slice(0, Math.max(0, 3 - required.length))
     const chosen = contract.filter(section => required.includes(section) || extras.includes(section)).map(section => section.componentId)
     assert.deepEqual(templateSelectionErrors(contract, [...chosen, 'FaqAccordion'], path), [], `${template.id} ${path} accepts a planned subset`)
@@ -18,4 +17,5 @@ for (const template of importedTemplates) {
     assert.ok(templateSelectionErrors(contract, chosen, path).some(error => error.includes('FaqAccordion')))
   }
 }
+assert.ok(templateSelectionErrors(templateContract('finbiz-1', '/contact'), ['Tpl_finbiz_contact_1', 'Tpl_finbiz_contact_3', 'FaqAccordion'], '/contact').some(error => error.includes('enquiry form')), 'A contact page must keep its enquiry form')
 console.log(`PASS: ${importedTemplates.length} themes selectable; AI-planned section subsets validated for every page type.`)

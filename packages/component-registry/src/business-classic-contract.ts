@@ -19,7 +19,7 @@ export function templateContract(templateId: string, path: string, hasReviews = 
     const mainHeading = textFields.find(field => field.headingLevel)
     const mainBody = textFields.filter(field => field.type === 'textarea').sort((a, b) => String(section.fixture[b.path.slice(1)] ?? '').length - String(section.fixture[a.path.slice(1)] ?? '').length)[0]
     return {
-      componentId, family: section.family,
+      componentId, family: section.family, enquiryForm: /"kind":"form"/.test(JSON.stringify(section.tree)),
       fields: textFields.map(field => {
         const sample = String(section.fixture[field.path.slice(1)] ?? '')
         const role = field.headingLevel ? `heading_h${field.headingLevel}` : field.type === 'textarea' ? 'body_copy' : sample.length <= 35 ? 'short_label' : 'supporting_copy'
@@ -41,7 +41,7 @@ type TemplateCopy = { path: string; h1: string; sections: Array<{ componentId: s
 export const validateBusinessClassicCopy = (content: TemplateCopy, path: string, hasReviews = false) => validateTemplateCopy(BUSINESS_CLASSIC_ID, content, path, hasReviews)
 
 /** The AI chooses which template sections a page needs; chosen sections keep the template's order. */
-export function templateSelectionErrors(contract: Array<{ componentId: string; family: string }>, ids: string[], path: string, hasReviews = false): string[] {
+export function templateSelectionErrors(contract: Array<{ componentId: string; family: string; enquiryForm?: boolean; fields?: unknown[] }>, ids: string[], path: string, hasReviews = false): string[] {
   const errors: string[] = []
   const chosen = ids.filter(id => id !== 'FaqAccordion')
   const positions = chosen.map(id => contract.findIndex(section => section.componentId === id))
@@ -49,7 +49,12 @@ export function templateSelectionErrors(contract: Array<{ componentId: string; f
   if (positions.includes(-1)) errors.push(`Use only the listed template sections: ${chosen.filter((_, index) => positions[index] === -1).join(', ')}`)
   if (new Set(chosen).size !== chosen.length || positions.some((position, index) => index > 0 && position <= positions[index - 1]!)) errors.push('Keep the chosen sections in the template section order without repeats')
   const families = new Set(chosen.map(id => contract.find(section => section.componentId === id)?.family))
-  for (const family of ['HERO', 'CONTACT']) if (contract.some(section => section.family === family) && !families.has(family)) errors.push(`Keep at least one ${family} section from the template`)
+  const kept = contract.filter(section => chosen.includes(section.componentId))
+  if (contract.some(section => section.family === 'HERO') && !families.has('HERO')) errors.push('Keep at least one HERO section from the template')
+  const contacts = contract.filter(section => section.family === 'CONTACT' && (section.fields?.length ?? 1) > 0)
+  if (contacts.some(section => section.enquiryForm) && !kept.some(section => section.enquiryForm)) errors.push(`Keep the template enquiry form section: ${contacts.filter(section => section.enquiryForm).map(section => section.componentId).join(' or ')}`)
+  else if (contacts.length && !kept.some(section => contacts.includes(section))) errors.push(`Keep a CONTACT section with contact details: ${contacts.map(section => section.componentId).join(' or ')}`)
+  if (/quote|contact/.test(path)) for (const section of contacts) if (!kept.includes(section)) errors.push(`Keep ${section.componentId}: the contact page needs every contact details and enquiry section`)
   if (hasReviews && contract.some(section => section.family === 'REVIEWS') && !families.has('REVIEWS')) errors.push('Include a REVIEWS section for the supplied testimonials')
   const minimum = Math.min(path === '/' ? 3 : 1, contract.length)
   if (chosen.length < minimum) errors.push(`Choose at least ${minimum} template sections for this page`)
