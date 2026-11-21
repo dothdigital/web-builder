@@ -420,7 +420,7 @@ export const importedLayoutDefinitions: ComponentDefinition[] = sections.map(sec
           if (!values[name] && /book.*meeting|get.*quote|let.s talk/i.test(section.fixture[name] || '')) values[name] = 'Get in touch'
         }
       }
-      return createElement('div',{className:`wt-layout-${section.theme} ${section.bodyClass || ''}`, 'data-layout-family':section.family,'data-hero-image-fit':values.heroImageFit,style:{position:'relative',...templateColorVars(context.tokens)}},createElement('link',{rel:'stylesheet',href:`/template-library/${section.theme}/editable.css?v=20261022-proportional-contact-8`,precedence:`layout-${section.theme}`}),renderTree(section.tree,values,{...context,templateTheme:context.templateTheme||section.theme},section.family),section.family==='HEADER'?createElement('details',{className:'wt-layout-mobile-menu'},createElement('summary',{},'Menu'),renderTree({kind:'menu'},values,context,section.family)):null)
+      return createElement('div',{className:`wt-layout-${section.theme} ${section.bodyClass || ''}`, 'data-layout-family':section.family,'data-hero-image-fit':values.heroImageFit,style:{position:'relative',...templateColorVars(context.tokens)}},createElement('link',{rel:'stylesheet',href:`/template-library/${section.theme}/editable.css?v=20261121-central-palette-1`,precedence:`layout-${section.theme}`}),renderTree(section.tree,values,{...context,templateTheme:context.templateTheme||section.theme},section.family),section.family==='HEADER'?createElement('details',{className:'wt-layout-mobile-menu'},createElement('summary',{},'Menu'),renderTree({kind:'menu'},values,context,section.family)):null)
     },
   }
 })
