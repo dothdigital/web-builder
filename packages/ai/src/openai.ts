@@ -1,4 +1,4 @@
-import { BUSINESS_CLASSIC_ID, BUSINESS_CLASSIC_RULES, businessClassicContract, validateBusinessClassicCopy } from '@awb/component-registry'
+import { TEMPLATE_RULES, templateContract, validateTemplateCopy } from '@awb/component-registry'
 import { contentDirectionPrompt } from '@awb/shared/content-direction'
 import { assistantPlanSchema, assistantPrompt } from './editor-command'
 import { z } from 'zod'
@@ -317,18 +317,17 @@ export class OpenAiProvider implements AiProvider {
       const layoutIds=templateGenerationComponents(brief.templateId,page.path,brief.testimonials.length>0)
       const ids=[...layoutIds, 'FaqAccordion']
       if(!layoutIds.length)throw new Error('The selected layout has no sections for this page.')
-      const classic = brief.templateId === BUSINESS_CLASSIC_ID
       const result=await this.complete('website_copy',pageContentSchema,
-        [classic ? BUSINESS_CLASSIC_RULES : '', classic ? `Business Classic slot contract:\n${JSON.stringify(businessClassicContract(page.path, brief.testimonials.length > 0))}` : '', 'Fill the selected HTML layout with original business content. Keep exactly the prescribed componentIds in their original order. Append the prescribed FaqAccordion after the layout sections. Do not add other sections.',
-        'Return path, h1, seo and sections with id, componentId, componentVersion:"1.0.0", hidden:false, props. Only fill the documented text properties. The application supplies images, navigation and links.',
+        [TEMPLATE_RULES, `Template slot contract:\n${JSON.stringify(templateContract(brief.templateId, page.path, brief.testimonials.length > 0))}`, 'Plan this page from the selected theme: choose only the template sections this business needs to cover the page sectionPlan topics with real supplied facts, and skip sections it cannot fill meaningfully. Keep the chosen sections in the listed template order, never repeat one, keep a HERO and an enquiry/CONTACT section when the template has them, and include REVIEWS only for supplied testimonials. For the homepage follow homepageLength: compact uses about 3–5 template sections, expanded about 5–8. Append one FaqAccordion after the chosen sections. Do not add other sections.',
+        'Return path, h1, seo and the chosen sections with id, componentId, componentVersion:"1.0.0", hidden:false, props. Only fill the documented text properties. The application supplies images, navigation and links.',
         'The sample wording explains each field’s visual role only. It is not factual evidence about this business. Rewrite all text fields. Use empty strings for unsupported statistics, years, addresses, pricing, awards, certifications, guarantees, staff, partner names, telephone numbers, email addresses, or opening hours. Never copy demo claims. Do not invent service areas or process details.',
         'SEO: write a unique descriptive title of at most 60 characters, factual meta description of 120–160 characters, canonical equal to the page path, targetKeyword for its topic, and secondaryKeywords if useful.',
         'One H1: the hero heading property must equal the returned h1. Other headline properties must fit the business and the page intent. Keep short headings short enough to fit the original design. For service pages, explain the supplied service specifically.',
         'For FaqAccordion return props {heading, items:[{question,answer}]} with 2–6 page-specific questions answered only from supplied facts. Do not invent prices, policies, guarantees or financial advice.',
         'For review sections use only exact supplied reviews and their real authors. Leave excess review fields empty.',
-        `Ordered layout fields and sample copy:\n${JSON.stringify(templateCopyCatalogue(ids))}`].join('\n\n'),
+        `Available template sections in order, with fields and sample copy:\n${JSON.stringify(templateCopyCatalogue(ids))}`].join('\n\n'),
         `${this.briefText(brief)}\nPage: ${JSON.stringify(page)}\nAnalysis: ${JSON.stringify(analysis)}`,
-        content=>[...(classic ? validateBusinessClassicCopy(content, page.path, brief.testimonials.length > 0) : []),...(content.sections.map(section=>section.componentId).join(',')!==ids.join(',')?['Keep all prescribed componentIds in their original order']:[]),...content.sections.flatMap(section=>{
+        content=>[...validateTemplateCopy(brief.templateId!, content, page.path, brief.testimonials.length > 0),...content.sections.flatMap(section=>{
           const expected=templateCopyCatalogue([section.componentId])[0]
           if(section.componentId === 'FaqAccordion') { const check=validateSectionProps(section.id,section.componentId,section.props); return check.ok ? [] : [check.error.message] }
           if(!expected)return ['Unknown layout section']
@@ -390,7 +389,7 @@ export class OpenAiProvider implements AiProvider {
       imagePlanSchema,
       [
         'Write one concept-led image prompt and descriptive alt text for every image slot listed by the user. Choose editorial photography, an object-based still life, or a tasteful conceptual illustration to explain the exact service or section subject, not simply the industry.',
-        ...(brief.templateId === BUSINESS_CLASSIC_ID ? ['For Business Classic, follow subjectContext.templateImage: preserve the declared background or foreground placement and use its recommendedAspectRatio. Compose wide background artwork with quiet space for the original text position. Do not request an image of the named business owner or agent; the application must use their supplied portrait in an appropriate introduction. Never invent or change an image position.'] : []),
+        ...(brief.templateId ? ['For the selected template, follow subjectContext.templateImage: preserve the declared background or foreground placement and use its recommendedAspectRatio. Compose wide background artwork with quiet space for the original text position. Do not request an image of the named business owner or agent; the application must use their supplied portrait in an appropriate introduction. Never invent or change an image position.'] : []),
         'Return each slot string exactly as given — never invent, merge or omit a slot.',
         'Every content image on a page needs a distinct section-specific subject and composition. Never fill a missing section image by copying its hero or another section. When no suitable artwork is available, leave the slot for review rather than duplicating an existing image.',
         'Use subjectContext, especially imageOwner for individual cards, to identify the specific concept. Make sibling cards visibly distinct. For education savings show learning or education-related objects; for travel protection show travel essentials; for methodology show relevant tools or a process setting. Adapt these examples to the actual business.',

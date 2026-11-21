@@ -20,7 +20,7 @@ oversized.h1 = 'x'.repeat(100)
 assert.ok(validateBusinessClassicCopy(oversized, path).some(error => error.includes('84')))
 const reordered = structuredClone(content)
 reordered.sections.reverse()
-assert.ok(validateBusinessClassicCopy(reordered, path).some(error => error.includes('exact Business Classic section order')))
+assert.ok(validateBusinessClassicCopy(reordered, path).some(error => error.includes('template section order')))
 for (const pagePath of ['/about', '/services', '/services/life-insurance', '/contact']) assert.ok(businessClassicContract(pagePath).length)
 const brief: GenerationBrief = { templateId: BUSINESS_CLASSIC_ID, businessName: 'Example', description: 'Insurance guidance for customers in Toronto.', services: ['Life insurance'], goals: ['FORM'], tonePreferences: [], answers: {}, hasLogo: true, logoColors: [], uploadedImageUrls: [], testimonials: [] }
 const stub = new StubAiProvider({ seed: 'classic-contract' })
@@ -37,7 +37,7 @@ globalThis.fetch = async (_url, options) => {
 try {
   const result = await new OpenAiProvider({ apiKey: 'mock-only' }).writePage(brief, analysis, directions.options[0]!.dna, defaultTokens, { path, title: 'Home', purpose: brief.description, inMainNav: true, sectionPlan: [] })
   assert.equal(calls, 2, 'Invalid layout edits must trigger correction before acceptance')
-  assert.ok(lastMessages[0]!.content.includes('Business Classic slot contract'))
+  assert.ok(lastMessages[0]!.content.includes('Template slot contract'))
   assert.ok(lastMessages.some(message => message.content.includes('application-owned')))
   assert.equal(result.data.sections[0]!.componentId, contract[0]!.componentId)
   assert.equal(result.data.sections[0]!.props.className, undefined)

@@ -22,6 +22,6 @@ export { inlineLinksSchema, safeTextLink, textOccurrence, type InlineLink } from
 
 export { resolveBusinessContact } from './business-contact'
 
-export { BUSINESS_CLASSIC_ID, BUSINESS_CLASSIC_RULES, businessClassicContract, validateBusinessClassicCopy } from './business-classic-contract'
+export { BUSINESS_CLASSIC_ID, BUSINESS_CLASSIC_RULES, TEMPLATE_RULES, businessClassicContract, templateContract, validateBusinessClassicCopy, validateTemplateCopy, templateSelectionErrors } from './business-classic-contract'
 
 export { normalizeServiceLabels } from './service-labels'
